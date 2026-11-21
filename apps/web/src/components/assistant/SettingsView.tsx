@@ -8,6 +8,7 @@ import { APP_MODELS } from '../../lib/models';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Dialog } from '../ui/Dialog';
+import { speakText, stopSpeaking } from '../../lib/voiceEngine';
 
 export function SettingsView() {
   const {
@@ -30,6 +31,46 @@ export function SettingsView() {
   const [showWipeModal, setShowWipeModal] = useState(false);
   const [wipeConfirmText, setWipeConfirmText] = useState('');
   const [isWiping, setIsWiping] = useState(false);
+  const [voiceSpeed, setVoiceSpeed] = useState<number>(user?.preferences?.voiceSpeed ?? 1.0);
+  const [voiceGender, setVoiceGender] = useState<'male' | 'female'>(user?.preferences?.voiceGender ?? 'male');
+  const [isPlayingTestVoice, setIsPlayingTestVoice] = useState(false);
+
+  const handleSaveVoicePreferences = async (newSpeed: number, newGender: 'male' | 'female') => {
+    setVoiceSpeed(newSpeed);
+    setVoiceGender(newGender);
+    try {
+      const updated = await api.updatePreferences({
+        voiceSpeed: newSpeed,
+        voiceGender: newGender
+      });
+      setUser(updated);
+      setStatusMessage('Voice synthesizer parameters saved successfully!');
+      setTimeout(() => setStatusMessage(null), 3000);
+    } catch (err) {
+      console.error('Failed to update voice preference:', err);
+    }
+  };
+
+  const handleTestVoice = () => {
+    if (isPlayingTestVoice) {
+      stopSpeaking();
+      setIsPlayingTestVoice(false);
+      return;
+    }
+
+    const testPhrase = personalityMode === 'tapori'
+      ? 'Arey bhidu! BANTAI voice model ekdum rapchik chal raha hai! Poora hisaab-kitaab on-point hai.'
+      : 'Greetings! BANTAI voice synthesis engine is calibrated with natural pacing and zero syntax noise.';
+
+    setIsPlayingTestVoice(true);
+    speakText(testPhrase, {
+      mode: personalityMode,
+      gender: voiceGender,
+      rate: voiceSpeed,
+      onEnd: () => setIsPlayingTestVoice(false),
+      onError: () => setIsPlayingTestVoice(false)
+    });
+  };
 
   const handleSaveConsent = async () => {
     try {
@@ -144,6 +185,75 @@ export function SettingsView() {
                 [{mode}]
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Voice Synthesis & Audio Speech Engine */}
+        <div className="p-6 bg-[#12141a] border border-[#20232b] space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-bold text-[#f0f2f5] uppercase flex items-center gap-2">
+              <span>[VOICE MODEL & NATURAL SPEECH ENGINE]</span>
+              <Badge variant="success">CALIBRATED</Badge>
+            </div>
+            <button
+              onClick={handleTestVoice}
+              className={`px-3 py-1 text-[11px] font-bold uppercase border transition-colors flex items-center gap-1.5 ${
+                isPlayingTestVoice
+                  ? 'bg-rose-500/20 border-rose-500 text-rose-400'
+                  : 'bg-[#2F6BFF]/20 border-[#2F6BFF] text-[#2F6BFF] hover:bg-[#2F6BFF]/30'
+              }`}
+            >
+              <span>{isPlayingTestVoice ? '■ Stop Audio' : '▶ Test Voice Output'}</span>
+            </button>
+          </div>
+          <p className="text-xs text-[#8c919e] leading-relaxed">
+            BANTAI dynamically selects authentic regional accents (Indian English/Hindi for Tapori mode, and natural English for Developer & Academic modes) while stripping markdown syntax, emojis, and code blocks before speaking.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            {/* Voice Speed */}
+            <div className="p-3 bg-[#090b0e] border border-[#20232b] space-y-2">
+              <span className="text-[10px] text-[#8c919e] uppercase block font-bold">
+                Speech Cadence / Speed
+              </span>
+              <div className="flex items-center gap-2">
+                {[0.85, 1.0, 1.15].map(speed => (
+                  <button
+                    key={speed}
+                    onClick={() => handleSaveVoicePreferences(speed, voiceGender)}
+                    className={`flex-1 py-1.5 text-xs text-center border font-mono transition-colors ${
+                      voiceSpeed === speed
+                        ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white font-bold'
+                        : 'bg-transparent border-[#20232b] text-[#8c919e] hover:text-white'
+                    }`}
+                  >
+                    {speed === 0.85 ? '0.85x (Slow)' : speed === 1.0 ? '1.0x (Normal)' : '1.15x (Fast)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Voice Gender */}
+            <div className="p-3 bg-[#090b0e] border border-[#20232b] space-y-2">
+              <span className="text-[10px] text-[#8c919e] uppercase block font-bold">
+                Voice Tone / Gender
+              </span>
+              <div className="flex items-center gap-2">
+                {(['male', 'female'] as const).map(gender => (
+                  <button
+                    key={gender}
+                    onClick={() => handleSaveVoicePreferences(voiceSpeed, gender)}
+                    className={`flex-1 py-1.5 text-xs text-center border font-mono capitalize transition-colors ${
+                      voiceGender === gender
+                        ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white font-bold'
+                        : 'bg-transparent border-[#20232b] text-[#8c919e] hover:text-white'
+                    }`}
+                  >
+                    {gender} Voice
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

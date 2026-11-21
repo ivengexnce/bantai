@@ -11,6 +11,29 @@ import {
 } from '@bantai/shared';
 import { resolveModel, APP_MODELS } from '../../lib/models';
 import { GlassIrisOrb } from '../ui/GlassIrisOrb';
+import { speakText, stopSpeaking, createSpeechRecognizer } from '../../lib/voiceEngine';
+
+function renderFormattedLine(text: string) {
+  // Parse inline bold **text** and inline code `code`
+  const segments = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return segments.map((seg, i) => {
+    if (seg.startsWith('**') && seg.endsWith('**')) {
+      return (
+        <strong key={i} className="text-white font-semibold">
+          {seg.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (seg.startsWith('`') && seg.endsWith('`')) {
+      return (
+        <code key={i} className="px-1.5 py-0.5 rounded bg-white/10 text-[#38BDF8] font-mono text-xs">
+          {seg.slice(1, -1)}
+        </code>
+      );
+    }
+    return seg;
+  });
+}
 
 function FormattedContent({ content }: { content: string }) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -53,29 +76,42 @@ function FormattedContent({ content }: { content: string }) {
         // Standard text lines
         const lines = part.split('\n');
         return (
-          <div key={index} className="space-y-1">
+          <div key={index} className="space-y-1.5">
             {lines.map((line, lIdx) => {
               if (!line.trim()) return <div key={lIdx} className="h-2" />;
+
+              // Numbered list items: 1. ...
+              const numMatch = line.match(/^(\d+)\.\s+(.*)/);
+              if (numMatch) {
+                return (
+                  <div key={lIdx} className="flex items-start gap-2.5 pl-2 text-[#E5E5E5]">
+                    <span className="text-[#2F6BFF] font-mono text-[11px] font-semibold mt-0.5 shrink-0">
+                      {numMatch[1]}.
+                    </span>
+                    <span className="leading-relaxed">{renderFormattedLine(numMatch[2])}</span>
+                  </div>
+                );
+              }
 
               // Bullet points
               if (line.startsWith('- ') || line.startsWith('* ')) {
                 return (
-                  <div key={lIdx} className="flex items-start gap-2 pl-2 text-[#E5E5E5]">
-                    <span className="text-[#2F6BFF] mt-1 text-[10px]">●</span>
-                    <span>{line.substring(2)}</span>
+                  <div key={lIdx} className="flex items-start gap-2.5 pl-2 text-[#E5E5E5]">
+                    <span className="text-[#2F6BFF] mt-1 text-[10px] shrink-0">●</span>
+                    <span className="leading-relaxed">{renderFormattedLine(line.substring(2))}</span>
                   </div>
                 );
               }
 
               // Headers
               if (line.startsWith('### ')) {
-                return <h4 key={lIdx} className="text-sm font-semibold text-white pt-2">{line.slice(4)}</h4>;
+                return <h4 key={lIdx} className="text-sm font-semibold text-white pt-2">{renderFormattedLine(line.slice(4))}</h4>;
               }
               if (line.startsWith('## ')) {
-                return <h3 key={lIdx} className="text-base font-semibold text-white pt-2.5 text-[#2F6BFF]">{line.slice(3)}</h3>;
+                return <h3 key={lIdx} className="text-base font-semibold text-white pt-2.5 text-[#2F6BFF]">{renderFormattedLine(line.slice(3))}</h3>;
               }
 
-              return <p key={lIdx} className="text-[#D4D4D4] leading-relaxed">{line}</p>;
+              return <p key={lIdx} className="text-[#D4D4D4] leading-relaxed">{renderFormattedLine(line)}</p>;
             })}
           </div>
         );
@@ -126,10 +162,13 @@ export function ChatView() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeSpeakerRef = useRef<{ stop: () => void } | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   const currentModel = resolveModel(selectedModel);
 
@@ -245,63 +284,91 @@ export function ChatView() {
     }
   };
 
+  // Clean up any ongoing speech synthesis or recognition on unmount
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+    };
+  }, []);
+
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleSpeak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      window.speechSynthesis.speak(utterance);
+  const handleSpeak = (id: string, text: string) => {
+    if (speakingMessageId === id) {
+      activeSpeakerRef.current?.stop();
+      stopSpeaking();
+      setSpeakingMessageId(null);
+      return;
     }
+
+    // Stop any previous speech
+    activeSpeakerRef.current?.stop();
+    stopSpeaking();
+    setSpeakingMessageId(id);
+
+    activeSpeakerRef.current = speakText(text, {
+      mode: personalityMode,
+      gender: user?.preferences?.voiceGender || 'male',
+      rate: user?.preferences?.voiceSpeed || (personalityMode === 'tapori' ? 1.05 : 1.0),
+      onStart: () => setSpeakingMessageId(id),
+      onEnd: () => setSpeakingMessageId(null),
+      onError: () => setSpeakingMessageId(null)
+    });
   };
 
   // Voice Input Speech Recognition
   const toggleListening = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser.');
-      return;
-    }
-
     if (isListening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
       setIsListening(false);
       return;
     }
 
-    try {
-      const SpeechRecognitionClass =
-        (window as unknown as { SpeechRecognition?: new () => any }).SpeechRecognition ||
-        (window as unknown as { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
-
-      if (!SpeechRecognitionClass) {
-        alert('Speech recognition is not supported in this browser.');
+    const recognizer = createSpeechRecognizer({
+      mode: personalityMode,
+      onStart: () => setIsListening(true),
+      onEnd: () => setIsListening(false),
+      onError: (err) => {
+        console.warn('Voice input error:', err);
         setIsListening(false);
-        return;
-      }
-
-      const recognition = new SpeechRecognitionClass();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
+      },
+      onInterimResult: (interim) => {
+        if (interim) {
+          setInput(prev => {
+            const base = prev.replace(/\s*\(listening\.\.\.\)\s*$/, '').trim();
+            return base ? `${base} ${interim}` : interim;
+          });
         }
-        setIsListening(false);
-      };
+      },
+      onFinalResult: (final) => {
+        if (final) {
+          setInput(prev => {
+            const base = prev.trim();
+            return base ? `${base} ${final}` : final;
+          });
+        }
+      }
+    });
 
-      recognition.start();
+    if (!recognizer) {
+      alert('Speech recognition is not supported in this browser.');
+      return;
+    }
+
+    recognitionRef.current = recognizer;
+    try {
+      recognizer.start();
     } catch (err) {
-      console.warn('Voice input error:', err);
+      console.warn('Could not start recognition:', err);
       setIsListening(false);
     }
   };
@@ -317,8 +384,9 @@ export function ChatView() {
     reader.readAsText(file);
   };
 
-  const orbState: 'idle' | 'processing' | 'generating' = isStreaming
+  const orbState: 'idle' | 'processing' | 'generating' | 'speaking' = isStreaming
     ? streamingContent ? 'generating' : 'processing'
+    : speakingMessageId ? 'speaking'
     : 'idle';
 
   const hasMessages = messages.length > 0 || isStreaming;
@@ -670,10 +738,25 @@ export function ChatView() {
                         </button>
                         <span>·</span>
                         <button
-                          onClick={() => handleSpeak(msg.content)}
-                          className="hover:text-white transition-colors"
+                          onClick={() => handleSpeak(msg.id, msg.content)}
+                          className={`flex items-center gap-1.5 transition-colors ${
+                            speakingMessageId === msg.id ? 'text-[#2F6BFF] font-semibold' : 'hover:text-white'
+                          }`}
+                          title={speakingMessageId === msg.id ? 'Stop speaking' : 'Speak with natural voice'}
                         >
-                          Speak
+                          {speakingMessageId === msg.id ? (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-sm bg-[#2F6BFF] animate-pulse" />
+                              <span>Stop</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                              </svg>
+                              <span>Speak</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     )}

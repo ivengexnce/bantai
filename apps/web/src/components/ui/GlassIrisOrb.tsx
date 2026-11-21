@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 
 export interface GlassIrisOrbProps {
   size?: number; // default 270
-  state?: 'idle' | 'processing' | 'generating';
+  state?: 'idle' | 'processing' | 'generating' | 'speaking';
   interactive?: boolean;
 }
 
@@ -36,7 +36,7 @@ export function GlassIrisOrb({
     const render = () => {
       if (!isRunning) return;
 
-      const speed = state === 'generating' ? 2.6 : state === 'processing' ? 1.8 : 1.0;
+      const speed = state === 'generating' ? 2.6 : state === 'processing' ? 1.8 : state === 'speaking' ? 2.2 : 1.0;
       timeRef.current += prefersReducedMotion ? 0.003 : 0.015 * speed;
       const t = timeRef.current;
 
@@ -68,7 +68,7 @@ export function GlassIrisOrb({
       // ==============================================================
       // 2. CENTRAL SWIRLING PLASMA ENERGY VORTEX
       // ==============================================================
-      const pulseAmplitude = state === 'processing' ? 14 : state === 'generating' ? 10 : 5;
+      const pulseAmplitude = state === 'processing' ? 14 : state === 'generating' ? 10 : state === 'speaking' ? 12 : 5;
       const corePulse = Math.sin(t * 2.4) * pulseAmplitude;
       const coreRadius = radius * 0.54 + corePulse;
 
@@ -243,11 +243,11 @@ export function GlassIrisOrb({
       {/* 2. Soft Ambient Aura Glow with Breathing Motion */}
       <motion.div
         animate={{
-          scale: state === 'generating' ? [1.04, 1.14, 1.04] : [1, 1.06, 1],
-          opacity: state === 'generating' ? [0.85, 1, 0.85] : [0.65, 0.85, 0.65]
+          scale: state === 'generating' || state === 'speaking' ? [1.04, 1.15, 1.04] : [1, 1.06, 1],
+          opacity: state === 'generating' || state === 'speaking' ? [0.85, 1, 0.85] : [0.65, 0.85, 0.65]
         }}
         transition={{
-          duration: state === 'generating' ? 1.8 : 5,
+          duration: state === 'generating' ? 1.8 : state === 'speaking' ? 2.2 : 5,
           repeat: Infinity,
           ease: 'easeInOut'
         }}
