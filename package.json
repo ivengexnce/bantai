@@ -27,6 +27,10 @@
     "fine-tuning",
     "rag"
   ],
-  "author": "BANTAI Team",
+  "author": "Meet Maru (https://github.com/ivengexnce)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivengexnce/bantai.git"
+  },
   "license": "Apache-2.0"
 }

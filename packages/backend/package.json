@@ -9,6 +9,11 @@
     "dev": "tsx watch src/index.ts",
     "test": "jest --runInBand"
   },
+  "author": "Meet Maru (https://github.com/ivengexnce)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivengexnce/bantai.git"
+  },
   "dependencies": {
     "@bantai/shared": "*",
     "bcryptjs": "^2.4.3",

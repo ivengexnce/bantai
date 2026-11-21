@@ -7,6 +7,11 @@
     "android": "expo run:android",
     "build:apk": "eas build --platform android --profile preview --local"
   },
+  "author": "Meet Maru (https://github.com/ivengexnce)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivengexnce/bantai.git"
+  },
   "dependencies": {
     "@bantai/shared": "*",
     "@react-native-async-storage/async-storage": "1.23.1",

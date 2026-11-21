@@ -8,6 +8,11 @@
     "build": "tsc",
     "test": "echo \"Shared package tests passed\""
   },
+  "author": "Meet Maru (https://github.com/ivengexnce)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivengexnce/bantai.git"
+  },
   "dependencies": {
     "zod": "^3.23.8"
   },

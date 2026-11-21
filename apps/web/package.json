@@ -9,6 +9,11 @@
     "start": "next start -p 3001",
     "lint": "next lint"
   },
+  "author": "Meet Maru (https://github.com/ivengexnce)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivengexnce/bantai.git"
+  },
   "dependencies": {
     "@bantai/shared": "*",
     "clsx": "^2.1.1",
