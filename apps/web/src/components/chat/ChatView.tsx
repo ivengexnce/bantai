@@ -32,6 +32,8 @@ import {
 export function ChatView() {
   const {
     activeConversationId,
+    setActiveConversationId,
+    setConversations,
     personalityMode,
     setPersonalityMode,
     selectedModel,
@@ -67,7 +69,24 @@ export function ChatView() {
 
   const handleSend = async (customPrompt?: string) => {
     const textToSend = (customPrompt || input).trim();
-    if (!textToSend || !activeConversationId || isStreaming) return;
+    if (!textToSend || isStreaming) return;
+
+    let targetConvId = activeConversationId;
+    if (!targetConvId) {
+      try {
+        const newConv = await api.createConversation(
+          textToSend.substring(0, 32),
+          personalityMode,
+          selectedModel
+        );
+        setConversations(prev => [newConv, ...prev]);
+        setActiveConversationId(newConv.id);
+        targetConvId = newConv.id;
+      } catch (err) {
+        console.error('Failed to create conversation:', err);
+        return;
+      }
+    }
 
     setInput('');
     setIsStreaming(true);
@@ -76,7 +95,7 @@ export function ChatView() {
     // Append optimistic user message
     const tempUserMsg: FirestoreMessage = {
       id: `temp_user_${Date.now()}`,
-      conversationId: activeConversationId,
+      conversationId: targetConvId,
       userId: 'current',
       role: 'user',
       content: textToSend,
@@ -88,7 +107,7 @@ export function ChatView() {
     try {
       let accumulated = '';
       await api.streamMessage(
-        activeConversationId,
+        targetConvId,
         textToSend,
         personalityMode,
         selectedModel,
@@ -101,7 +120,7 @@ export function ChatView() {
       );
 
       // Refresh final saved messages
-      const updatedMessages = await api.getMessages(activeConversationId);
+      const updatedMessages = await api.getMessages(targetConvId);
       setMessages(updatedMessages);
       refreshConversations();
     } catch (err) {
@@ -110,7 +129,7 @@ export function ChatView() {
         ...prev,
         {
           id: `err_${Date.now()}`,
-          conversationId: activeConversationId,
+          conversationId: targetConvId || 'default',
           userId: 'system',
           role: 'assistant',
           content: `Bantai, thoda error aa gaya: ${(err as Error).message}. Dobara try mar!`,

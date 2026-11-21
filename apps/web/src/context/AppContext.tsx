@@ -38,9 +38,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshConversations = async () => {
     try {
       const list = await api.getConversations();
-      setConversations(list);
-      if (list.length > 0 && !activeConversationId) {
-        setActiveConversationId(list[0].id);
+      if (list.length === 0) {
+        const initial = await api.createConversation('New Chat', personalityMode, selectedModel);
+        setConversations([initial]);
+        setActiveConversationId(initial.id);
+      } else {
+        setConversations(list);
+        if (!activeConversationId) {
+          setActiveConversationId(list[0].id);
+        }
       }
     } catch (err) {
       console.warn('Failed to load conversations:', err);

@@ -4,9 +4,9 @@
   "private": true,
   "description": "BANTAI — Web Application (Next.js App Router, Tailwind CSS, Vercel-ready)",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -p 3001",
     "lint": "next lint"
   },
   "dependencies": {

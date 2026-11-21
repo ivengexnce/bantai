@@ -26,7 +26,7 @@ export const config = {
   defaultModel: process.env.DEFAULT_MODEL || 'qwen2.5:7b',
 
   // Client URLs for CORS
-  clientUrls: (process.env.CLIENT_URLS || 'http://localhost:3000,http://localhost:8081,http://10.0.2.2:4000').split(','),
+  clientUrls: (process.env.CLIENT_URLS || 'http://localhost:3000,http://localhost:3001,http://localhost:8081,http://10.0.2.2:4000').split(','),
 
   // File Uploads & Temp storage
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
