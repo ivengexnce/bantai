@@ -198,11 +198,11 @@ export function DashboardView() {
                     <span className="text-[#10b981]">&gt;</span>
                     <span className="text-[#d4d6db] truncate">{rem.title}</span>
                   </div>
-                  <span className="text-[10px] text-[#8c919e]">
-                    {new Date(rem.scheduledTime).toLocaleTimeString([], {
+                  <span suppressHydrationWarning className="text-[10px] text-[#8c919e]">
+                    {rem.scheduledTime ? new Date(rem.scheduledTime).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}
+                    }) : ''}
                   </span>
                 </div>
               ))}

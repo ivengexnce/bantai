@@ -362,7 +362,12 @@ export function ChatView() {
         ) : (
           messages.map((msg) => {
             const isUser = msg.role === 'user';
-            const timestamp = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            let timestamp = '';
+            try {
+              timestamp = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            } catch {
+              timestamp = '';
+            }
 
             return (
               <div
@@ -380,7 +385,7 @@ export function ChatView() {
                       {isUser ? `[OPERATOR // ${user?.name || 'USER'}]` : `[BANTAI // ${currentModel.name.toUpperCase()} // ${msg.personalityMode?.toUpperCase() || 'TAPORI'}]`}
                     </span>
                   </div>
-                  <span>{timestamp}</span>
+                  <span suppressHydrationWarning>{timestamp}</span>
                 </div>
 
                 {/* Message Content Body */}

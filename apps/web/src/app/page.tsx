@@ -17,22 +17,21 @@ import { SettingsView } from '../components/assistant/SettingsView';
 
 export default function HomePage() {
   const { user, isLoadingUser, activeView } = useApp();
+  const [showAuth, setShowAuth] = useState(false);
 
   // Show clean spinner while verifying stored session token
   if (isLoadingUser) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-bantai-dark">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-2 border-bantai-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-semibold text-bantai-400 uppercase tracking-widest">
-            Loading BANTAI Engine...
+      <div className="flex items-center justify-center min-h-screen bg-[#0e1014]">
+        <div className="text-center space-y-3 font-mono">
+          <div className="w-8 h-8 border-2 border-[#cc8e25] border-t-transparent animate-spin mx-auto" />
+          <p className="text-xs font-bold text-[#cc8e25] uppercase tracking-widest">
+            [VERIFYING ENCRYPTED SESSION...]
           </p>
         </div>
       </div>
     );
   }
-
-  const [showAuth, setShowAuth] = useState(false);
 
   // If user is not authenticated or explicitly viewing landing page
   if (!user || activeView === 'landing') {
