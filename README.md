@@ -1,55 +1,115 @@
-# BANTAI — Apna Model. Apna Dimaag. Apna AI.
+# BANTAI
 
-> **Production Self-Hosted Agentic AI Platform with Authentic Mumbai Tapori Personality, Dual-Database Architecture, Zero Third-Party AI APIs, and an Opt-In Continuous Fine-Tuning Pipeline.**
+> **Apna Model. Apna Dimaag. Apna AI.**
 
----
+Build status: 17/17 tests passing · License: Apache 2.0 · Platform: Web + Android · AI: 100% self-hosted · Personality: Mumbai Tapori
 
-## 1. Product Identity & Core Philosophy
+**BANTAI** is a production-grade, self-hosted agentic AI platform with an authentic Mumbai Tapori personality. It combines multi-turn conversational AI, a personal assistant, multi-step tool execution, persistent isolated memory, local vector RAG, and an opt-in LoRA fine-tuning pipeline — all running on infrastructure you own and control.
 
-**BANTAI** is an end-to-end, production-oriented agentic AI assistant combining the conversational power of ChatGPT/Claude with personal assistant automation, persistent isolated memory, local vector RAG, multi-step tool execution, and an approval-gated LoRA fine-tuning engine.
-
-- **Product Name**: BANTAI
-- **Tagline**: *Apna Model. Apna Dimaag. Apna AI.*
-- **Core Personality**: Mumbai Tapori (*Bhai ka swag, dimaag ekdum sharp!*)
-- **Core Principle**: **Intelligent and accurate FIRST, entertaining SECOND.** Slang is never used inside technical code snippets or serious safety contexts.
-- **Supported Languages**: Natural Hinglish, Hindi, and English.
-- **Sovereign AI**: 100% self-hosted on user-controlled infrastructure. **Zero dependencies on external hosted LLM inference APIs** (no OpenAI, no Anthropic, no Gemini, no Groq, no OpenRouter).
+Zero OpenAI. Zero Anthropic. Zero Gemini. Seedha apna model.
 
 ---
 
-## 2. Five Major Systems in BANTAI
+## Table of Contents
 
+- [Why BANTAI](#why-bantai)
+- [Model Family](#model-family)
+- [Core Systems](#core-systems)
+- [Personality Modes](#personality-modes)
+- [Database Architecture](#database-architecture)
+- [Agentic Engine](#agentic-engine)
+- [Quick Start](#quick-start)
+- [Fine-Tuning Pipeline](#fine-tuning-pipeline)
+- [Android APK](#android-apk)
+- [Hardware Requirements](#hardware-requirements)
+- [Testing](#testing)
+- [Monorepo Structure](#monorepo-structure)
+- [Contributing](#contributing)
+- [Author](#author)
+- [License](#license)
+
+---
+
+## Why BANTAI
+
+Most AI assistants are either powerful or personal. BANTAI is built to be both.
+
+**What makes it different:**
+
+- **Fully sovereign.** No data leaves your infrastructure. Every inference call, every embedding, every model weight runs on hardware you control.
+- **Actually agentic.** Not just chat. BANTAI plans multi-step tasks, selects the right tool, pauses for your approval on sensitive operations, and verifies results before reporting success.
+- **Genuinely personalized.** Per-user isolated memory, RAG over your own documents, and an opt-in fine-tuning pipeline that improves the model on your approved data — not someone else's.
+- **Honest about what it is.** No fake local engines, no hidden API calls, no hardcoded responses dressed up as AI. If inference is unavailable, BANTAI says so.
+- **Mumbai mein bana, duniya ke liye.** A personality that makes technical work feel less like work.
+
+---
+
+## Model Family
+
+BANTAI runs on a family of open-weight models under its own naming system. The underlying engine is Qwen 2.5, selectable by capability tier.
+
+| Model | Icon | Color Code | Base Engine | Primary Use Case |
+| :--- | :---: | :---: | :--- | :--- |
+| **BANTAI Chhotu** | ⚡ | `#3B82F6` | Qwen 2.5 3B | Quick replies, mobile, CPU-only devices |
+| **BANTAI Bhai** | 🤝 | `#10B981` | Qwen 2.5 7B | Daily use — **default for all users** |
+| **BANTAI Ustad** | 🎯 | `#F59E0B` | Qwen 2.5 14B | Complex reasoning, coding, agentic tasks |
+| **BANTAI Don** | 👑 | `#DC2626` | Qwen 2.5 32B | Maximum capability, heavy workloads |
+
+**Taglines:**
+
+- **Chhotu** — *Chhota packet, bada kaam.*
+- **Bhai** — *Har kaam ke liye, har waqt ready.*
+- **Ustad** — *Jab kaam serious ho, Ustad ko bulao.*
+- **Don** — *Seedha Don level. No explanation needed.*
+
+Users switch models from the chat header dropdown. The selection persists across sessions. The backend routes the display name to the correct Ollama model string via a single config map — swapping the underlying model never touches application code:
+
+```json
+{
+  "chhotu": "qwen2.5:3b",
+  "bhai":   "qwen2.5:7b",
+  "ustad":  "qwen2.5:14b",
+  "don":    "qwen2.5:32b"
+}
 ```
-+-----------------------------------------------------------------------------------------+
-|                                    BANTAI PLATFORM                                      |
-+-----------------------------------------------------------------------------------------+
-| 1. Conversational AI   | Multi-turn chat, SSE streaming, 5 switchable personality modes |
-| 2. Personal Assistant  | Tasks, Reminders, Calendar, Email assistant, Voice interaction |
-| 3. Agentic Engine      | Goal planner, Step executor, 10 tools, human authorization gate|
-| 4. Personal Memory     | User-isolated semantic facts, preferences, and project context |
-| 5. Hybrid Learning     | Opt-in feedback, PII scrubbing, versioned LoRA fine-tuning     |
-+-----------------------------------------------------------------------------------------+
-```
 
 ---
 
-## 3. Personality Modes
+## Core Systems
 
-Users can toggle modes instantly from the top header or settings:
+BANTAI is built around five integrated systems that share a single user identity and authorization model.
 
-| Mode | Tagline | Style & Characteristics |
-| :--- | :--- | :--- |
-| **Tapori Mode** | *Full Mumbai Style* | Street-smart, witty Mumbai Hinglish (*"Arey bantai! Bol na kya mamla hai"*). Explains complex engineering using vivid Mumbai street analogies, but outputs production-clean code without slang. |
-| **Balanced Mode** | *Natural Conversational* | Friendly, polite, natural Hinglish/English balance with approachable warmth. |
-| **Professional Mode** | *Workplace Ready* | Formal, concise, structured executive summaries, business English/Hindi. |
-| **Developer Mode** | *Zero Fluff, Pure Code* | Senior systems architect persona: Big-O analysis, robust typing, edge-case handling. |
-| **Academic Mode** | *Research & Learning* | Scholarly, first-principles pedagogical breakdowns and formal definitions. |
+| System | Responsibility |
+| --- | --- |
+| **Conversational AI** | Multi-turn chat, SSE streaming, five switchable personality modes |
+| **Personal Assistant** | Tasks, reminders, calendar, email assistant, voice interaction |
+| **Agentic Engine** | Goal planner, step executor, ten tools, human authorization gate |
+| **Personal Memory** | User-isolated semantic facts, preferences, and project context |
+| **Hybrid Learning** | Opt-in feedback, PII scrubbing, versioned LoRA fine-tuning |
+
+All five systems are forbidden from sharing data across user accounts. Every record in every system is associated with an immutable `userId` at write time and verified at read time server-side.
 
 ---
 
-## 4. Strict Database Architecture — Data Separation Policy
+## Personality Modes
 
-BANTAI enforces a strict separation of concerns between user identity and conversation data:
+Switch instantly from the chat header or Settings. The selected mode persists across sessions.
+
+| Mode | Style & Persona |
+| --- | --- |
+| **Tapori** | Authentic Mumbai Hinglish. Street-smart analogies, witty banter. Code output stays clean, robust, and slang-free regardless. |
+| **Balanced** | Friendly, natural Hinglish/English balance. Approachable for everyday use. |
+| **Professional** | Formal, structured, workplace-ready. Executive summaries, business English. |
+| **Developer** | Zero fluff. Senior systems architect voice: Big-O analysis, edge cases, type safety. |
+| **Academic** | First-principles pedagogy. Formal definitions, step-by-step derivations. |
+
+> **Core principle:** Intelligent and accurate first, entertaining second. The Tapori personality never compromises factual correctness, security advice, or code quality.
+
+---
+
+## Database Architecture
+
+BANTAI enforces a strict separation between user identity and application data across two independent databases.
 
 ```
 +------------------------------------------+      +------------------------------------------+
@@ -68,204 +128,305 @@ BANTAI enforces a strict separation of concerns between user identity and conver
 +------------------------------------------+      +------------------------------------------+
 ```
 
----
+### MongoDB — User Identity Only
 
-## 5. Agentic Engine & Tool Registry
+Stores: `userId`, `email`, `name`, `username`, `passwordHash`, `accountStatus`, `roles`, timestamps, `preferences`, and `learningConsent` flags.
 
-BANTAI's `AgentPlannerService` breaks goals down into multi-step execution plans. Tools requiring sensitive actions pause and require human-in-the-loop authorization before execution:
+**Strictly forbidden in MongoDB:** chat messages, conversation history, AI responses, or any transcript content.
 
-1. **`calculator`**: Safe math parser for deterministic numeric evaluation.
-2. **`document_reader`**: Document text inspection by `docId`.
-3. **`file_search`**: Personal knowledge base search matching keywords.
-4. **`database_retrieval`**: Query personal tasks, reminders, calendar, and memories.
-5. **`rag_retrieval`**: 384-dimensional cosine similarity search across local vector chunks.
-6. **`sandbox_code_executor`**: Isolated Node.js VM sandbox with memory & execution timeout limits. *(Requires user authorization)*.
-7. **`task_manager`**: Create, complete, and list tasks in personal registry.
-8. **`reminder_scheduler`**: Schedule verified notifications with date, time, and timezone awareness.
-9. **`calendar_connector`**: Conflict detection and event management.
-10. **`email_connector`**: Search, draft, and send emails. *(Sending emails requires explicit authorization)*.
-
----
-
-## 6. Monorepo Directory Layout
+### Firebase Cloud Firestore — Conversations and Application Data
 
 ```
-bantai/
-├── apps/
-│   ├── web/                    # Next.js 14 App Router, TypeScript, Tailwind CSS (Vercel-ready)
-│   │   ├── src/app/            # App layout, globals.css, home page
-│   │   ├── src/components/chat/# Streaming ChatView, audio playback, STT voice input
-│   │   ├── src/components/auth/# Mandatory AuthModal (Login, Signup, 1-Click Demo)
-│   │   ├── src/components/layout/# Responsive Sidebar, chat search, conversation list
-│   │   └── src/components/assistant/# Dashboard, Tasks, Reminders, Knowledge, Memory, Settings
-│   └── mobile/                 # React Native / Expo Android application (Installable APK)
-│       ├── app.json            # Package ai.bantai.app, permissions, adaptive icon
-│       ├── eas.json            # EAS build configuration for standalone .apk
-│       ├── App.tsx             # Mobile chat, tasks, settings, audio integration
-│       └── src/services/api.ts # Android emulator (10.0.2.2) and LAN auto-connector
-├── packages/
-│   ├── backend/                # Production Node.js/TypeScript Express server (port 4000)
-│   │   ├── src/services/database/ # MongoUserService & FirebaseFirestoreService
-│   │   ├── src/services/ai/    # InferenceService (Ollama, llama.cpp, vLLM, Local Engine)
-│   │   ├── src/services/agent/ # AgentPlannerService & ToolRegistryService (10 tools)
-│   │   ├── src/services/rag/   # Local 384-d vector embeddings & cosine search
-│   │   ├── src/services/memory/# Isolated user personal memory engine
-│   │   ├── src/services/learning/ # Opt-in consent enforcement, PII scrubber, dataset splits
-│   │   └── src/__tests__/      # Automated Jest test suites (17/17 passing)
-│   └── shared/                 # Shared TypeScript types, Zod schemas, Tapori prompts
-├── training/
-│   ├── scripts/
-│   │   ├── train_lora.py       # PyTorch + Hugging Face PEFT LoRA/QLoRA fine-tuning script
-│   │   ├── evaluate_model.py   # Benchmark evaluation harness across 6 dimensions
-│   │   └── model_registry.py   # Model version governance & one-click rollback
-│   └── requirements.txt        # PyTorch, PEFT, TRL, Transformers dependencies
-├── docker/
-│   ├── docker-compose.yml      # Containerized MongoDB, Ollama, Backend, and Web
-│   ├── Dockerfile.backend      # Multi-stage production container for Backend
-│   └── Dockerfile.web          # Multi-stage production container for Web
-├── docs/                       # Comprehensive technical documentation
-│   ├── ARCHITECTURE.md         # System architecture & topology
-│   ├── DATABASE_SPEC.md        # Strict data separation rules and collection schemas
-│   ├── AI_MODELS_AND_INFERENCE.md # Open-weight model benchmarks (Qwen 2.5, Llama 3.1)
-│   ├── FINE_TUNING_PIPELINE.md # LoRA fine-tuning, PII screening, consent workflow
-│   ├── ANDROID_APK_GUIDE.md    # EAS & local APK build commands
-│   ├── VERCEL_DEPLOYMENT_GUIDE.md # Production deployment to Vercel
-│   ├── HARDWARE_REQUIREMENTS.md # CPU/GPU VRAM specifications across 3 tiers
-│   └── API_REFERENCE.md        # Complete REST API endpoint contracts
-├── .github/workflows/ci.yml    # GitHub Actions CI workflow (Build, Test, Eval)
-└── README.md                   # Complete master documentation
+users/{userId}/conversations/{conversationId}
+users/{userId}/conversations/{conversationId}/messages/{messageId}
+users/{userId}/tasks/{taskId}
+users/{userId}/reminders/{reminderId}
+users/{userId}/memories/{memoryId}
+users/{userId}/knowledge_docs/{documentId}
+users/{userId}/music_preferences/{preferenceId}
 ```
+
+### Firebase Storage — User Uploads
+
+Stores PDFs, DOCX, images, and other attachments under `users/{userId}/uploads/*`.
+
+### Security Rules
+
+- Every read and write is validated server-side against the authenticated `userId`.
+- Firebase Security Rules enforce path-level ownership.
+- Sensitive fields are encrypted at rest where appropriate.
+- Account export and deletion cascade across both databases.
 
 ---
 
-## 7. Quick Start Guide
+## Agentic Engine
+
+`AgentPlannerService` breaks a user goal into an ordered execution plan, selects the right tools, and enforces a human-in-the-loop authorization gate before any sensitive operation runs.
+
+**Execution flow:**
+
+1. Understand the user objective
+2. Decompose into ordered steps
+3. Select tools and validate permissions
+4. Execute — pausing for explicit user approval on sensitive actions
+5. Verify results
+6. Report completion with evidence
+
+### Tool Registry
+
+| Tool | Description |
+| --- | --- |
+| `calculator` | Deterministic math parser. No LLM involved. |
+| `document_reader` | Read uploaded files by docId. |
+| `file_search` | Keyword search across the personal knowledge base. |
+| `database_retrieval` | Query tasks, reminders, calendar events, and memories. |
+| `rag_retrieval` | 384-dimensional cosine similarity search over local vector chunks. |
+| `sandbox_code_executor` | Isolated Node.js VM with memory and timeout limits. **Requires authorization.** |
+| `task_manager` | Create, update, and complete tasks. |
+| `reminder_scheduler` | Schedule notifications with timezone awareness. |
+| `calendar_connector` | Conflict detection and event management. |
+| `email_connector` | Search and draft emails. Sending **requires explicit authorization.** |
+
+> No tool reports success without verification. No tool executes arbitrary code on the production server without sandboxing.
+
+---
+
+## Quick Start
 
 ### Prerequisites
-- **Node.js**: v18.0.0+ or v20.0.0+
-- **npm**: v9.0.0+ (or pnpm / yarn)
-- **Python**: 3.10+ (for fine-tuning pipeline)
-- *(Optional)* **Ollama**: Download from [ollama.com](https://ollama.com) for GPU inference
 
-### Step 1: Install Dependencies
+- Node.js v18+ or v20+
+- npm v9+ (pnpm and yarn also work)
+- Python 3.10+ (fine-tuning pipeline only)
+- [Ollama](https://ollama.com) — optional, for local GPU/CPU inference
+
+### 1. Clone and install
+
 ```bash
-git clone https://github.com/your-username/bantai.git
+git clone https://github.com/ivengexnce/bantai.git
 cd bantai
 npm install
 ```
 
-### Step 2: Run Automated Tests
+### 2. Configure environment
+
+Copy `.env.example` to `.env` and fill in your MongoDB URI, Firebase credentials, and optional Spotify client ID. All required variables are documented in `docs/ENVIRONMENT.md`.
+
 ```bash
-# Runs 17 unit and integration tests across data separation, auth, tools, and consent
-npm --workspace=@bantai/backend run test
+cp .env.example .env
 ```
 
-### Step 3: Start the Backend Server
+### 3. Run the test suite
+
+```bash
+npm --workspace=@bantai/backend run test
+# Expected: 4 test suites, 17 tests — all passing
+```
+
+### 4. Start the backend
+
 ```bash
 npm run dev:backend
-# API server starts at http://localhost:4000
+# API server: http://localhost:4000
 ```
 
-### Step 4: Start the Web Application
+### 5. Start the web app
+
 ```bash
 npm run dev:web
-# Web UI opens at http://localhost:3001
+# Web UI: http://localhost:3001
 ```
 
-### Step 5: (Optional) Pull Open-Weight Foundation Model
+### 6. Pull a model (optional but recommended)
+
 ```bash
-# In a separate terminal:
-ollama pull qwen2.5:7b
+# In a separate terminal
+ollama pull qwen2.5:7b    # BANTAI Bhai — default
 ollama run qwen2.5:7b
 ```
-*(If Ollama is not running, BANTAI automatically uses its built-in zero-dependency local engine fallback so you can use the entire platform offline!)*
+
+If Ollama is not running, BANTAI automatically falls back to its built-in zero-dependency local engine so the full platform remains usable offline.
+
+### Docker (all services in one command)
+
+```bash
+docker compose up
+# Starts MongoDB, Ollama, Backend, and Web together
+```
 
 ---
 
-## 8. Continuous Learning & LoRA Fine-Tuning Pipeline
+## Fine-Tuning Pipeline
 
-BANTAI combines real-time user feedback with a privacy-preserving fine-tuning pipeline:
+BANTAI includes an actual LoRA/QLoRA training pipeline — not just RAG relabeled as fine-tuning.
 
-1. **Strict Opt-In Consent**: Cross-user model training is **STRICTLY DISABLED BY DEFAULT**. Users must explicitly enable it under *Settings > Continuous Learning Governance*.
-2. **PII Sanitizer**: Automatically detects and redacts emails, phone numbers, and API keys before dataset creation:
-   - `john.doe@example.com` $\rightarrow$ `[REDACTED_EMAIL]`
-   - `+91 98765 43210` $\rightarrow$ `[REDACTED_PHONE]`
-   - `sk-abcdef123456789...` $\rightarrow$ `[REDACTED_TOKEN]`
-3. **Dataset Versioning**: High-quality feedback ($\ge 0.7$) creates versioned `train.jsonl`, `val.jsonl`, and `test.jsonl` splits.
-4. **Execute Fine-Tuning**:
-   ```bash
-   python training/scripts/train_lora.py \
-     --base_model Qwen/Qwen2.5-7B-Instruct \
-     --dataset_path data/learning_datasets/approved_examples_buffer.jsonl \
-     --output_dir models/adapters/bantai_v1 \
-     --epochs 3 \
-     --batch_size 2 \
-     --lora_r 16 \
-     --qlora
-   ```
-5. **Run Benchmark Evaluation**:
-   ```bash
-   python training/scripts/evaluate_model.py --model models/adapters/bantai_v1
-   ```
-6. **Model Registry & Rollback**:
-   ```bash
-   python training/scripts/model_registry.py
-   ```
+**How it works:**
+
+1. Users rate responses. High-quality examples (score ≥ 0.7) enter the feedback buffer.
+2. PII scrubber automatically redacts emails, phone numbers, and secrets/tokens before dataset creation.
+3. Versioned `train.jsonl`, `val.jsonl`, and `test.jsonl` splits are created.
+4. LoRA adapters are trained, evaluated against a baseline, and registered with rollback capability.
+5. Only approved adapters are deployed. Consent withdrawal stops future use of that user's data.
+
+> Cross-user training is **strictly disabled by default.** Users must explicitly opt in under Settings > Continuous Learning.
+
+### Run fine-tuning
+
+```bash
+python training/scripts/train_lora.py \
+  --base_model Qwen/Qwen2.5-7B-Instruct \
+  --dataset_path data/learning_datasets/approved_examples_buffer.jsonl \
+  --output_dir models/adapters/bantai_v1 \
+  --epochs 3 \
+  --batch_size 2 \
+  --lora_r 16 \
+  --qlora
+```
+
+### Evaluate
+
+```bash
+python training/scripts/evaluate_model.py --model models/adapters/bantai_v1
+```
+
+### Model registry and rollback
+
+```bash
+python training/scripts/model_registry.py
+```
+
+See `docs/FINE_TUNING_PIPELINE.md` for the full governance workflow.
 
 ---
 
-## 9. Android Mobile Application (APK)
+## Android APK
 
-Built with React Native & Expo in `apps/mobile`:
-- Synchronizes with the shared backend over local Wi-Fi or emulator host (`10.0.2.2:4000`).
-- Shares the identical user identity, conversation history, and personal tasks.
+Built with React Native and Expo. Package ID: `ai.bantai.app`.
 
-### To Build the Installable Standalone `.apk`:
+Shares the same backend, authentication, conversation history, tasks, and memory as the web app.
+
+### Build a standalone APK
+
 ```bash
 cd apps/mobile
 eas build --platform android --profile preview --local
 ```
-Or start the development server:
+
+### Development server
+
 ```bash
+cd apps/mobile
 npx expo start
 ```
 
----
+On Android emulator, the app connects to the backend at `10.0.2.2:4000`. On a physical device, update the API base URL in `src/services/api.ts` to your local machine's IP or your deployed backend URL.
 
-## 10. Production Vercel Deployment
-
-1. Push your repository to GitHub.
-2. In [Vercel](https://vercel.com), click **Add New Project** and select `bantai`.
-3. Set **Root Directory** to `apps/web`.
-4. Add Environment Variables:
-   - `NEXT_PUBLIC_API_URL`: URL of your persistent backend (e.g. `https://api.yourdomain.com/api`).
-5. Click **Deploy**. Vercel will build and assign your production domain.
+See `docs/ANDROID_APK_GUIDE.md` for the full EAS configuration and release build steps.
 
 ---
 
-## 11. Hardware Requirements
+## Hardware Requirements
 
-| Tier | Hardware Setup | RAM / VRAM | Models Supported |
-| :--- | :--- | :--- | :--- |
-| **Minimum** | 4-Core CPU (AVX2), No GPU | 16 GB RAM | `qwen2.5:7b` (Q4_K_M quantized) at 8-14 tok/s |
-| **Recommended** | 8-Core CPU + NVIDIA RTX 3060/4070 | 32 GB RAM, 12 GB VRAM | `qwen2.5:7b` (FP16), `llama3.1:8b` (Q8) at 50+ tok/s |
-| **Cluster / Training**| 16-Core CPU + NVIDIA RTX 4090 / A100 | 64 GB RAM, 24 GB+ VRAM | Full LoRA/QLoRA fine-tuning across 7B to 32B models |
+| Tier | Hardware | RAM / VRAM | Models | Tokens/s |
+| :--- | :--- | :--- | :--- | :---: |
+| **Minimum** | 4-core CPU (AVX2), no GPU | 16 GB RAM | Chhotu (Q4_K_M) | 8–14 |
+| **Recommended** | 8-core CPU + RTX 3060/4070 | 32 GB RAM, 12 GB VRAM | Bhai (FP16), Chhotu | 50+ |
+| **Training** | 16-core CPU + RTX 4090 / A100 | 64 GB RAM, 24 GB+ VRAM | Ustad, Don + LoRA/QLoRA | Full fine-tuning |
+
+BANTAI checks available RAM, VRAM, and model compatibility on startup and warns if the selected model exceeds hardware limits. Never promise a speed without measuring it on your actual hardware.
 
 ---
 
-## 12. Quality Assurance & Test Verification
+## Testing
 
-All 17 automated unit and integration tests are verified passing:
-- `data_separation.test.ts`: Proves MongoDB strictly stores user data and rejects message bodies.
-- `auth.test.ts`: Proves password hashing, JWT signing, and unauthorized request rejection.
-- `chat_and_tools.test.ts`: Proves Mumbai Tapori prompts, calculator execution, and sandbox approval gates.
-- `consent_and_learning.test.ts`: Proves strict opt-in consent, PII scrubbing, and dataset generation.
+All 17 automated unit and integration tests pass. Run them with:
 
 ```bash
 npm --workspace=@bantai/backend run test
-# Result: 4 test suites passed, 17 tests passed (100% success rate)
+# 4 test suites · 17 tests · 100% pass rate
+```
+
+| Test Suite | What It Verifies |
+| --- | --- |
+| `data_separation.test.ts` | MongoDB stores only user data; rejects message bodies at the schema level |
+| `auth.test.ts` | Password hashing, JWT signing, unauthorized request rejection |
+| `chat_and_tools.test.ts` | Tapori prompt injection, calculator execution, sandbox authorization gate |
+| `consent_and_learning.test.ts` | Strict opt-in enforcement, PII scrubbing, versioned dataset generation |
+
+No test is marked passing unless it has actually run and produced a recorded result.
+
+---
+
+## Monorepo Structure
+
+```
+bantai/
+├── apps/
+│   ├── web/              # Next.js 14 App Router + TypeScript + Tailwind (Vercel-ready)
+│   └── mobile/           # React Native / Expo — installable Android APK
+│
+├── packages/
+│   ├── backend/          # Node.js / TypeScript Express server (port 4000)
+│   │   └── src/
+│   │       ├── auth/
+│   │       ├── users/
+│   │       ├── conversations/
+│   │       ├── ai/           # InferenceService — Ollama, llama.cpp, vLLM, local fallback
+│   │       ├── agent/        # AgentPlannerService + ToolRegistryService
+│   │       ├── memory/       # User-isolated personal memory engine
+│   │       ├── rag/          # 384-d local vector embeddings + cosine search
+│   │       ├── learning/     # Consent enforcement, PII scrubber, dataset splits
+│   │       ├── spotify/      # Mood music integration
+│   │       └── __tests__/    # Jest test suites (17/17 passing)
+│   └── shared/           # Shared TypeScript types, Zod schemas, Tapori prompts
+│
+├── training/
+│   ├── scripts/
+│   │   ├── train_lora.py       # PyTorch + PEFT LoRA/QLoRA fine-tuning
+│   │   ├── evaluate_model.py   # 6-dimension benchmark harness
+│   │   └── model_registry.py   # Version governance + rollback
+│   └── requirements.txt
+│
+├── docker/
+│   ├── docker-compose.yml
+│   ├── Dockerfile.backend
+│   └── Dockerfile.web
+│
+├── docs/                 # Full technical documentation
+├── .github/workflows/    # GitHub Actions CI (build, test, eval)
+└── .env.example
 ```
 
 ---
 
-## 13. License
-Distributed under the **Apache-2.0 License**. Built for sovereign, private, and independent AI.
+## Contributing
+
+Pull requests are welcome. For significant changes, open an issue first to discuss what you want to change.
+
+Before submitting:
+
+1. Run `npm --workspace=@bantai/backend run test` and confirm 17/17 passing.
+2. Follow the existing TypeScript conventions in `packages/shared/types`.
+3. Do not introduce any third-party hosted AI inference dependency.
+4. Update the relevant doc in `docs/` if your change affects architecture or API contracts.
+
+---
+
+## Author
+
+**Meet Maru** — Full-Stack Developer, AI/ML Engineering Student
+
+- **GitHub**: [github.com/ivengexnce](https://github.com/ivengexnce)
+- **LinkedIn**: [linkedin.com/in/meet-maru-ai](https://linkedin.com/in/meet-maru-ai)
+- **Portfolio**: [meetmaru.netlify.app](https://meetmaru.netlify.app)
+- **Instagram**: [@meetmaru.dev](https://instagram.com/meetmaru.dev)
+
+If BANTAI helped you or you found it interesting, a star on the repo goes a long way.
+
+---
+
+## License
+
+Distributed under the Apache 2.0 License.
+
+BANTAI is built for sovereign, private, and independent AI. Your model, your data, your infrastructure.
