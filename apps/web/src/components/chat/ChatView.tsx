@@ -10,11 +10,7 @@ import {
   PERSONALITY_PROMPTS
 } from '@bantai/shared';
 import { resolveModel, APP_MODELS } from '../../lib/models';
-import { Tabs } from '../ui/Tabs';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import { BorderBeam } from '../ui/BorderBeam';
-import { FADE_IN_UP } from '../../lib/utils';
+import { GlassIrisOrb } from '../ui/GlassIrisOrb';
 
 function FormattedContent({ content }: { content: string }) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -29,7 +25,7 @@ function FormattedContent({ content }: { content: string }) {
   const parts = content.split(/(```[\s\S]*?```)/g);
 
   return (
-    <div className="space-y-3 leading-relaxed text-xs break-words font-mono">
+    <div className="space-y-3 leading-relaxed text-[13px] break-words">
       {parts.map((part, index) => {
         if (part.startsWith('```') && part.endsWith('```')) {
           const firstLineBreak = part.indexOf('\n');
@@ -37,17 +33,17 @@ function FormattedContent({ content }: { content: string }) {
           const code = part.slice(firstLineBreak + 1, -3);
 
           return (
-            <div key={index} className="my-3 border border-[#2b303c] bg-[#090b0e] text-xs">
-              <div className="flex items-center justify-between px-3 py-1 bg-[#12141a] border-b border-[#20232b] text-[#8c919e]">
-                <span className="text-[10px] uppercase tracking-wider text-[#cc8e25]">{lang}</span>
+            <div key={index} className="my-3 rounded-xl border border-white/10 bg-[#121212] overflow-hidden text-xs">
+              <div className="flex items-center justify-between px-3.5 py-1.5 bg-[#181818] border-b border-white/5 text-[#8C8C8C]">
+                <span className="text-[11px] uppercase tracking-wider text-[#2F6BFF] font-medium">{lang}</span>
                 <button
                   onClick={() => handleCopyCode(code, index)}
-                  className="px-2 py-0.5 border border-[#20232b] hover:border-[#3a4050] hover:text-[#f0f2f5] text-[10px] transition-colors"
+                  className="px-2 py-0.5 rounded hover:bg-white/5 hover:text-white text-[11px] transition-colors"
                 >
-                  {copiedIndex === index ? '[COPIED]' : '[COPY CODE]'}
+                  {copiedIndex === index ? 'Copied' : 'Copy Code'}
                 </button>
               </div>
-              <pre className="p-3 overflow-x-auto text-[#d4d6db] whitespace-pre text-[11px] leading-relaxed">
+              <pre className="p-3.5 overflow-x-auto text-[#D4D4D4] whitespace-pre text-[12px] font-mono leading-relaxed">
                 <code>{code}</code>
               </pre>
             </div>
@@ -64,8 +60,8 @@ function FormattedContent({ content }: { content: string }) {
               // Bullet points
               if (line.startsWith('- ') || line.startsWith('* ')) {
                 return (
-                  <div key={lIdx} className="flex items-start gap-2 pl-2 text-[#d4d6db]">
-                    <span className="text-[#cc8e25]">&gt;</span>
+                  <div key={lIdx} className="flex items-start gap-2 pl-2 text-[#E5E5E5]">
+                    <span className="text-[#2F6BFF] mt-1 text-[10px]">●</span>
                     <span>{line.substring(2)}</span>
                   </div>
                 );
@@ -73,13 +69,13 @@ function FormattedContent({ content }: { content: string }) {
 
               // Headers
               if (line.startsWith('### ')) {
-                return <h4 key={lIdx} className="text-xs font-bold text-[#f0f2f5] pt-1 uppercase tracking-wider">{line.slice(4)}</h4>;
+                return <h4 key={lIdx} className="text-sm font-semibold text-white pt-2">{line.slice(4)}</h4>;
               }
               if (line.startsWith('## ')) {
-                return <h3 key={lIdx} className="text-xs font-bold text-[#cc8e25] pt-2 uppercase tracking-widest">{line.slice(3)}</h3>;
+                return <h3 key={lIdx} className="text-base font-semibold text-white pt-2.5 text-[#2F6BFF]">{line.slice(3)}</h3>;
               }
 
-              return <p key={lIdx} className="text-[#d4d6db]">{line}</p>;
+              return <p key={lIdx} className="text-[#D4D4D4] leading-relaxed">{line}</p>;
             })}
           </div>
         );
@@ -88,12 +84,33 @@ function FormattedContent({ content }: { content: string }) {
   );
 }
 
+function formatRelativeTime(dateStr: string) {
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch {
+    return 'Recently';
+  }
+}
+
 export function ChatView() {
   const {
     user,
+    conversations,
+    setConversations,
     activeConversationId,
     setActiveConversationId,
-    setConversations,
     personalityMode,
     setPersonalityMode,
     selectedModel,
@@ -108,20 +125,13 @@ export function ChatView() {
   const [streamingContent, setStreamingContent] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [switchToast, setSwitchToast] = useState<string | null>(null);
-  const [infoToast, setInfoToast] = useState<string | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentModel = resolveModel(selectedModel);
-
-  const handleModelChange = (modelId: string) => {
-    setSelectedModel(modelId);
-    const model = resolveModel(modelId);
-    if (model) {
-      setSwitchToast(model.switchMessage);
-      setTimeout(() => setSwitchToast(null), 3500);
-    }
-  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -140,6 +150,14 @@ export function ChatView() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, streamingContent]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+    }
+  }, [input]);
 
   const handleSend = async (customPrompt?: string) => {
     const textToSend = (customPrompt || input).trim();
@@ -163,6 +181,9 @@ export function ChatView() {
     }
 
     setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     setIsStreaming(true);
     setStreamingContent('');
 
@@ -217,6 +238,13 @@ export function ChatView() {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -228,15 +256,14 @@ export function ChatView() {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.0;
-      utterance.pitch = 1.0;
       window.speechSynthesis.speak(utterance);
     }
   };
 
-  const toggleVoiceInput = () => {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      setInfoToast('Speech recognition not supported in browser.');
-      setTimeout(() => setInfoToast(null), 3000);
+  // Voice Input Speech Recognition
+  const toggleListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Speech recognition is not supported in this browser.');
       return;
     }
 
@@ -245,303 +272,531 @@ export function ChatView() {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'hi-IN';
-    recognition.interimResults = false;
+    try {
+      const SpeechRecognition =
+        (window as unknown as { SpeechRecognition?: new () => any }).SpeechRecognition ||
+        (window as unknown as { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
 
-    recognition.onstart = () => setIsListening(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript;
-      setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
-    };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
+        }
+        setIsListening(false);
+      };
 
-    recognition.start();
+      recognition.start();
+    } catch (err) {
+      console.warn('Voice input error:', err);
+      setIsListening(false);
+    }
   };
 
-  const modeTabs = [
-    { id: 'tapori', label: 'Tapori' },
-    { id: 'balanced', label: 'Balanced' },
-    { id: 'professional', label: 'Professional' },
-    { id: 'developer', label: 'Developer' },
-    { id: 'academic', label: 'Academic' }
-  ];
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      setInput(prev => (prev ? `${prev}\n\n[File: ${file.name}]\n${text.slice(0, 1500)}` : `[File: ${file.name}]\n${text.slice(0, 1500)}`));
+    };
+    reader.readAsText(file);
+  };
+
+  const orbState: 'idle' | 'processing' | 'generating' = isStreaming
+    ? streamingContent ? 'generating' : 'processing'
+    : 'idle';
+
+  const hasMessages = messages.length > 0 || isStreaming;
+
+  // Filter 4 latest conversations for Recent Conversations timeline
+  const recentConversations = conversations.slice(0, 4);
 
   return (
-    <div className="flex-1 flex flex-col h-screen bg-[#0e1014] text-[#d4d6db] font-mono text-xs select-none">
-      {/* 1. TOP STRUCTURAL CONTROL BAR */}
-      <header className="border-b border-[#20232b] bg-[#12141a] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2">
-        {/* Personality Mode Selector with Framer Motion Sliding Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <span className="text-[10px] uppercase tracking-widest text-[#5a6070] mr-1">
-            [MODE]:
-          </span>
-          <Tabs
-            tabs={modeTabs}
-            activeTab={personalityMode}
-            onChange={id => setPersonalityMode(id as PersonalityMode)}
-            layoutId="chat-personality-tab"
-          />
-        </div>
+    <div className="flex-1 flex flex-col h-full bg-[#0E0E0E] relative overflow-hidden text-white font-sans">
+      {/* Top Subtle Atmospheric Radial Blue Light */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] pointer-events-none rounded-full blur-[120px]"
+        style={{
+          background: 'radial-gradient(circle, rgba(47, 107, 255, 0.14) 0%, rgba(90, 76, 245, 0.08) 45%, transparent 70%)'
+        }}
+      />
 
-        {/* Model Spec Selector & Status Indicator */}
-        <div className="flex items-center gap-3">
-          <div className="hidden xl:flex items-center gap-2 text-[10px] text-[#8c919e] font-mono">
-            <span className="w-1.5 h-1.5 bg-[#10b981] inline-block" />
-            <span>SOVEREIGN RUNTIME · 100% LOCAL</span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase text-[#5a6070]">[MODEL]:</span>
-            <select
-              value={selectedModel}
-              onChange={e => handleModelChange(e.target.value)}
-              className="bg-[#181b22] border border-[#20232b] px-2.5 py-1 text-[11px] text-[#f0f2f5] focus:outline-none focus:border-[#cc8e25] font-mono uppercase"
+      {/* Main Scrollable Canvas */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 z-10 flex flex-col items-center">
+        {!hasMessages ? (
+          /* ============================================================== */
+          /* SECTION 1: HERO GLASS IRIS EXPERIENCE (INITIAL STATE)           */
+          /* ============================================================== */
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="w-full max-w-[708px] flex flex-col items-center text-center pt-2 sm:pt-6 pb-12 space-y-6"
+          >
+            {/* Top Greeting */}
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              className="text-xs sm:text-sm font-medium text-[#8C8C8C] flex items-center gap-1.5"
             >
-              {APP_MODELS.map(m => (
-                <option key={m.id} value={m.id} className="bg-[#12141a] text-[#f0f2f5]">
-                  {m.name.toUpperCase()} ({m.parameters})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </header>
+              <span>Hello, {user?.name ? user.name.split(' ')[0] : 'Meet'}</span>
+              <span className="inline-block animate-wave">👋</span>
+            </motion.div>
 
-      {/* Switch Toast Notification Banner */}
-      <AnimatePresence>
-        {switchToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="px-4 py-1.5 bg-[#181b22] border-b border-[#cc8e25] text-[11px] text-[#cc8e25] flex items-center justify-between"
-          >
-            <span>&gt; {switchToast}</span>
-            <button onClick={() => setSwitchToast(null)} className="text-[#8c919e] hover:text-[#f0f2f5]">[x]</button>
+            {/* Main Headline */}
+            <motion.h1
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.45 }}
+              className="text-3xl sm:text-4xl md:text-[44px] font-semibold text-white tracking-tight leading-[1.12]"
+            >
+              WHAT&apos;S ON YOUR MIND?
+            </motion.h1>
+
+            {/* Supporting Description */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              className="text-xs sm:text-sm text-[#8C8C8C] max-w-lg leading-relaxed"
+            >
+              Your intelligent companion for thinking, creating, learning, and getting things done.
+            </motion.p>
+
+            {/* The Central Glass Iris Orb */}
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.25, duration: 0.6, type: 'spring', damping: 20 }}
+              className="py-1 relative flex items-center justify-center"
+            >
+              <GlassIrisOrb size={250} state={orbState} />
+            </motion.div>
+
+            {/* The Glass Iris Chat Composer (Hero Anchored) */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.4 }}
+              className="w-full"
+            >
+              <div className="w-full rounded-[14px] bg-[#151515]/95 border border-white/10 hover:border-[#2F6BFF]/40 focus-within:border-[#2F6BFF] transition-all duration-200 p-3.5 backdrop-blur-md shadow-2xl">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask BANTAI anything..."
+                  rows={2}
+                  className="w-full bg-transparent border-0 text-sm text-white placeholder-[#6E6E6E] focus:outline-none resize-none leading-relaxed"
+                />
+
+                {/* Composer Controls Row */}
+                <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-white/5">
+                  <div className="flex items-center gap-2">
+                    {/* Attachment Button */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-[#8C8C8C] hover:text-white hover:bg-[#1D1D1D] transition-colors"
+                      title="Attach file"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+
+                    {/* Voice Input Button */}
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                        isListening
+                          ? 'bg-rose-500/20 text-rose-400 animate-pulse'
+                          : 'text-[#8C8C8C] hover:text-white hover:bg-[#1D1D1D]'
+                      }`}
+                      title="Voice input"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    </button>
+
+                    {/* Personality Mode Selector Pill */}
+                    <select
+                      value={personalityMode}
+                      onChange={e => setPersonalityMode(e.target.value as PersonalityMode)}
+                      className="bg-[#1D1D1D] text-[#8C8C8C] hover:text-white border border-white/5 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-[#2F6BFF] cursor-pointer"
+                    >
+                      <option value="tapori">Tapori</option>
+                      <option value="balanced">Balanced</option>
+                      <option value="developer">Developer</option>
+                      <option value="academic">Academic</option>
+                    </select>
+
+                    {/* Model Family Selector Pill */}
+                    <select
+                      value={selectedModel}
+                      onChange={e => setSelectedModel(e.target.value)}
+                      className="bg-[#1D1D1D] text-[#8C8C8C] hover:text-white border border-white/5 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-[#2F6BFF] cursor-pointer hidden sm:inline-block"
+                    >
+                      {APP_MODELS.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.parameters})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Send Button */}
+                  <button
+                    onClick={() => handleSend()}
+                    disabled={!input.trim() || isStreaming}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all duration-200 ${
+                      input.trim() && !isStreaming
+                        ? 'bg-gradient-to-r from-[#2F6BFF] to-[#5A4CF5] text-white hover:opacity-95 shadow-lg shadow-[#2F6BFF]/20 active:scale-95'
+                        : 'bg-[#1D1D1D] text-[#6E6E6E] cursor-not-allowed'
+                    }`}
+                  >
+                    <span>Send</span>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Suggested Prompt Cards (3-column) */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45, duration: 0.4 }}
+              className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-left"
+            >
+              {/* Card 1: Ask Anything */}
+              <button
+                onClick={() => handleSend("Explain how BANTAI executes models locally with zero cloud API dependencies.")}
+                className="p-3.5 rounded-xl bg-[#151515] hover:bg-[#1D1D1D] border border-white/5 hover:border-[#2F6BFF]/30 transition-all duration-200 group flex flex-col justify-between"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#2F6BFF]" />
+                    <span className="text-xs font-semibold text-white group-hover:text-[#2F6BFF] transition-colors">
+                      01 — Ask Anything
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#8C8C8C] leading-snug">
+                    Get answers and explore ideas.
+                  </p>
+                </div>
+                <div className="text-[10px] text-[#6E6E6E] pt-3 group-hover:text-[#2F6BFF] transition-colors flex items-center gap-1">
+                  <span>Run prompt</span>
+                  <span>→</span>
+                </div>
+              </button>
+
+              {/* Card 2: Deep Think */}
+              <button
+                onClick={() => handleSend("Analyze the computational and architectural differences between Qwen 2.5 and Llama 3 models.")}
+                className="p-3.5 rounded-xl bg-[#151515] hover:bg-[#1D1D1D] border border-white/5 hover:border-[#5A4CF5]/30 transition-all duration-200 group flex flex-col justify-between"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#5A4CF5]" />
+                    <span className="text-xs font-semibold text-white group-hover:text-[#5A4CF5] transition-colors">
+                      02 — Deep Think
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#8C8C8C] leading-snug">
+                    Explore complex questions with deeper reasoning.
+                  </p>
+                </div>
+                <div className="text-[10px] text-[#6E6E6E] pt-3 group-hover:text-[#5A4CF5] transition-colors flex items-center gap-1">
+                  <span>Run prompt</span>
+                  <span>→</span>
+                </div>
+              </button>
+
+              {/* Card 3: Create Something */}
+              <button
+                onClick={() => handleSend("Plan an autonomous agent workflow to build a full-stack Next.js app with Tailwind.")}
+                className="p-3.5 rounded-xl bg-[#151515] hover:bg-[#1D1D1D] border border-white/5 hover:border-[#2453DB]/30 transition-all duration-200 group flex flex-col justify-between"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#2453DB]" />
+                    <span className="text-xs font-semibold text-white group-hover:text-[#2F6BFF] transition-colors">
+                      03 — Create Something
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#8C8C8C] leading-snug">
+                    Write, brainstorm, plan, and build.
+                  </p>
+                </div>
+                <div className="text-[10px] text-[#6E6E6E] pt-3 group-hover:text-[#2F6BFF] transition-colors flex items-center gap-1">
+                  <span>Run prompt</span>
+                  <span>→</span>
+                </div>
+              </button>
+            </motion.div>
+
+            {/* Recent Conversations Timeline */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.55, duration: 0.4 }}
+              className="w-full text-left pt-2 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#8C8C8C] uppercase tracking-wider">
+                  Recent Conversations
+                </span>
+                <button
+                  onClick={() => setShowHistoryModal(true)}
+                  className="text-xs text-[#2F6BFF] hover:underline"
+                >
+                  View All Conversations →
+                </button>
+              </div>
+
+              {recentConversations.length === 0 ? (
+                <div className="p-4 rounded-xl bg-[#151515] border border-white/5 text-xs text-[#6E6E6E] text-center">
+                  No previous conversations found. Ask a question above to start!
+                </div>
+              ) : (
+                <div className="space-y-1 relative pl-3 border-l border-white/10">
+                  {recentConversations.map((conv, idx) => (
+                    <button
+                      key={conv.id}
+                      onClick={() => setActiveConversationId(conv.id)}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl transition-all duration-150 flex items-center justify-between group hover:bg-[#181818] border border-transparent hover:border-white/5 ${
+                        idx === 0 ? 'opacity-100' : idx === 1 ? 'opacity-90' : idx === 2 ? 'opacity-75' : 'opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF]" />
+                        <span className="text-xs font-medium text-[#E5E5E5] group-hover:text-white truncate">
+                          {conv.title}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-[#6E6E6E] shrink-0 ml-3">
+                        {formatRelativeTime(conv.updatedAt || conv.createdAt)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        ) : (
+          /* ============================================================== */
+          /* SECTION 2: ACTIVE CONVERSATION THREAD                           */
+          /* ============================================================== */
+          <div className="w-full max-w-[708px] flex flex-col space-y-5 pb-32 pt-2">
+            {/* Top Compact Glass Iris Presence */}
+            <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-2 text-xs text-[#8C8C8C]">
+              <div className="flex items-center gap-3">
+                <GlassIrisOrb size={36} state={orbState} interactive={false} />
+                <div>
+                  <div className="font-semibold text-white text-xs">
+                    BANTAI Iris // {currentModel.name}
+                  </div>
+                  <div className="text-[11px] text-[#6E6E6E]">
+                    {personalityMode.toUpperCase()} MODE · ON-PREMISE SILICON
+                  </div>
+                </div>
+              </div>
 
-      {/* Info Toast */}
-      <AnimatePresence>
-        {infoToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="px-4 py-1.5 bg-[#181b22] border-b border-red-500 text-[11px] text-red-400 flex items-center justify-between"
-          >
-            <span>! {infoToast}</span>
-            <button onClick={() => setInfoToast(null)} className="text-[#8c919e] hover:text-[#f0f2f5]">[x]</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 2. CHAT STREAM VIEW AREA */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {messages.length === 0 && !streamingContent ? (
-          <div className="max-w-2xl mx-auto py-12 border border-[#20232b] bg-[#12141a] p-6 text-center space-y-4">
-            <div className="inline-block px-3 py-1 bg-[#181b22] border border-[#2b303c] text-[10px] text-[#cc8e25] uppercase tracking-widest font-bold">
-              [ACTIVE ENGINE: {currentModel.name.toUpperCase()} · {currentModel.parameters}]
+              <button
+                onClick={() => setActiveConversationId(null)}
+                className="px-2.5 py-1 rounded-lg bg-[#181818] hover:bg-[#222222] text-[#8C8C8C] hover:text-white text-xs transition-colors"
+              >
+                + New Chat
+              </button>
             </div>
 
-            <h2 className="text-sm font-bold text-[#f0f2f5] uppercase tracking-wider">
-              BANTAI // {PERSONALITY_PROMPTS[personalityMode].name}
-            </h2>
-
-            <p className="text-xs text-[#8c919e] max-w-lg mx-auto leading-relaxed">
-              {PERSONALITY_PROMPTS[personalityMode].tagline}
-            </p>
-
-            <div className="pt-2 flex flex-wrap gap-2 justify-center">
-              {[
-                'mera naam bta',
-                'mein sirf ek ladka hu',
-                'quicksort algorithm samjhao',
-                'dockerfile template for node'
-              ].map((query, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSend(query)}
-                  className="px-3 py-1.5 border border-[#20232b] bg-[#0e1014] hover:border-[#cc8e25] hover:text-[#cc8e25] text-[10px] text-[#8c919e] uppercase transition-colors"
+            {/* Messages Stream */}
+            {messages.map((msg, index) => {
+              const isUser = msg.role === 'user';
+              return (
+                <div
+                  key={msg.id || index}
+                  className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
                 >
-                  &gt; {query}
+                  <div className="text-[11px] text-[#6E6E6E] mb-1 px-1">
+                    {isUser ? 'You' : `BANTAI (${msg.personalityMode || personalityMode})`}
+                  </div>
+
+                  <div
+                    className={`max-w-[90%] sm:max-w-[85%] rounded-2xl ${
+                      isUser
+                        ? 'bg-[#2F6BFF]/15 border border-[#2F6BFF]/30 text-white rounded-tr-sm p-4'
+                        : 'bg-[#181818]/90 border border-white/10 text-[#EDEDED] rounded-tl-sm p-4 space-y-3'
+                    }`}
+                  >
+                    <FormattedContent content={msg.content} />
+
+                    {/* Assistant Message Actions */}
+                    {!isUser && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-white/5 text-[11px] text-[#8C8C8C]">
+                        <button
+                          onClick={() => handleCopy(msg.id, msg.content)}
+                          className="hover:text-white transition-colors"
+                        >
+                          {copiedId === msg.id ? 'Copied' : 'Copy'}
+                        </button>
+                        <span>·</span>
+                        <button
+                          onClick={() => handleSpeak(msg.content)}
+                          className="hover:text-white transition-colors"
+                        >
+                          Speak
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Live Streaming Content Chunk */}
+            {isStreaming && (
+              <div className="flex flex-col items-start">
+                <div className="text-[11px] text-[#2F6BFF] mb-1 px-1 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] animate-pulse" />
+                  <span>BANTAI is thinking...</span>
+                </div>
+
+                <div className="max-w-[90%] sm:max-w-[85%] rounded-2xl bg-[#181818]/90 border border-white/10 text-[#EDEDED] rounded-tl-sm p-4 space-y-3">
+                  <FormattedContent content={streamingContent || 'Processing deterministic model weights...'} />
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Floating Glass Composer (Docked at Bottom in Active Mode) */}
+      {hasMessages && (
+        <div className="fixed bottom-0 left-14 sm:left-16 right-0 p-4 bg-gradient-to-t from-[#0E0E0E] via-[#0E0E0E]/90 to-transparent flex justify-center z-30">
+          <div className="w-full max-w-[708px] rounded-[14px] bg-[#151515]/95 border border-white/10 hover:border-[#2F6BFF]/40 focus-within:border-[#2F6BFF] transition-all duration-200 p-3 backdrop-blur-md shadow-2xl">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask BANTAI anything..."
+              rows={1}
+              className="w-full bg-transparent border-0 text-sm text-white placeholder-[#6E6E6E] focus:outline-none resize-none leading-relaxed"
+            />
+
+            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8C8C8C] hover:text-white hover:bg-[#1D1D1D]"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                    isListening ? 'bg-rose-500/20 text-rose-400 animate-pulse' : 'text-[#8C8C8C] hover:text-white hover:bg-[#1D1D1D]'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </button>
+
+                <select
+                  value={personalityMode}
+                  onChange={e => setPersonalityMode(e.target.value as PersonalityMode)}
+                  className="bg-[#1D1D1D] text-[#8C8C8C] hover:text-white border border-white/5 rounded-lg px-2 py-0.5 text-xs focus:outline-none"
+                >
+                  <option value="tapori">Tapori</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="developer">Developer</option>
+                  <option value="academic">Academic</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() => handleSend()}
+                disabled={!input.trim() || isStreaming}
+                className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
+                  input.trim() && !isStreaming
+                    ? 'bg-gradient-to-r from-[#2F6BFF] to-[#5A4CF5] text-white hover:opacity-95'
+                    : 'bg-[#1D1D1D] text-[#6E6E6E] cursor-not-allowed'
+                }`}
+              >
+                <span>Send</span>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Drawer / Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-[#151515] border border-white/10 p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <h3 className="text-sm font-semibold text-white">All Conversations</h3>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8C8C8C] hover:text-white hover:bg-[#222]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-1">
+              {conversations.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    setActiveConversationId(c.id);
+                    setShowHistoryModal(false);
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-[#1D1D1D] flex items-center justify-between text-xs transition-colors"
+                >
+                  <span className="text-[#E5E5E5] truncate font-medium">{c.title}</span>
+                  <span className="text-[#6E6E6E] text-[11px] shrink-0 ml-3">
+                    {formatRelativeTime(c.updatedAt || c.createdAt)}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
-        ) : (
-          messages.map((msg, index) => {
-            const isUser = msg.role === 'user';
-            return (
-              <motion.div
-                key={msg.id || index}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.18 }}
-                className={`max-w-3xl mx-auto border ${
-                  isUser
-                    ? 'border-[#2b303c] bg-[#12141a]'
-                    : 'border-[#20232b] bg-[#0c0e12]'
-                }`}
-              >
-                {/* Message Header Strip */}
-                <div className="flex items-center justify-between px-3 py-1 bg-[#151820] border-b border-[#20232b] text-[10px] text-[#8c919e]">
-                  <div className="flex items-center gap-2">
-                    <span className={isUser ? 'text-[#cc8e25] font-bold' : 'text-[#10b981] font-bold'}>
-                      {isUser ? '[OPERATOR]' : `[BANTAI // ${(msg.personalityMode || personalityMode).toUpperCase()}]`}
-                    </span>
-                    <span className="text-[#3a3f4d]">|</span>
-                    <span className="text-[#5a6070]">
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                  </div>
-
-                  {!isUser && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleSpeak(msg.content)}
-                        className="hover:text-[#f0f2f5] transition-colors"
-                        title="Text-to-Speech"
-                      >
-                        [AUDIO]
-                      </button>
-                      <button
-                        onClick={() => handleCopy(msg.id, msg.content)}
-                        className="hover:text-[#f0f2f5] transition-colors"
-                        title="Copy message"
-                      >
-                        {copiedId === msg.id ? '[COPIED]' : '[COPY]'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Message Body Content */}
-                <div className="p-3.5">
-                  <FormattedContent content={msg.content} />
-                </div>
-              </motion.div>
-            );
-          })
-        )}
-
-        {/* Live Streaming Token Output Block */}
-        {isStreaming && (
-          <div className="max-w-3xl mx-auto border border-[#cc8e25] bg-[#0c0e12]">
-            <div className="flex items-center justify-between px-3 py-1 bg-[#151820] border-b border-[#cc8e25]/40 text-[10px] text-[#cc8e25]">
-              <span className="font-bold flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-[#cc8e25] inline-block animate-ping" />
-                [BANTAI STREAMING TOKENS // {currentModel.name.toUpperCase()}]
-              </span>
-              <span className="text-[#10b981]">STATUS: 200 ACTIVE</span>
-            </div>
-
-            <div className="p-3.5">
-              <FormattedContent content={streamingContent || 'Processing deterministic model weights...'} />
-              <span className="inline-block w-2 h-3.5 bg-[#cc8e25] animate-pulse ml-0.5 align-middle" />
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* 3. FLOATING TECHNICAL COMPOSER CARD WITH BORDERBEAM */}
-      <div className="border-t border-[#20232b] bg-[#0e1014] p-3 sm:p-4">
-        <div className="max-w-3xl mx-auto border border-[#2b303c] bg-[#12141a] relative">
-          <BorderBeam size={180} duration={12} color="#cc8e25" />
-
-          {/* Model Specification & Planner Link */}
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#20232b] bg-[#161922] text-[10px] text-[#8c919e]">
-            <div className="flex items-center gap-2">
-              <span className="text-[#cc8e25] font-bold">[{currentModel.name.toUpperCase()}]</span>
-              <span>·</span>
-              <span className="uppercase text-[#f0f2f5]">{personalityMode} MODE</span>
-              {isListening && (
-                <>
-                  <span>·</span>
-                  <span className="text-red-400 animate-pulse font-bold">[MIC RECORDING AUDIO...]</span>
-                </>
-              )}
-            </div>
-
-            <button
-              onClick={() => setActiveView('agent')}
-              className="text-[#8c919e] hover:text-[#cc8e25] transition-colors uppercase font-bold"
-            >
-              [LAUNCH AGENT PLANNER -&gt;]
-            </button>
-          </div>
-
-          {/* Text Input Area */}
-          <div className="p-3">
-            <textarea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder={`[ENTER QUERY FOR BANTAI (${personalityMode.toUpperCase()} MODE)...]`}
-              rows={2}
-              className="w-full bg-transparent border-0 text-xs text-[#f0f2f5] placeholder-[#5a6070] focus:outline-none resize-none leading-relaxed font-mono"
-            />
-          </div>
-
-          {/* Bottom Action Strip */}
-          <div className="flex items-center justify-between px-3 py-2 border-t border-[#20232b] bg-[#12141a]">
-            <div className="flex items-center gap-2">
-              <Button
-                variant={isListening ? 'danger' : 'outline'}
-                size="sm"
-                onClick={toggleVoiceInput}
-              >
-                {isListening ? '[STOP MIC]' : '[VOICE DICTATION]'}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const modes: PersonalityMode[] = ['tapori', 'balanced', 'professional', 'developer', 'academic'];
-                  const nextIdx = (modes.indexOf(personalityMode) + 1) % modes.length;
-                  setPersonalityMode(modes[nextIdx]);
-                }}
-              >
-                [CYCLE MODE]
-              </Button>
-            </div>
-
-            <div>
-              <Button
-                variant={isStreaming ? 'danger' : 'primary'}
-                size="sm"
-                disabled={!input.trim() && !isStreaming}
-                onClick={() => handleSend()}
-              >
-                {isStreaming ? '[ABORT]' : '[EXECUTE // ENTER]'}
-              </Button>
-            </div>
-          </div>
         </div>
-
-        {/* Footer Integrity Spec */}
-        <div className="flex items-center justify-between max-w-3xl mx-auto mt-2 text-[10px] text-[#5a6070]">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-[#10b981] inline-block" />
-            <span>SOVEREIGN RUNTIME: ZERO DATA SENT TO EXTERNAL SERVERS</span>
-          </span>
-          <span className="hidden sm:inline">SHIFT + ENTER FOR LINE BREAK</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

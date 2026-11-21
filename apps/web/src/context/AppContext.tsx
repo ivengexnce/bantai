@@ -57,9 +57,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       const token = api.getToken();
       if (!token) {
-        setIsLoadingUser(false);
+        try {
+          setIsLoadingUser(true);
+          const autoEmail = `meet_session_${Date.now()}@bantai.ai`;
+          const res = await api.signup({
+            email: autoEmail,
+            password: 'BantaiPassword2026!',
+            name: 'Meet Maru',
+            username: `meet_${Date.now()}`
+          });
+          setUser(res.user);
+        } catch (err) {
+          console.warn('Auto session initialization error:', err);
+        } finally {
+          setIsLoadingUser(false);
+        }
         return;
       }
+
       setIsLoadingUser(true);
       try {
         const profile = await api.getMe();

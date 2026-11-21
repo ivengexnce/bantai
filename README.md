@@ -2,11 +2,31 @@
 
 > **Apna Model. Apna Dimaag. Apna AI.**
 
-Build status: 17/17 tests passing | License: Apache 2.0 | Platform: Web + Android | AI: 100% self-hosted | Personality: Mumbai Tapori
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Tests: 17/17 Passing](https://img.shields.io/badge/Tests-17%2F17%20Passing-emerald.svg)](https://github.com/ivengexnce/bantai)
+[![Platform: Web + Android](https://img.shields.io/badge/Platform-Web%20%2B%20Android-blueviolet.svg)](https://github.com/ivengexnce/bantai)
+[![AI: 100% Sovereign](https://img.shields.io/badge/AI-100%25%20Local%20Silicon-amber.svg)](https://github.com/ivengexnce/bantai)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?logo=vercel)](https://bantai-ai.vercel.app)
 
 **BANTAI** is a production-grade, self-hosted agentic AI platform with an authentic Mumbai Tapori personality. It combines multi-turn conversational AI, a personal assistant, a 10-tool autonomous agent planner, persistent user-isolated memory, local 384-dimensional vector RAG, and an opt-in LoRA fine-tuning pipeline - all executing entirely on local silicon with zero third-party cloud API dependencies.
 
 Zero OpenAI. Zero Anthropic. Zero Gemini. Seedha apna model.
+
+---
+
+### Interface Preview
+
+![BANTAI Sovereign Silicon Interface](docs/assets/landing_preview.png)
+
+*Interactive CLI Terminal, 10-Tool Agent Planning, and Deterministic Offline Dialogue Engine.*
+
+---
+
+## Live Demo
+
+- **Live Web Client:** [https://bantai-ai.vercel.app](https://bantai-ai.vercel.app)
+- **Local Development UI:** [http://localhost:3001](http://localhost:3001)
+- **Local API Daemon:** `http://localhost:4000`
 
 ---
 
@@ -155,9 +175,12 @@ The web frontend (`apps/web`) features a high-performance, responsive design bui
 
 - **Interactive CLI Terminal Window:** Built-in web terminal (`TerminalWindow.tsx`) supporting command presets, interactive typing, execution simulation, latency metrics, and output copying.
 - **Live Product Demonstration:** Real-time dialogue runner with model and personality mode tabs, token streaming simulation, and skeleton loaders.
-- **Swiss Brutalist & Industrial Glass UI:** 0px or soft corner radiuses, dot grid background, glowing ambient radial orbs, and high-contrast linear gradient accents.
+- **Swiss Brutalist & Industrial Glass UI:** Soft corner radiuses (`rounded-2xl`, `rounded-xl`), dot grid background, glowing ambient radial orbs, and high-contrast linear gradient accents.
 - **Zero Lucide Icons & Emojis:** Custom semantic inline SVGs and clean typography.
 - **Integrated Legal Governance:** Built-in Terms of Service (Apache 2.0) and Zero-Telemetry Privacy Policy modals.
+
+![Architectural Manifesto & Product Demo Runner](docs/assets/manifesto_demo_preview.png)
+*Architectural Manifesto and Live Interactive Product Demo Runner.*
 
 ---
 
@@ -282,10 +305,14 @@ eas build --platform android --profile preview --local
 
 ## Hardware Requirements
 
+> [!NOTE]
+> **Runs on CPU-only mode with no GPU required!**
+> You can run BANTAI smoothly on standard everyday laptops using the **BANTAI Chhotu (3B)** model with 16 GB of system RAM, or offline without any LLM daemon using the built-in deterministic local dialogue engine. Dedicated GPUs are strictly optional for accelerated speeds or larger model tiers.
+
 | Tier | Hardware Profile | RAM / VRAM | Models | Tokens/s |
 | :--- | :--- | :--- | :--- | :---: |
-| **Minimum** | 4-core CPU (AVX2), no GPU | 16 GB RAM | Chhotu (3B Q4_K_M) | 8 - 14 |
-| **Recommended** | 8-core CPU + RTX 3060 / 4070 | 32 GB RAM, 12 GB VRAM | Bhai (7B), Chhotu (3B) | 40 - 55 |
+| **Minimum (CPU Only)** | 4-core CPU (AVX2), no GPU | 16 GB RAM | Chhotu (3B Q4_K_M) | 8 - 14 |
+| **Recommended (GPU)** | 8-core CPU + RTX 3060 / 4070 | 32 GB RAM, 12 GB VRAM | Bhai (7B), Chhotu (3B) | 40 - 55 |
 | **Workstation** | 16-core CPU + RTX 4090 / A100 | 64 GB RAM, 24 GB+ VRAM | Ustad (14B), Don (32B) | 25 - 45 |
 
 ---
@@ -350,9 +377,9 @@ Pull requests are welcome. Before submitting:
 **Meet Maru** - Full-Stack Developer, AI/ML Engineering Student
 
 - **GitHub:** [github.com/ivengexnce](https://github.com/ivengexnce)
-- **LinkedIn:** [linkedin.com/in/meet-maru-ai](https://linkedin.com/in/meet-maru-ai)
+- **LinkedIn:** [linkedin.com/in/meetmaru149](https://www.linkedin.com/in/meetmaru149)
 - **Portfolio:** [meetmaru.netlify.app](https://meetmaru.netlify.app)
-- **Instagram:** [@meetmaru.dev](https://instagram.com/meetmaru.dev)
+- **Instagram:** [@ivengexnce](https://instagram.com/ivengexnce)
 
 ---
 

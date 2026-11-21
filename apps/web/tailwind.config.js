@@ -9,21 +9,33 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        iris: {
+          bg: '#0E0E0E',
+          surface: '#151515',
+          elevated: '#1D1D1D',
+          blue: '#2F6BFF',
+          deepBlue: '#2453DB',
+          violet: '#5A4CF5',
+          purple: '#7C48F0',
+          text: '#FFFFFF',
+          textSec: '#8C8C8C',
+          muted: '#6E6E6E'
+        },
         bantai: {
           50: '#fbf8ed',
           100: '#f5edd2',
           200: '#eddba4',
           300: '#e3c26f',
           400: '#daa742',
-          500: '#cc8e25', // Warm Mumbai Gold
-          600: '#b06f1d',
-          700: '#8c501a',
-          800: '#73411b',
-          900: '#61371b',
-          950: '#381c0c',
-          dark: '#0f1117',
-          darkCard: '#1a1d27',
-          darkBorder: '#282d3d'
+          500: '#2F6BFF', // Electric Blue (Glass Iris Primary)
+          600: '#2453DB',
+          700: '#5A4CF5',
+          800: '#7C48F0',
+          900: '#1D1D1D',
+          950: '#0E0E0E',
+          dark: '#0E0E0E',
+          darkCard: '#151515',
+          darkBorder: '#232323'
         }
       },
       animation: {

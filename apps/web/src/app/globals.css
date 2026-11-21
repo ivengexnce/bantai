@@ -4,31 +4,76 @@
 
 :root {
   --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 15, 17, 23;
-  --background-end-rgb: 20, 24, 33;
+  --background-start-rgb: 14, 14, 14;
+  --background-end-rgb: 14, 14, 14;
 }
 
 body {
-  color: #ffffff;
-  background-color: #0f1117;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #FFFFFF;
+  background-color: #0E0E0E;
+  font-family: "Inter", "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
   margin: 0;
   padding: 0;
 }
 
+/* Glass Iris Atmospheric Glow Animations */
+@keyframes iris-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes iris-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes iris-energy {
+  0% {
+    filter: hue-rotate(0deg) contrast(1.1);
+  }
+  50% {
+    filter: hue-rotate(25deg) contrast(1.25);
+  }
+  100% {
+    filter: hue-rotate(0deg) contrast(1.1);
+  }
+}
+
+.animate-iris-pulse {
+  animation: iris-pulse 4.5s ease-in-out infinite;
+}
+
+.animate-iris-rotate {
+  animation: iris-rotate 18s linear infinite;
+}
+
+.animate-iris-energy {
+  animation: iris-energy 8s ease-in-out infinite;
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(47, 107, 255, 0.35);
 }
