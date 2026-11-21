@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { firebaseFirestoreService } from '../services/database/firebase.service';
+import { mongoUserService } from '../services/database/mongo.service';
 import { inferenceService } from '../services/ai/inference.service';
 import { personalMemoryService } from '../services/memory/memory.service';
 import { ragService } from '../services/rag/rag.service';
@@ -136,15 +137,20 @@ export class ChatController {
       // Auto-extract personal memories in background if enabled
       personalMemoryService.extractAndStoreMemories(userId, content, conversationId).catch(console.error);
 
-      // 2. Retrieve contextual memory and RAG additions
+      // 2. Retrieve user identity, contextual memory and RAG additions
+      const userProfile = await mongoUserService.findById(userId);
+      const userName = userProfile?.name || 'Bantai';
+      const userEmail = userProfile?.email || '';
+      const userContext = `USER IDENTITY:\nName: ${userName}\nEmail: ${userEmail}\nUsername: ${userProfile?.username || ''}`;
+
       const memoryContext = await personalMemoryService.getFormattedMemoryContext(userId);
       const ragResults = await ragService.searchRelevant(userId, content, 2);
-      let contextAdditions = memoryContext;
+      let contextAdditions = `${userContext}\n\n${memoryContext || ''}`.trim();
 
       if (ragResults.length > 0) {
         const ragContext = `RELEVANT KNOWLEDGE BASE PASSAGES:\n` +
           ragResults.map(r => `- ${r.chunk.text}`).join('\n');
-        contextAdditions = contextAdditions ? `${contextAdditions}\n\n${ragContext}` : ragContext;
+        contextAdditions = `${contextAdditions}\n\n${ragContext}`;
       }
 
       // Fetch history messages
@@ -166,7 +172,8 @@ export class ChatController {
           personalityMode: activeMode,
           modelId: activeModel,
           messages: history,
-          contextAdditions
+          contextAdditions,
+          userName
         },
         (chunk: ChatStreamChunk) => {
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);

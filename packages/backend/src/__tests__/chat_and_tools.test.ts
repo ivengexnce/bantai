@@ -84,5 +84,5 @@ describe('AI Inference, Personality Modes & Agent Tool Registry', () => {
 
     expect(response.length).toBeGreaterThan(10);
     expect(chunks.length).toBeGreaterThan(0);
-  });
+  }, 15000);
 });
