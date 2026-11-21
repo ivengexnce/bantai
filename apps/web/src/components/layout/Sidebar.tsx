@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useApp, AppView } from '../../context/AppContext';
 import { api } from '../../lib/api';
-import { resolveModel } from '@bantai/shared';
+import { resolveModel } from '../../lib/models';
 
 export function Sidebar() {
   const {

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
-import { FirestoreTask, FirestoreReminder, resolveModel } from '@bantai/shared';
+import { FirestoreTask, FirestoreReminder } from '@bantai/shared';
+import { resolveModel } from '../../lib/models';
 
 export function DashboardView() {
   const { user, setActiveView, selectedModel } = useApp();

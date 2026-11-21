@@ -6,10 +6,9 @@ import { api } from '../../lib/api';
 import {
   PersonalityMode,
   FirestoreMessage,
-  SUPPORTED_MODELS,
-  PERSONALITY_PROMPTS,
-  resolveModel
+  PERSONALITY_PROMPTS
 } from '@bantai/shared';
+import { resolveModel, APP_MODELS } from '../../lib/models';
 
 function FormattedContent({ content }: { content: string }) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -302,7 +301,7 @@ export function ChatView() {
               onChange={e => handleModelChange(e.target.value)}
               className="bg-[#181b22] border border-[#2b303c] px-2 py-1 text-[11px] text-[#cc8e25] font-bold uppercase focus:outline-none focus:border-[#cc8e25] cursor-pointer"
             >
-              {SUPPORTED_MODELS.map(m => (
+              {APP_MODELS.map(m => (
                 <option key={m.id} value={m.id} className="bg-[#12141a] text-[#f0f2f5]">
                   [{m.parameters}] {m.name.toUpperCase()} ({m.baseModel})
                 </option>
