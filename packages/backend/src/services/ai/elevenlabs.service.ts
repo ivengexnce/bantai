@@ -18,11 +18,18 @@ export const POPULAR_ELEVENLABS_VOICES: ElevenLabsVoiceDescriptor[] = [
     description: 'Deep, warm, confident, and natural conversational American male.'
   },
   {
-    voice_id: '21m00Tcm4TlvDq8ikWAM',
-    name: 'Rachel',
+    voice_id: 'EXAVITQu4vr4xnSDxMaL',
+    name: 'Bella',
     category: 'premade',
-    labels: { accent: 'american', gender: 'female', age: 'young', use_case: 'narration' },
-    description: 'Calm, clear, and highly articulate American female.'
+    labels: { accent: 'american', gender: 'female', age: 'young', use_case: 'conversational' },
+    description: 'Bright, expressive, friendly, and lively female tone.'
+  },
+  {
+    voice_id: 'XrExE9yKIg1WjnnlVkGX',
+    name: 'Matilda',
+    category: 'premade',
+    labels: { accent: 'american', gender: 'female', age: 'middle_aged', use_case: 'narration' },
+    description: 'Warm, calm, and highly articulate female voice.'
   },
   {
     voice_id: 'ErXwobaYiN019PkySvjV',
@@ -32,13 +39,6 @@ export const POPULAR_ELEVENLABS_VOICES: ElevenLabsVoiceDescriptor[] = [
     description: 'Well-rounded, energetic, and engaging American male.'
   },
   {
-    voice_id: 'EXAVITQu4vr4xnSDxMaL',
-    name: 'Bella',
-    category: 'premade',
-    labels: { accent: 'american', gender: 'female', age: 'young', use_case: 'conversational' },
-    description: 'Bright, expressive, friendly, and lively female tone.'
-  },
-  {
     voice_id: 'JBFqnCBsd6RMkjVDRZzb',
     name: 'George',
     category: 'premade',
@@ -46,18 +46,32 @@ export const POPULAR_ELEVENLABS_VOICES: ElevenLabsVoiceDescriptor[] = [
     description: 'Warm, raspy, sophisticated British English male.'
   },
   {
-    voice_id: 'AZnzlk1XvdvUeBnXmlld',
-    name: 'Domi',
-    category: 'premade',
-    labels: { accent: 'american', gender: 'female', age: 'young', use_case: 'conversational' },
-    description: 'Strong, authentic, and charismatic female tone.'
-  },
-  {
     voice_id: 'VR6AewLTigWG4xSOukaG',
     name: 'Arnold',
     category: 'premade',
     labels: { accent: 'american', gender: 'male', age: 'middle_aged', use_case: 'narration' },
     description: 'Crisp, articulate, authoritative documentary narrator.'
+  },
+  {
+    voice_id: 'N2lVS1w4EtoT3dr4eOWO',
+    name: 'Callum',
+    category: 'premade',
+    labels: { accent: 'transatlantic', gender: 'male', age: 'middle_aged', use_case: 'characters' },
+    description: 'Intense, gritty, and dramatic character tone.'
+  },
+  {
+    voice_id: 'IKne3meq5aSn9XLyUdCD',
+    name: 'Charlie',
+    category: 'premade',
+    labels: { accent: 'australian', gender: 'male', age: 'middle_aged', use_case: 'conversational' },
+    description: 'Casual, relaxed, and conversational Australian male.'
+  },
+  {
+    voice_id: 'TX3LPaxmHKxFdv7VOQHJ',
+    name: 'Liam',
+    category: 'premade',
+    labels: { accent: 'american', gender: 'male', age: 'young', use_case: 'narration' },
+    description: 'Young, energetic, and articulate American male.'
   }
 ];
 

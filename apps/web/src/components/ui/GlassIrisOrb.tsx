@@ -70,7 +70,7 @@ export function GlassIrisOrb({
       // ==============================================================
       const pulseAmplitude = state === 'processing' ? 14 : state === 'generating' ? 10 : state === 'speaking' ? 12 : 5;
       const corePulse = Math.sin(t * 2.4) * pulseAmplitude;
-      const coreRadius = radius * 0.54 + corePulse;
+      const coreRadius = Math.max(2, radius * 0.54 + corePulse);
 
       const mouseOffsetMagnitude = interactive ? 8 : 0;
       const coreX = cx + Math.sin(t * 1.1) * 6 + mouseRef.current.x * mouseOffsetMagnitude;
@@ -96,11 +96,11 @@ export function GlassIrisOrb({
       const filamentCount = state === 'generating' ? 8 : 6;
       for (let i = 0; i < filamentCount; i++) {
         const angle = t * 1.6 + (i * Math.PI * 2) / filamentCount;
-        const orbitRadius = coreRadius * (0.65 + 0.3 * Math.sin(t * 1.2 + i));
+        const orbitRadius = Math.max(2, coreRadius * (0.65 + 0.3 * Math.sin(t * 1.2 + i)));
         const px = cx + Math.cos(angle) * orbitRadius;
         const py = cy + Math.sin(angle * 1.1) * (orbitRadius * 0.88);
 
-        const filamentGrad = ctx.createRadialGradient(px, py, 1, px, py, orbitRadius * 0.75);
+        const filamentGrad = ctx.createRadialGradient(px, py, 1, px, py, Math.max(2, orbitRadius * 0.75));
         if (i % 2 === 0) {
           filamentGrad.addColorStop(0, 'rgba(56, 189, 248, 0.7)');
           filamentGrad.addColorStop(0.4, 'rgba(47, 107, 255, 0.35)');

@@ -53,11 +53,19 @@ export function SettingsView() {
   // Initialize ElevenLabs from localStorage on mount
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
+      const defaultEnvKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || '';
+      const storedKey = localStorage.getItem('bantai_elevenlabs_key') || defaultEnvKey;
       const storedProvider = localStorage.getItem('bantai_voice_provider') as 'browser' | 'elevenlabs';
-      if (storedProvider) setVoiceProvider(storedProvider);
-      const storedKey = localStorage.getItem('bantai_elevenlabs_key') || '';
+
       if (storedKey) {
         setElevenApiKey(storedKey);
+        if (!storedProvider) {
+          setVoiceProvider('elevenlabs');
+          localStorage.setItem('bantai_voice_provider', 'elevenlabs');
+        } else {
+          setVoiceProvider(storedProvider);
+        }
+
         api.getElevenLabsVoices(storedKey).then(res => {
           if (res?.voices?.length) {
             setElevenVoices(res.voices.map(v => ({
@@ -68,7 +76,10 @@ export function SettingsView() {
             })));
           }
         }).catch(() => {});
+      } else if (storedProvider) {
+        setVoiceProvider(storedProvider);
       }
+
       const storedVoiceId = localStorage.getItem('bantai_elevenlabs_voice_id');
       if (storedVoiceId) setElevenVoiceId(storedVoiceId);
       const storedModelId = localStorage.getItem('bantai_elevenlabs_model_id');

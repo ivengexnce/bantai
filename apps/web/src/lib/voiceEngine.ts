@@ -31,11 +31,13 @@ export interface ElevenLabsVoiceOption {
 
 export const PRESET_ELEVENLABS_VOICES: ElevenLabsVoiceOption[] = [
   { voice_id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', gender: 'male', description: 'Deep, warm, confident conversational American male.' },
-  { voice_id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', gender: 'female', description: 'Calm, clear, and articulate American female.' },
-  { voice_id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', gender: 'male', description: 'Crisp, energetic, and engaging American male.' },
   { voice_id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', gender: 'female', description: 'Bright, expressive, friendly, and lively female tone.' },
+  { voice_id: 'XrExE9yKIg1WjnnlVkGX', name: 'Matilda', gender: 'female', description: 'Warm, calm, and highly articulate female narrator.' },
+  { voice_id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', gender: 'male', description: 'Crisp, energetic, and engaging American male.' },
   { voice_id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George', gender: 'male', description: 'Warm, raspy, sophisticated British English male.' },
   { voice_id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold', gender: 'male', description: 'Crisp, articulate documentary narrator.' },
+  { voice_id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie', gender: 'male', description: 'Casual, conversational Australian male.' },
+  { voice_id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male', description: 'Young, energetic, and articulate American male.' },
 ];
 
 /**
@@ -406,18 +408,20 @@ export function speakText(
     return { stop: () => {} };
   }
 
-  // Determine provider: ElevenLabs or native browser
-  const provider = options.provider ||
-    (typeof window !== 'undefined' ? localStorage.getItem('bantai_voice_provider') : null) ||
-    'browser';
-
   const elevenApiKey = options.elevenApiKey ||
     (typeof window !== 'undefined' ? localStorage.getItem('bantai_elevenlabs_key') : null) ||
+    process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY ||
     undefined;
+
+  // Determine provider: ElevenLabs or native browser
+  const storedProvider = typeof window !== 'undefined' ? localStorage.getItem('bantai_voice_provider') : null;
+  const provider = options.provider ||
+    storedProvider ||
+    (elevenApiKey ? 'elevenlabs' : 'browser');
 
   const elevenVoiceId = options.elevenVoiceId ||
     (typeof window !== 'undefined' ? localStorage.getItem('bantai_elevenlabs_voice_id') : null) ||
-    'pNInz6obpgDQGcFmaJgB'; // Adam default
+    'pNInz6obpgDQGcFmaJgB'; // Adam default (verified 200 OK)
 
   const elevenModelId = options.elevenModelId ||
     (typeof window !== 'undefined' ? localStorage.getItem('bantai_elevenlabs_model_id') : null) ||
