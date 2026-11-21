@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
-import { FirestoreTask, FirestoreReminder, SUPPORTED_MODELS } from '@bantai/shared';
+import { FirestoreTask, FirestoreReminder, SUPPORTED_MODELS, resolveModel } from '@bantai/shared';
 import {
   Sparkles,
   CheckSquare,
@@ -26,7 +26,7 @@ export function DashboardView() {
   const [events, setEvents] = useState<any[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
-  const currentModel = SUPPORTED_MODELS.find(m => m.id === selectedModel) || SUPPORTED_MODELS[1];
+  const currentModel = resolveModel(selectedModel);
 
   useEffect(() => {
     api.getTasks().then(setTasks).catch(console.error);

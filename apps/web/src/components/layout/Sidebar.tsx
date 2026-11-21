@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useApp, AppView } from '../../context/AppContext';
 import { api } from '../../lib/api';
-import { SUPPORTED_MODELS } from '@bantai/shared';
+import { SUPPORTED_MODELS, resolveModel } from '@bantai/shared';
 import {
   MessageSquare,
   Plus,
@@ -80,7 +80,7 @@ export function Sidebar() {
     { id: 'settings', label: 'Settings & Privacy', icon: <Settings className="w-4 h-4" /> }
   ];
 
-  const currentModel = SUPPORTED_MODELS.find(m => m.id === selectedModel) || SUPPORTED_MODELS[1];
+  const currentModel = resolveModel(selectedModel);
 
   return (
     <aside className="w-72 bg-bantai-darkCard border-r border-bantai-darkBorder flex flex-col h-screen select-none">

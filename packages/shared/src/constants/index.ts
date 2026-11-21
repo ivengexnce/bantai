@@ -130,6 +130,18 @@ export const SUPPORTED_MODELS: AIModelDescriptor[] = [
 
 export const DEFAULT_MODEL_ID = 'bhai';
 
+export function resolveModel(modelId?: string): AIModelDescriptor {
+  if (!modelId) return SUPPORTED_MODELS[1]; // Default to BANTAI Bhai
+  const normalized = modelId.toLowerCase().trim();
+  const found = SUPPORTED_MODELS.find(
+    m => m.id === normalized ||
+         m.baseModel.toLowerCase() === normalized ||
+         m.shortName.toLowerCase() === normalized ||
+         m.name.toLowerCase() === normalized
+  );
+  return found || SUPPORTED_MODELS[1];
+}
+
 // Local Embedding Model Details
 export const LOCAL_EMBEDDING_MODEL = {
   id: 'BAAI/bge-small-en-v1.5',

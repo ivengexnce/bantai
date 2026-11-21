@@ -7,10 +7,12 @@ import {
   PersonalityMode,
   FirestoreMessage,
   SUPPORTED_MODELS,
-  PERSONALITY_PROMPTS
+  PERSONALITY_PROMPTS,
+  resolveModel
 } from '@bantai/shared';
 import {
   Send,
+  ArrowUp,
   Sparkles,
   Bot,
   User,
@@ -137,11 +139,11 @@ export function ChatView() {
   const [infoToast, setInfoToast] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const currentModel = SUPPORTED_MODELS.find(m => m.id === selectedModel) || SUPPORTED_MODELS[1];
+  const currentModel = resolveModel(selectedModel);
 
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
-    const model = SUPPORTED_MODELS.find(m => m.id === modelId);
+    const model = resolveModel(modelId);
     if (model) {
       setSwitchToast(model.switchMessage);
       setTimeout(() => setSwitchToast(null), 3500);
@@ -488,52 +490,117 @@ export function ChatView() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Bar */}
-      <div className="p-4 border-t border-bantai-darkBorder bg-bantai-darkCard/80 backdrop-blur-md">
-        <div className="max-w-3xl mx-auto relative flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleVoiceInput}
-            className={`p-2.5 rounded-xl border transition ${
-              isListening
-                ? 'bg-red-500/20 border-red-500 text-red-400 animate-pulse'
-                : 'bg-white/5 border-bantai-darkBorder text-gray-400 hover:text-white'
-            }`}
-            title="Speech-to-text"
-          >
-            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </button>
+      {/* Modern Floating Composer Card */}
+      <div className="p-4 border-t border-bantai-darkBorder/60 bg-gradient-to-t from-black via-bantai-darkBg/95 to-transparent backdrop-blur-md">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative rounded-2xl border border-white/10 bg-[#10131d]/90 shadow-2xl transition-all duration-200 focus-within:border-bantai-500/60 focus-within:ring-2 focus-within:ring-bantai-500/15">
+            {/* Top Bar inside composer: Model Badge, Status Pill, Mode Indicator */}
+            <div className="flex items-center justify-between px-3.5 pt-2.5 pb-1 text-xs border-b border-white/[0.04]">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300 font-medium text-[11px]">
+                  <span>{currentModel?.icon || '🤝'}</span>
+                  <span className="text-white">{currentModel?.name || 'BANTAI Bhai'}</span>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-bantai-400 font-semibold capitalize">{personalityMode}</span>
+                </span>
+                {isListening && (
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-[11px] animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                    Listening...
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveView('agent')}
+                className="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-bantai-400 transition"
+                title="Launch Autonomous Agent Planner"
+              >
+                <Cpu className="w-3.5 h-3.5 text-bantai-400" />
+                <span>Agent Planner</span>
+              </button>
+            </div>
 
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder={`Message ${currentModel.name} (${personalityMode} mode)...`}
-            rows={1}
-            className="flex-1 bg-black/40 border border-bantai-darkBorder rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bantai-500 resize-none max-h-32"
-          />
+            {/* Input Textarea */}
+            <div className="px-3.5 pt-2.5 pb-1">
+              <textarea
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder={`Ask ${currentModel?.shortName || currentModel?.name || 'BANTAI'} anything (${personalityMode} mode)...`}
+                rows={2}
+                className="w-full bg-transparent border-0 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-0 resize-none max-h-36 leading-relaxed"
+              />
+            </div>
 
-          <button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isStreaming}
-            className="p-3 bg-bantai-500 hover:bg-bantai-600 disabled:opacity-40 text-black font-bold rounded-xl transition shadow-md shadow-bantai-500/20"
-          >
-            {isStreaming ? <Square className="w-4 h-4 fill-current" /> : <Send className="w-4 h-4" />}
-          </button>
-        </div>
-        <div className="flex items-center justify-between max-w-3xl mx-auto mt-2 text-[11px] text-gray-500">
-          <span>BANTAI runs on self-hosted open-weight foundation models. No data is sent to external AI providers.</span>
-          <button
-            onClick={() => setActiveView('agent')}
-            className="hover:text-bantai-400 transition flex items-center gap-1"
-          >
-            <Cpu className="w-3 h-3" /> Switch to Agent Planner
-          </button>
+            {/* Bottom Actions inside Composer */}
+            <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={toggleVoiceInput}
+                  className={`p-2 rounded-xl transition ${
+                    isListening
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                      : 'hover:bg-white/5 text-gray-400 hover:text-white'
+                  }`}
+                  title="Speech-to-text (Voice Input)"
+                >
+                  {isListening ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const modes: PersonalityMode[] = ['tapori', 'balanced', 'professional', 'developer', 'academic'];
+                    const nextIdx = (modes.indexOf(personalityMode) + 1) % modes.length;
+                    setPersonalityMode(modes[nextIdx]);
+                  }}
+                  className="px-2 py-1 rounded-lg text-[11px] text-gray-400 hover:text-white hover:bg-white/5 transition flex items-center gap-1"
+                  title="Cycle personality mode"
+                >
+                  <Sparkles className="w-3 h-3 text-bantai-400" />
+                  <span>Mode: <strong className="text-gray-200 capitalize">{personalityMode}</strong></span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleSend()}
+                  disabled={!input.trim() && !isStreaming}
+                  className={`p-2 rounded-xl flex items-center justify-center transition-all duration-200 shadow-md ${
+                    isStreaming
+                      ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20'
+                      : input.trim()
+                      ? 'bg-bantai-500 hover:bg-bantai-400 text-black shadow-bantai-500/30'
+                      : 'bg-white/10 text-gray-500 cursor-not-allowed'
+                  }`}
+                  title={isStreaming ? 'Stop generation' : 'Send message (Enter)'}
+                >
+                  {isStreaming ? (
+                    <Square className="w-4 h-4 fill-current" />
+                  ) : (
+                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer sovereignty pill */}
+          <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-gray-500">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+              <span>100% Sovereign · Zero External AI APIs · Private Memory Active</span>
+            </span>
+            <span className="hidden sm:inline text-gray-500">
+              Shift + Enter for new line
+            </span>
+          </div>
         </div>
       </div>
     </div>
