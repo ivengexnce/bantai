@@ -8,7 +8,12 @@ import { APP_MODELS } from '../../lib/models';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Dialog } from '../ui/Dialog';
-import { speakText, stopSpeaking } from '../../lib/voiceEngine';
+import {
+  speakText,
+  stopSpeaking,
+  PRESET_ELEVENLABS_VOICES,
+  ElevenLabsVoiceOption
+} from '../../lib/voiceEngine';
 
 export function SettingsView() {
   const {
@@ -35,6 +40,92 @@ export function SettingsView() {
   const [voiceGender, setVoiceGender] = useState<'male' | 'female'>(user?.preferences?.voiceGender ?? 'male');
   const [isPlayingTestVoice, setIsPlayingTestVoice] = useState(false);
 
+  // ElevenLabs Voice Integration State
+  const [voiceProvider, setVoiceProvider] = useState<'browser' | 'elevenlabs'>('browser');
+  const [elevenApiKey, setElevenApiKey] = useState<string>('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [elevenVoiceId, setElevenVoiceId] = useState<string>('pNInz6obpgDQGcFmaJgB');
+  const [elevenModelId, setElevenModelId] = useState<string>('eleven_multilingual_v2');
+  const [customVoiceId, setCustomVoiceId] = useState('');
+  const [elevenVoices, setElevenVoices] = useState<ElevenLabsVoiceOption[]>(PRESET_ELEVENLABS_VOICES);
+  const [isValidatingKey, setIsValidatingKey] = useState(false);
+
+  // Initialize ElevenLabs from localStorage on mount
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedProvider = localStorage.getItem('bantai_voice_provider') as 'browser' | 'elevenlabs';
+      if (storedProvider) setVoiceProvider(storedProvider);
+      const storedKey = localStorage.getItem('bantai_elevenlabs_key') || '';
+      if (storedKey) {
+        setElevenApiKey(storedKey);
+        api.getElevenLabsVoices(storedKey).then(res => {
+          if (res?.voices?.length) {
+            setElevenVoices(res.voices.map(v => ({
+              voice_id: v.voice_id,
+              name: v.name,
+              gender: v.labels?.gender?.toLowerCase() === 'female' ? 'female' : 'male',
+              description: v.description || (v.labels ? Object.values(v.labels).join(', ') : 'Custom voice')
+            })));
+          }
+        }).catch(() => {});
+      }
+      const storedVoiceId = localStorage.getItem('bantai_elevenlabs_voice_id');
+      if (storedVoiceId) setElevenVoiceId(storedVoiceId);
+      const storedModelId = localStorage.getItem('bantai_elevenlabs_model_id');
+      if (storedModelId) setElevenModelId(storedModelId);
+    }
+  }, []);
+
+  const handleProviderChange = (provider: 'browser' | 'elevenlabs') => {
+    setVoiceProvider(provider);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bantai_voice_provider', provider);
+    }
+    setStatusMessage(`Voice provider set to ${provider === 'elevenlabs' ? 'ElevenLabs Neural Audio' : 'Local Browser Engine'}`);
+    setTimeout(() => setStatusMessage(null), 3000);
+  };
+
+  const handleSaveElevenKey = async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bantai_elevenlabs_key', elevenApiKey.trim());
+    }
+    setIsValidatingKey(true);
+    try {
+      const res = await api.getElevenLabsVoices(elevenApiKey.trim());
+      if (res && res.voices && res.voices.length > 0) {
+        setElevenVoices(res.voices.map(v => ({
+          voice_id: v.voice_id,
+          name: v.name,
+          gender: v.labels?.gender?.toLowerCase() === 'female' ? 'female' : 'male',
+          description: v.description || (v.labels ? Object.values(v.labels).join(', ') : 'Custom voice')
+        })));
+        setStatusMessage(`ElevenLabs API connected! Loaded ${res.voices.length} voices.`);
+      } else {
+        setStatusMessage('ElevenLabs key saved! Using popular ElevenLabs voice lineup.');
+      }
+    } catch (err) {
+      console.warn('ElevenLabs key validation warning:', err);
+      setStatusMessage('ElevenLabs key saved locally.');
+    } finally {
+      setIsValidatingKey(false);
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+  };
+
+  const handleSelectElevenVoice = (voiceId: string) => {
+    setElevenVoiceId(voiceId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bantai_elevenlabs_voice_id', voiceId);
+    }
+  };
+
+  const handleSelectElevenModel = (modelId: string) => {
+    setElevenModelId(modelId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bantai_elevenlabs_model_id', modelId);
+    }
+  };
+
   const handleSaveVoicePreferences = async (newSpeed: number, newGender: 'male' | 'female') => {
     setVoiceSpeed(newSpeed);
     setVoiceGender(newGender);
@@ -59,16 +150,27 @@ export function SettingsView() {
     }
 
     const testPhrase = personalityMode === 'tapori'
-      ? 'Arey bhidu! BANTAI voice model ekdum rapchik chal raha hai! Poora hisaab-kitaab on-point hai.'
-      : 'Greetings! BANTAI voice synthesis engine is calibrated with natural pacing and zero syntax noise.';
+      ? (voiceProvider === 'elevenlabs'
+          ? 'Arey bhidu! BANTAI voice model with ElevenLabs neural intelligence is online! Ekdum authentic sound kar raha hai.'
+          : 'Arey bhidu! BANTAI voice model ekdum rapchik chal raha hai! Poora hisaab-kitaab on-point hai.')
+      : (voiceProvider === 'elevenlabs'
+          ? 'Greetings! This is BANTAI powered by ElevenLabs studio neural voice synthesis.'
+          : 'Greetings! BANTAI voice synthesis engine is calibrated with natural pacing and zero syntax noise.');
 
     setIsPlayingTestVoice(true);
     speakText(testPhrase, {
       mode: personalityMode,
+      provider: voiceProvider,
+      elevenVoiceId: customVoiceId.trim() || elevenVoiceId,
+      elevenModelId,
+      elevenApiKey: elevenApiKey.trim() || undefined,
       gender: voiceGender,
       rate: voiceSpeed,
       onEnd: () => setIsPlayingTestVoice(false),
-      onError: () => setIsPlayingTestVoice(false)
+      onError: (err) => {
+        alert((err as Error)?.message || 'Voice test error');
+        setIsPlayingTestVoice(false);
+      }
     });
   };
 
@@ -193,7 +295,9 @@ export function SettingsView() {
           <div className="flex items-center justify-between">
             <div className="text-xs font-bold text-[#f0f2f5] uppercase flex items-center gap-2">
               <span>[VOICE MODEL & NATURAL SPEECH ENGINE]</span>
-              <Badge variant="success">CALIBRATED</Badge>
+              <Badge variant={voiceProvider === 'elevenlabs' ? 'success' : 'neutral'}>
+                {voiceProvider === 'elevenlabs' ? 'ELEVENLABS NEURAL' : 'LOCAL BROWSER'}
+              </Badge>
             </div>
             <button
               onClick={handleTestVoice}
@@ -203,58 +307,223 @@ export function SettingsView() {
                   : 'bg-[#2F6BFF]/20 border-[#2F6BFF] text-[#2F6BFF] hover:bg-[#2F6BFF]/30'
               }`}
             >
-              <span>{isPlayingTestVoice ? '■ Stop Audio' : '▶ Test Voice Output'}</span>
+              <span>{isPlayingTestVoice ? '■ Stop Audio' : `▶ Test ${voiceProvider === 'elevenlabs' ? 'ElevenLabs' : 'Local'} Voice`}</span>
             </button>
           </div>
+
           <p className="text-xs text-[#8c919e] leading-relaxed">
-            BANTAI dynamically selects authentic regional accents (Indian English/Hindi for Tapori mode, and natural English for Developer & Academic modes) while stripping markdown syntax, emojis, and code blocks before speaking.
+            Choose between 100% sovereign on-device browser speech synthesis or connect your ElevenLabs account for studio-grade neural voice cloning.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            {/* Voice Speed */}
-            <div className="p-3 bg-[#090b0e] border border-[#20232b] space-y-2">
-              <span className="text-[10px] text-[#8c919e] uppercase block font-bold">
-                Speech Cadence / Speed
-              </span>
-              <div className="flex items-center gap-2">
-                {[0.85, 1.0, 1.15].map(speed => (
-                  <button
-                    key={speed}
-                    onClick={() => handleSaveVoicePreferences(speed, voiceGender)}
-                    className={`flex-1 py-1.5 text-xs text-center border font-mono transition-colors ${
-                      voiceSpeed === speed
-                        ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white font-bold'
-                        : 'bg-transparent border-[#20232b] text-[#8c919e] hover:text-white'
-                    }`}
-                  >
-                    {speed === 0.85 ? '0.85x (Slow)' : speed === 1.0 ? '1.0x (Normal)' : '1.15x (Fast)'}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Voice Provider Selector Tabs */}
+          <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+            <button
+              onClick={() => handleProviderChange('browser')}
+              className={`p-3 border text-center transition-all ${
+                voiceProvider === 'browser'
+                  ? 'bg-[#181b22] border-[#2F6BFF] text-white font-bold'
+                  : 'bg-[#090b0e] border-[#20232b] text-[#8c919e] hover:text-white'
+              }`}
+            >
+              <div className="font-bold uppercase text-[11px]">[01] LOCAL SPEECH (ON-DEVICE)</div>
+              <div className="text-[10px] text-[#64748B] mt-0.5">100% Free · Zero API calls · Regional Accents</div>
+            </button>
 
-            {/* Voice Gender */}
-            <div className="p-3 bg-[#090b0e] border border-[#20232b] space-y-2">
-              <span className="text-[10px] text-[#8c919e] uppercase block font-bold">
-                Voice Tone / Gender
-              </span>
-              <div className="flex items-center gap-2">
-                {(['male', 'female'] as const).map(gender => (
-                  <button
-                    key={gender}
-                    onClick={() => handleSaveVoicePreferences(voiceSpeed, gender)}
-                    className={`flex-1 py-1.5 text-xs text-center border font-mono capitalize transition-colors ${
-                      voiceGender === gender
-                        ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white font-bold'
-                        : 'bg-transparent border-[#20232b] text-[#8c919e] hover:text-white'
-                    }`}
+            <button
+              onClick={() => handleProviderChange('elevenlabs')}
+              className={`p-3 border text-center transition-all ${
+                voiceProvider === 'elevenlabs'
+                  ? 'bg-[#181b22] border-[#2F6BFF] text-white font-bold'
+                  : 'bg-[#090b0e] border-[#20232b] text-[#8c919e] hover:text-white'
+              }`}
+            >
+              <div className="font-bold uppercase text-[11px] flex items-center justify-center gap-1.5">
+                <span>[02] ELEVENLABS NEURAL AI</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+              </div>
+              <div className="text-[10px] text-[#64748B] mt-0.5">Studio Quality · Voice Cloning · Multilingual v2</div>
+            </button>
+          </div>
+
+          {/* ELEVENLABS CONFIGURATION PANEL */}
+          {voiceProvider === 'elevenlabs' ? (
+            <div className="space-y-4 pt-2 border-t border-[#20232b]">
+              {/* API Key Input */}
+              <div className="p-4 bg-[#090b0e] border border-[#20232b] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-[#8c919e] uppercase">
+                    ElevenLabs API Key (xi-api-key)
+                  </label>
+                  <a
+                    href="https://elevenlabs.io"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-[#2F6BFF] hover:underline"
                   >
-                    {gender} Voice
+                    Get Free Key from ElevenLabs.io →
+                  </a>
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={elevenApiKey}
+                      onChange={e => setElevenApiKey(e.target.value)}
+                      placeholder="sk_..."
+                      className="w-full px-3 py-2 bg-[#12141a] border border-[#20232b] text-white text-xs font-mono focus:outline-none focus:border-[#2F6BFF]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(prev => !prev)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8c919e] hover:text-white"
+                    >
+                      {showApiKey ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleSaveElevenKey}
+                    disabled={isValidatingKey}
+                    className="px-4 py-2 bg-[#2F6BFF] hover:bg-[#2F6BFF]/90 text-white font-bold text-xs uppercase transition-colors shrink-0"
+                  >
+                    {isValidatingKey ? 'Verifying...' : 'Save & Connect'}
                   </button>
-                ))}
+                </div>
+                <p className="text-[10px] text-[#64748B]">
+                  Your API key is securely stored in your local browser session and passed directly to your self-hosted backend.
+                </p>
+              </div>
+
+              {/* Voice Lineup Grid */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-[#8c919e] uppercase block">
+                  Select ElevenLabs Neural Voice
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  {elevenVoices.map(v => {
+                    const isSelected = elevenVoiceId === v.voice_id && !customVoiceId.trim();
+                    return (
+                      <button
+                        key={v.voice_id}
+                        type="button"
+                        onClick={() => {
+                          setCustomVoiceId('');
+                          handleSelectElevenVoice(v.voice_id);
+                        }}
+                        className={`p-3 border text-left flex flex-col justify-between transition-colors ${
+                          isSelected
+                            ? 'bg-[#181b22] border-[#2F6BFF] text-white'
+                            : 'bg-[#090b0e] border-[#20232b] text-[#8c919e] hover:border-white/20'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-bold flex items-center justify-between text-[#f0f2f5]">
+                            <span>{v.name}</span>
+                            <span className="text-[9px] uppercase px-1 py-0.5 rounded bg-white/5 text-[#8c919e]">
+                              {v.gender}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-[#64748B] mt-1 line-clamp-2">
+                            {v.description}
+                          </p>
+                        </div>
+                        <div className="mt-2 text-[9px] font-mono text-[#2F6BFF]">
+                          {isSelected ? '● ACTIVE' : '○ SELECT'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Voice ID Option */}
+              <div className="p-3 bg-[#090b0e] border border-[#20232b] space-y-1.5">
+                <label className="text-[10px] font-bold text-[#8c919e] uppercase block">
+                  Or Custom Cloned Voice ID (from ElevenLabs VoiceLab)
+                </label>
+                <input
+                  type="text"
+                  value={customVoiceId}
+                  onChange={e => setCustomVoiceId(e.target.value)}
+                  placeholder="e.g. 21m00Tcm4TlvDq8ikWAM"
+                  className="w-full px-3 py-1.5 bg-[#12141a] border border-[#20232b] text-white text-xs font-mono focus:outline-none focus:border-[#2F6BFF]"
+                />
+              </div>
+
+              {/* ElevenLabs Model Selector */}
+              <div className="p-3 bg-[#090b0e] border border-[#20232b] space-y-2">
+                <label className="text-[10px] font-bold text-[#8c919e] uppercase block">
+                  ElevenLabs Generation Model
+                </label>
+                <div className="flex gap-2">
+                  {[
+                    { id: 'eleven_multilingual_v2', name: 'Multilingual v2 (Recommended)', desc: 'Best accent handling, supports Hinglish / Tapori & 29 languages.' },
+                    { id: 'eleven_turbo_v2_5', name: 'Turbo v2.5', desc: 'Ultra-fast inference latency with high conversational fidelity.' }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => handleSelectElevenModel(m.id)}
+                      className={`flex-1 p-2.5 border text-left transition-colors ${
+                        elevenModelId === m.id
+                          ? 'bg-[#181b22] border-[#2F6BFF] text-white'
+                          : 'bg-transparent border-[#20232b] text-[#8c919e] hover:text-white'
+                      }`}
+                    >
+                      <div className="font-bold text-[11px] text-[#f0f2f5]">{m.name}</div>
+                      <div className="text-[10px] text-[#64748B] mt-0.5">{m.desc}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            /* LOCAL BROWSER CONFIGURATION PANEL */
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              {/* Voice Speed */}
+              <div className="p-3 bg-[#090b0e] border border-[#20232b] space-y-2">
+                <span className="text-[10px] text-[#8c919e] uppercase block font-bold">
+                  Speech Cadence / Speed
+                </span>
+                <div className="flex items-center gap-2">
+                  {[0.85, 1.0, 1.15].map(speed => (
+                    <button
+                      key={speed}
+                      onClick={() => handleSaveVoicePreferences(speed, voiceGender)}
+                      className={`flex-1 py-1.5 text-xs text-center border font-mono transition-colors ${
+                        voiceSpeed === speed
+                          ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white font-bold'
+                          : 'bg-transparent border-[#20232b] text-[#8c919e] hover:text-white'
+                      }`}
+                    >
+                      {speed === 0.85 ? '0.85x (Slow)' : speed === 1.0 ? '1.0x (Normal)' : '1.15x (Fast)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Voice Gender */}
+              <div className="p-3 bg-[#090b0e] border border-[#20232b] space-y-2">
+                <span className="text-[10px] text-[#8c919e] uppercase block font-bold">
+                  Voice Tone / Gender
+                </span>
+                <div className="flex items-center gap-2">
+                  {(['male', 'female'] as const).map(gender => (
+                    <button
+                      key={gender}
+                      onClick={() => handleSaveVoicePreferences(voiceSpeed, gender)}
+                      className={`flex-1 py-1.5 text-xs text-center border font-mono capitalize transition-colors ${
+                        voiceGender === gender
+                          ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white font-bold'
+                          : 'bg-transparent border-[#20232b] text-[#8c919e] hover:text-white'
+                      }`}
+                    >
+                      {gender} Voice
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* BANTAI Model Family Lineup */}

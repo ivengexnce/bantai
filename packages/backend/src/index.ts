@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import chatRoutes from './routes/chat.routes';
 import assistantRoutes from './routes/assistant.routes';
 import learningRoutes from './routes/learning.routes';
+import voiceRoutes from './routes/voice.routes';
 import { inferenceService } from './services/ai/inference.service';
 
 export const app = express();
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/learning', learningRoutes);
+app.use('/api/voice', voiceRoutes);
 
 // Global Error Handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -11,12 +11,32 @@
  */
 
 import { PersonalityMode } from '@bantai/shared';
+import { api } from './api';
 
 // Active utterances set to prevent V8 garbage-collection bugs mid-speech
 const activeUtterances = new Set<SpeechSynthesisUtterance>();
 
 // Global keep-alive interval reference for Chromium speech synthesis
 let keepAliveTimer: NodeJS.Timeout | null = null;
+
+// Active HTML5 Audio element for ElevenLabs playback
+let activeAudioElement: HTMLAudioElement | null = null;
+
+export interface ElevenLabsVoiceOption {
+  voice_id: string;
+  name: string;
+  description: string;
+  gender: 'male' | 'female';
+}
+
+export const PRESET_ELEVENLABS_VOICES: ElevenLabsVoiceOption[] = [
+  { voice_id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', gender: 'male', description: 'Deep, warm, confident conversational American male.' },
+  { voice_id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', gender: 'female', description: 'Calm, clear, and articulate American female.' },
+  { voice_id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', gender: 'male', description: 'Crisp, energetic, and engaging American male.' },
+  { voice_id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', gender: 'female', description: 'Bright, expressive, friendly, and lively female tone.' },
+  { voice_id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George', gender: 'male', description: 'Warm, raspy, sophisticated British English male.' },
+  { voice_id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold', gender: 'male', description: 'Crisp, articulate documentary narrator.' },
+];
 
 /**
  * Strips code blocks, markdown syntax, URLs, and emojis so the voice engine
@@ -249,6 +269,10 @@ export interface SpeakOptions {
   pitch?: number; // default 1.0
   gender?: 'male' | 'female';
   voiceURI?: string;
+  provider?: 'browser' | 'elevenlabs';
+  elevenVoiceId?: string;
+  elevenModelId?: string;
+  elevenApiKey?: string;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (err: any) => void;
@@ -256,25 +280,15 @@ export interface SpeakOptions {
 }
 
 /**
- * Speaks the given text cleanly with sentence chunking, Chromium keep-alive,
- * and garbage collection protection.
+ * Speaks using browser Web Speech synthesis with sentence chunking
  */
-export function speakText(
-  text: string,
+function speakWithBrowser(
+  clean: string,
   options: SpeakOptions = {}
 ): { stop: () => void } {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     console.warn('SpeechSynthesis is not supported in this environment.');
     options.onError?.(new Error('SpeechSynthesis unsupported'));
-    return { stop: () => {} };
-  }
-
-  // Cancel any running speech
-  stopSpeaking();
-
-  const clean = cleanTextForSpeech(text);
-  if (!clean) {
-    options.onEnd?.();
     return { stop: () => {} };
   }
 
@@ -341,7 +355,6 @@ export function speakText(
         utterance.lang = chosenVoice.lang;
       }
 
-      // Slightly faster rate (1.05) gives a more natural conversational pacing
       utterance.rate = options.rate || (options.mode === 'tapori' ? 1.05 : 1.0);
       utterance.pitch = options.pitch || 1.0;
 
@@ -354,7 +367,6 @@ export function speakText(
       utterance.onerror = (e) => {
         activeUtterances.delete(utterance);
         if (e.error === 'canceled' || e.error === 'interrupted') {
-          // Normal user cancellation
           return;
         }
         console.warn('Speech chunk error:', e);
@@ -377,12 +389,118 @@ export function speakText(
 }
 
 /**
- * Stops any current speech synthesis cleanly.
+ * Speaks the given text cleanly with sentence chunking, Chromium keep-alive,
+ * and garbage collection protection.
+ * Supports both ElevenLabs Neural Voice and native Web Speech.
+ */
+export function speakText(
+  text: string,
+  options: SpeakOptions = {}
+): { stop: () => void } {
+  // Cancel any running speech
+  stopSpeaking();
+
+  const clean = cleanTextForSpeech(text);
+  if (!clean) {
+    options.onEnd?.();
+    return { stop: () => {} };
+  }
+
+  // Determine provider: ElevenLabs or native browser
+  const provider = options.provider ||
+    (typeof window !== 'undefined' ? localStorage.getItem('bantai_voice_provider') : null) ||
+    'browser';
+
+  const elevenApiKey = options.elevenApiKey ||
+    (typeof window !== 'undefined' ? localStorage.getItem('bantai_elevenlabs_key') : null) ||
+    undefined;
+
+  const elevenVoiceId = options.elevenVoiceId ||
+    (typeof window !== 'undefined' ? localStorage.getItem('bantai_elevenlabs_voice_id') : null) ||
+    'pNInz6obpgDQGcFmaJgB'; // Adam default
+
+  const elevenModelId = options.elevenModelId ||
+    (typeof window !== 'undefined' ? localStorage.getItem('bantai_elevenlabs_model_id') : null) ||
+    'eleven_multilingual_v2';
+
+  // 1. If ElevenLabs is requested, try ElevenLabs first with automatic graceful fallback
+  if (provider === 'elevenlabs') {
+    let currentAudio: HTMLAudioElement | null = null;
+    let isCancelled = false;
+
+    const stopEleven = () => {
+      isCancelled = true;
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+      }
+      activeAudioElement = null;
+      options.onEnd?.();
+    };
+
+    api.synthesizeElevenLabs(clean, elevenVoiceId, elevenModelId, elevenApiKey)
+      .then(audioUrl => {
+        if (isCancelled) return;
+        const audio = new Audio(audioUrl);
+        currentAudio = audio;
+        activeAudioElement = audio;
+
+        audio.onplay = () => {
+          options.onStart?.();
+        };
+
+        audio.onended = () => {
+          currentAudio = null;
+          activeAudioElement = null;
+          options.onEnd?.();
+        };
+
+        audio.onerror = (e) => {
+          console.warn('[ElevenLabs] Audio playback error, falling back to local speech:', e);
+          if (!isCancelled) {
+            speakWithBrowser(clean, options);
+          }
+        };
+
+        audio.play().catch(err => {
+          console.warn('[ElevenLabs] Play caught:', err);
+          if (!isCancelled) {
+            speakWithBrowser(clean, options);
+          }
+        });
+      })
+      .catch(err => {
+        console.warn('[ElevenLabs] Synthesis error, falling back to local speech:', err);
+        if (!isCancelled) {
+          // Graceful fallback to browser voice
+          speakWithBrowser(clean, options);
+        }
+      });
+
+    return { stop: stopEleven };
+  }
+
+  // 2. Default: Browser Web Speech
+  return speakWithBrowser(clean, options);
+}
+
+/**
+ * Stops any current speech synthesis cleanly (both ElevenLabs audio and Web Speech).
  */
 export function stopSpeaking() {
+  if (activeAudioElement) {
+    try {
+      activeAudioElement.pause();
+      activeAudioElement.currentTime = 0;
+    } catch {}
+    activeAudioElement = null;
+  }
+
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }
+
   if (keepAliveTimer) {
     clearInterval(keepAliveTimer);
     keepAliveTimer = null;

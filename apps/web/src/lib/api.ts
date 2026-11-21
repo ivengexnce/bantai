@@ -313,6 +313,43 @@ class ApiClient {
     this.logout();
     return true;
   }
+
+  // ElevenLabs Voice Integration
+  async getElevenLabsVoices(apiKey?: string): Promise<{ voices: any[]; source: string }> {
+    const headers: Record<string, string> = {};
+    if (apiKey) headers['x-elevenlabs-key'] = apiKey;
+    const res = await this.request<{ success: boolean; data: { voices: any[]; source: string } }>(
+      '/voice/elevenlabs/voices',
+      { headers }
+    );
+    return res.data;
+  }
+
+  async synthesizeElevenLabs(
+    text: string,
+    voiceId?: string,
+    modelId?: string,
+    apiKey?: string
+  ): Promise<string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (apiKey) headers['x-elevenlabs-key'] = apiKey;
+
+    const res = await fetch(`${API_BASE}/voice/elevenlabs/tts`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ text, voiceId, modelId, apiKey })
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || `Failed to synthesize audio with ElevenLabs (${res.status})`);
+    }
+
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  }
 }
 
 export const api = new ApiClient();

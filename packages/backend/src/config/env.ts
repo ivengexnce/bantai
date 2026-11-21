@@ -28,6 +28,9 @@ export const config = {
   // Client URLs for CORS
   clientUrls: (process.env.CLIENT_URLS || 'http://localhost:3000,http://localhost:3001,http://localhost:8081,http://10.0.2.2:4000').split(','),
 
+  // ElevenLabs Voice Synthesis Integration
+  elevenlabsApiKey: process.env.ELEVENLABS_API_KEY || '',
+
   // File Uploads & Temp storage
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
   maxUploadSizeBytes: 50 * 1024 * 1024 // 50MB
