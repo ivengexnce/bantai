@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
-import { PersonalityMode } from '@bantai/shared';
+import { PersonalityMode, SUPPORTED_MODELS } from '@bantai/shared';
 import {
   Settings,
   ShieldAlert,
@@ -11,11 +11,21 @@ import {
   Database,
   Trash2,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Cpu,
+  Check
 } from 'lucide-react';
 
 export function SettingsView() {
-  const { user, setUser, personalityMode, setPersonalityMode, logout } = useApp();
+  const {
+    user,
+    setUser,
+    personalityMode,
+    setPersonalityMode,
+    selectedModel,
+    setSelectedModel,
+    logout
+  } = useApp();
 
   const [memoryEnabled, setMemoryEnabled] = useState(
     user?.learningConsent?.personalMemoryEnabled ?? true
@@ -135,6 +145,101 @@ export function SettingsView() {
                 {mode}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* BANTAI Model Family Lineup (Section 9 Branding Spec) */}
+        <div className="p-6 bg-bantai-darkCard border border-bantai-darkBorder rounded-2xl space-y-5">
+          <div>
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-bantai-400" /> Choose Your BANTAI
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              Who do you want running the show? Select the model that powers your assistant.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {SUPPORTED_MODELS.map(m => {
+              const isSelected = selectedModel === m.id;
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => {
+                    setSelectedModel(m.id);
+                    setStatusMessage(`Switched active model to ${m.displayName}`);
+                    setTimeout(() => setStatusMessage(null), 3000);
+                  }}
+                  className={`p-5 rounded-2xl border cursor-pointer transition relative flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-gradient-to-b from-white/10 to-black/60 border-bantai-500 shadow-lg shadow-bantai-500/10'
+                      : 'bg-black/30 border-bantai-darkBorder hover:border-white/20'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{m.icon}</span>
+                        <span className="text-sm font-bold text-white">{m.name}</span>
+                        {m.isDefault && (
+                          <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[9px] font-bold uppercase tracking-wider">
+                            DEFAULT
+                          </span>
+                        )}
+                      </div>
+                      {isSelected ? (
+                        <div className="w-6 h-6 rounded-full bg-bantai-500 text-black flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-full border border-gray-600" />
+                      )}
+                    </div>
+
+                    <div className="text-xs font-semibold text-bantai-400 italic">
+                      &quot;{m.tagline}&quot;
+                    </div>
+
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      {m.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-white/5 space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Speed</span>
+                      <div className="flex items-center gap-1.5 font-mono">
+                        <div className="w-20 h-2 bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-400 rounded-full"
+                            style={{ width: `${(m.speedRating / 12) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-gray-300 w-12 text-right">{m.speedLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Power</span>
+                      <div className="flex items-center gap-1.5 font-mono">
+                        <div className="w-20 h-2 bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-amber-400 rounded-full"
+                            style={{ width: `${(m.powerRating / 12) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-gray-300 w-12 text-right">{m.powerLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 text-[10px] text-gray-400">
+                      <span>Hardware: {m.hardware}</span>
+                      <span>RAM: {m.ramRequirement}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

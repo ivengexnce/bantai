@@ -33,7 +33,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<FirestoreConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [personalityMode, setPersonalityMode] = useState<PersonalityMode>('tapori');
-  const [selectedModel, setSelectedModel] = useState<string>('qwen2.5:7b');
+  const [selectedModel, setSelectedModel] = useState<string>('bhai');
 
   const refreshConversations = async () => {
     try {

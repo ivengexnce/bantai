@@ -108,10 +108,20 @@ export class InferenceService {
       ...params.messages.map(m => ({ role: m.role, content: m.content }))
     ];
 
+    // Map friendly model IDs to base model names
+    const MODEL_BASE_MAP: Record<string, string> = {
+      chhotu: 'qwen2.5:3b',
+      bhai: 'qwen2.5:7b',
+      ustad: 'qwen2.5:14b',
+      don: 'qwen2.5:32b',
+      'qwen2.5:7b': 'qwen2.5:7b'
+    };
+    const targetModel = MODEL_BASE_MAP[params.modelId] || params.modelId || config.defaultModel;
+
     // Try Ollama first if configured
     if (this.activeProvider === 'ollama') {
       try {
-        return await this.streamFromOllama(params.modelId, formattedMessages, onChunk);
+        return await this.streamFromOllama(targetModel, formattedMessages, onChunk);
       } catch (err) {
         console.warn('[InferenceService] Ollama stream failed or daemon unavailable. Falling back to BANTAI Local Engine.', (err as Error).message);
       }
@@ -241,7 +251,7 @@ export class InferenceService {
     const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
     const mode = params.personalityMode;
 
-    const responseContent = this.generateLocalResponse(lastUserMsg, mode, params.contextAdditions);
+    const responseContent = this.generateLocalResponse(lastUserMsg, mode, params.modelId, params.contextAdditions);
 
     // Stream out words with realistic pacing
     const tokens = responseContent.split(/(\s+)/);
@@ -257,23 +267,28 @@ export class InferenceService {
     return accumulated;
   }
 
-  private generateLocalResponse(query: string, mode: PersonalityMode, context?: string): string {
+  private generateLocalResponse(query: string, mode: PersonalityMode, modelId: string = 'bhai', context?: string): string {
     const qLower = query.toLowerCase();
+
+    // Model branding badge
+    const modelBadge = modelId === 'chhotu' ? '⚡ BANTAI Chhotu' :
+      modelId === 'ustad' ? '🎯 BANTAI Ustad' :
+      modelId === 'don' ? '👑 BANTAI Don' : '🤝 BANTAI Bhai';
 
     // Check for tool or action requests
     if (qLower.includes('task') || qLower.includes('todo') || qLower.includes('remind')) {
       if (mode === 'tapori') {
-        return `Arey bantai! Tera kaam note kar liya hai apun ne. Task list ekdum updated hai bhidu, tension lene ka hi nahi! Apun time aane pe tere dimaag me reminder bhi ghused dega. Aur bol kya scene hai?`;
+        return `[${modelBadge}] Arey bantai! Tera kaam note kar liya hai apun ne. Task list ekdum updated hai bhidu, tension lene ka hi nahi! Apun time aane pe tere dimaag me reminder bhi ghused dega. Aur bol kya scene hai?`;
       }
-      return `Got it! I have processed your request for task/reminder management. Your personal assistant registry is synchronized and scheduled.`;
+      return `[${modelBadge}] Processed your request for task/reminder management. Your personal assistant registry is synchronized and scheduled.`;
     }
 
     if (qLower.includes('who are you') || qLower.includes('kaun hai') || qLower.includes('about')) {
       if (mode === 'tapori') {
-        return `Apun hai **BANTAI**! Tagline yaad rakh: *Apna Model. Apna Dimaag. Apna AI.* 
+        return `Apun hai **${modelBadge}**! Tagline yaad rakh: *Apna Model. Apna Dimaag. Apna AI.* 
 Mumbai ka asli swag aur world-class AI dimaag ek sath! Apun 100% self-hosted open-weight model pe chalta hai — na koi foreign API, na corporate surveillance. Bol mere bhai, aaj kya bawaal project banane ka hai?`;
       }
-      return `I am **BANTAI** (*Apna Model. Apna Dimaag. Apna AI.*). I am a self-hosted, agentic personal AI platform designed for private, high-accuracy conversational intelligence, task execution, and personalized memory management.`;
+      return `I am **${modelBadge}** (*Apna Model. Apna Dimaag. Apna AI.*). I am a self-hosted, agentic personal AI platform designed for private, high-accuracy conversational intelligence, task execution, and personalized memory management.`;
     }
 
     if (qLower.includes('code') || qLower.includes('function') || qLower.includes('typescript') || qLower.includes('python')) {

@@ -269,15 +269,31 @@ export type InferenceBackend = 'ollama' | 'llamacpp' | 'vllm' | 'transformers' |
 
 export interface AIModelDescriptor {
   id: string;
+  name: string;
+  shortName: string;
   displayName: string;
+  baseModel: string;
+  icon: string;
+  color: string;
+  tagline: string;
+  description: string;
+  useCase: string;
+  hardware: string;
+  ramRequirement: string;
+  vramRequirement: string;
+  speedRating: number; // out of 12
+  powerRating: number; // out of 12
+  speedLabel: string;
+  powerLabel: string;
+  switchMessage: string;
   backend: InferenceBackend;
-  parameters: string; // e.g. "7B", "8B", "14B"
+  parameters: string; // e.g. "3B", "7B", "14B", "32B"
   contextLength: number;
   quantization?: string; // e.g. "Q4_K_M", "FP16"
   isDownloaded: boolean;
   isLoaded: boolean;
   vramRequiredMB: number;
-  description: string;
+  isDefault: boolean;
   license: string;
   family: 'qwen' | 'llama' | 'gemma' | 'mistral' | 'other';
 }

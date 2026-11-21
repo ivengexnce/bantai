@@ -43,7 +43,7 @@ export const UpdateConsentSchema = z.object({
 export const CreateConversationSchema = z.object({
   title: z.string().min(1).max(100).optional(),
   personalityMode: PersonalityModeEnum.default('tapori'),
-  modelId: z.string().default('qwen2.5:7b')
+  modelId: z.string().default('bhai')
 });
 
 export const SendMessageRequestSchema = z.object({

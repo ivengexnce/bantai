@@ -33,6 +33,20 @@ export default function App() {
   ]);
   const [inputMsg, setInputMsg] = useState('');
   const [mode, setMode] = useState('tapori');
+  const [selectedModel, setSelectedModel] = useState<'chhotu' | 'bhai' | 'ustad' | 'don'>('bhai');
+
+  const modelLabels = {
+    chhotu: '⚡ Chhotu',
+    bhai: '🤝 Bhai',
+    ustad: '🎯 Ustad',
+    don: '👑 Don'
+  };
+
+  const cycleModel = () => {
+    const list: Array<'chhotu' | 'bhai' | 'ustad' | 'don'> = ['chhotu', 'bhai', 'ustad', 'don'];
+    const nextIdx = (list.indexOf(selectedModel) + 1) % list.length;
+    setSelectedModel(list[nextIdx]);
+  };
 
   // Tasks state
   const [tasks, setTasks] = useState<Array<{ id: string; title: string; status: string }>>([]);
@@ -170,7 +184,10 @@ export default function App() {
       {/* Top Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>BANTAI</Text>
-        <Text style={styles.headerMode}>Mode: {mode.toUpperCase()}</Text>
+        <TouchableOpacity onPress={cycleModel} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={styles.headerMode}>{modelLabels[selectedModel]}</Text>
+          <Text style={{ color: '#888', fontSize: 10 }}>({mode})</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Screen Content */}
