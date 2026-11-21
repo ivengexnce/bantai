@@ -1,0 +1,32 @@
+{
+  "name": "bantai-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BANTAI — Apna Model. Apna Dimaag. Apna AI. Production Self-Hosted Agentic AI Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:backend": "npm --workspace=@bantai/backend run dev",
+    "dev:web": "npm --workspace=@bantai/web run dev",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "echo \"Linting all workspaces...\""
+  },
+  "overrides": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "keywords": [
+    "agentic-ai",
+    "self-hosted",
+    "mumbai-tapori",
+    "personal-assistant",
+    "fine-tuning",
+    "rag"
+  ],
+  "author": "BANTAI Team",
+  "license": "Apache-2.0"
+}

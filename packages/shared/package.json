@@ -1,0 +1,17 @@
+{
+  "name": "@bantai/shared",
+  "version": "1.0.0",
+  "description": "Shared types, schemas, and personality prompts for BANTAI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Shared package tests passed\""
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

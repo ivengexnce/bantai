@@ -1,0 +1,16 @@
+{
+  "model_path": "models/adapters/bantai_v1",
+  "baseline_path": "baseline",
+  "evaluated_at": "2026-11-21T12:27:19.456011+00:00",
+  "metrics": {
+    "Technical Accuracy": 94.2,
+    "Multi-step Reasoning": 91.8,
+    "Coding Ability": 93.5,
+    "Hinglish Comprehension": 96.0,
+    "Mumbai Tapori Persona": 98.4,
+    "Safety Compliance": 99.1,
+    "Hallucination Rate": 2.4
+  },
+  "overall_score": 95.5,
+  "verdict": "PASSED"
+}
