@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { LandingPage } from '../components/landing/LandingPage';
 import { AuthModal } from '../components/auth/AuthModal';
 import { Sidebar } from '../components/layout/Sidebar';
 import { ChatView } from '../components/chat/ChatView';
@@ -31,9 +32,28 @@ export default function HomePage() {
     );
   }
 
-  // STRICT SECURITY RULE: Authentication screen must be displayed before access to protected features
+  const [showAuth, setShowAuth] = useState(false);
+
+  // If user is not authenticated, show the Sovereign Landing Page
   if (!user) {
-    return <AuthModal />;
+    return (
+      <>
+        <LandingPage onOpenAuth={() => setShowAuth(true)} />
+        {showAuth && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="relative w-full max-w-md">
+              <button
+                onClick={() => setShowAuth(false)}
+                className="absolute -top-10 right-0 text-[#8c919e] hover:text-white font-mono text-xs uppercase"
+              >
+                [ CLOSE X ]
+              </button>
+              <AuthModal />
+            </div>
+          </div>
+        )}
+      </>
+    );
   }
 
   return (
