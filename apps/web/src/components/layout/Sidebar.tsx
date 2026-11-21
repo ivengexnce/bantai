@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp, AppView } from '../../context/AppContext';
 import { api } from '../../lib/api';
+import { SUPPORTED_MODELS } from '@bantai/shared';
 import {
   MessageSquare,
   Plus,
@@ -15,7 +16,10 @@ import {
   Trash2,
   LogOut,
   Search,
-  Bot
+  Bot,
+  Cpu,
+  Calendar as CalendarIcon,
+  Sparkles
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -64,15 +68,19 @@ export function Sidebar() {
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const navItems: Array<{ id: AppView; label: string; icon: React.ReactNode }> = [
+  const navItems: Array<{ id: AppView; label: string; icon: React.ReactNode; badge?: string }> = [
     { id: 'chat', label: 'Conversational AI', icon: <MessageSquare className="w-4 h-4" /> },
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'agent', label: 'Agentic Engine', icon: <Cpu className="w-4 h-4" />, badge: '10 Tools' },
+    { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'tasks', label: 'Tasks', icon: <CheckSquare className="w-4 h-4" /> },
     { id: 'reminders', label: 'Reminders', icon: <Bell className="w-4 h-4" /> },
+    { id: 'calendar', label: 'Calendar', icon: <CalendarIcon className="w-4 h-4" /> },
     { id: 'knowledge', label: 'Knowledge Base', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'memory', label: 'Personal Memory', icon: <Brain className="w-4 h-4" /> },
-    { id: 'settings', label: 'Settings & Learning', icon: <Settings className="w-4 h-4" /> }
+    { id: 'settings', label: 'Settings & Privacy', icon: <Settings className="w-4 h-4" /> }
   ];
+
+  const currentModel = SUPPORTED_MODELS.find(m => m.id === selectedModel) || SUPPORTED_MODELS[1];
 
   return (
     <aside className="w-72 bg-bantai-darkCard border-r border-bantai-darkBorder flex flex-col h-screen select-none">
@@ -88,6 +96,11 @@ export function Sidebar() {
               Apna Model. Apna Dimaag.
             </p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/40 border border-white/10 text-[11px] font-semibold text-gray-300">
+          <span>{currentModel.icon}</span>
+          <span className="text-white">{currentModel.shortName}</span>
         </div>
       </div>
 
@@ -107,16 +120,23 @@ export function Sidebar() {
           <button
             key={item.id}
             onClick={() => setActiveView(item.id)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition ${
+            className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium transition ${
               activeView === item.id
                 ? 'bg-white/10 text-white font-semibold'
                 : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            <span className={activeView === item.id ? 'text-bantai-400' : 'text-gray-400'}>
-              {item.icon}
-            </span>
-            {item.label}
+            <div className="flex items-center gap-2.5">
+              <span className={activeView === item.id ? 'text-bantai-400' : 'text-gray-400'}>
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </div>
+            {item.badge && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-bantai-500/20 text-bantai-400 border border-bantai-500/30">
+                {item.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>

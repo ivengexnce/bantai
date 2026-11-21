@@ -34,6 +34,9 @@ export function SettingsView() {
     user?.learningConsent?.crossUserTrainingOptIn ?? false
   );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [showWipeModal, setShowWipeModal] = useState(false);
+  const [wipeConfirmText, setWipeConfirmText] = useState('');
+  const [isWiping, setIsWiping] = useState(false);
 
   const handleSaveConsent = async () => {
     try {
@@ -59,18 +62,15 @@ export function SettingsView() {
     }
   };
 
-  const handleWipeAccount = async () => {
-    const confirmed = prompt(
-      'DANGER: To permanently delete your account and erase all conversations, memories, and personal tasks across both MongoDB and Firebase, type "DELETE":'
-    );
-    if (confirmed === 'DELETE') {
-      try {
-        await api.wipeUserData();
-        alert('Account and all associated records have been erased.');
-        logout();
-      } catch (err) {
-        alert('Failed to erase account: ' + (err as Error).message);
-      }
+  const handleConfirmWipe = async () => {
+    if (wipeConfirmText !== 'DELETE') return;
+    setIsWiping(true);
+    try {
+      await api.wipeUserData();
+      logout();
+    } catch (err) {
+      alert('Failed to erase account: ' + (err as Error).message);
+      setIsWiping(false);
     }
   };
 
@@ -315,12 +315,57 @@ export function SettingsView() {
             Permanently delete your user profile from MongoDB, and erase all conversations, messages, personal memories, tasks, and uploaded files from Firebase. This action cannot be reversed.
           </p>
           <button
-            onClick={handleWipeAccount}
+            onClick={() => {
+              setWipeConfirmText('');
+              setShowWipeModal(true);
+            }}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition"
           >
             <Trash2 className="w-4 h-4" /> Permanently Delete Account & Wipe All Data
           </button>
         </div>
+
+        {/* Wipe Modal */}
+        {showWipeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md bg-bantai-darkCard border border-red-800/80 rounded-2xl p-6 shadow-2xl space-y-4">
+              <div className="flex items-center gap-2.5 text-red-400 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                <span>Confirm Permanent Data Purge</span>
+              </div>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                This will immediately purge your MongoDB user account and cascade-delete all Firestore conversations, personal tasks, memories, reminders, and uploads.
+              </p>
+              <div className="space-y-1.5 text-xs">
+                <label className="text-gray-400">Type <strong>DELETE</strong> to confirm:</label>
+                <input
+                  type="text"
+                  value={wipeConfirmText}
+                  onChange={e => setWipeConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full px-3 py-2 bg-black/50 border border-red-900/60 rounded-xl text-white font-mono uppercase focus:outline-none focus:border-red-500"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWipeModal(false)}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/15 text-gray-300 font-semibold text-xs rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={wipeConfirmText !== 'DELETE' || isWiping}
+                  onClick={handleConfirmWipe}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition shadow-md shadow-red-600/30"
+                >
+                  {isWiping ? 'Purging...' : 'Erase Everything'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

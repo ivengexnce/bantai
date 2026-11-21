@@ -130,6 +130,43 @@ export class AssistantController {
     }
   }
 
+  // --- CALENDAR EVENTS ---
+  async getCalendarEvents(req: AuthenticatedRequest, res: Response) {
+    try {
+      const events = await firebaseFirestoreService.getCalendarEvents(req.user!.userId);
+      return res.json({ success: true, data: events });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: (err as Error).message });
+    }
+  }
+
+  async createCalendarEvent(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { title, startTime, endTime, description, location } = req.body;
+      if (!title || !startTime || !endTime) {
+        return res.status(400).json({ success: false, error: 'title, startTime, and endTime are required' });
+      }
+
+      const now = new Date().toISOString();
+      const event = {
+        id: uuidv4(),
+        userId: req.user!.userId,
+        title,
+        description,
+        startTime,
+        endTime,
+        location,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      const created = await firebaseFirestoreService.createCalendarEvent(event);
+      return res.status(201).json({ success: true, data: created });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: (err as Error).message });
+    }
+  }
+
   // --- PERSONAL MEMORY ---
   async getMemories(req: AuthenticatedRequest, res: Response) {
     try {

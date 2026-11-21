@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SafeUserProfile, FirestoreConversation, PersonalityMode } from '@bantai/shared';
 import { api } from '../lib/api';
 
-export type AppView = 'chat' | 'dashboard' | 'tasks' | 'reminders' | 'calendar' | 'knowledge' | 'memory' | 'settings';
+export type AppView = 'chat' | 'agent' | 'dashboard' | 'tasks' | 'reminders' | 'calendar' | 'knowledge' | 'memory' | 'settings';
 
 interface AppContextType {
   user: SafeUserProfile | null;

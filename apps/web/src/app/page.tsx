@@ -5,9 +5,11 @@ import { useApp } from '../context/AppContext';
 import { AuthModal } from '../components/auth/AuthModal';
 import { Sidebar } from '../components/layout/Sidebar';
 import { ChatView } from '../components/chat/ChatView';
+import { AgenticView } from '../components/assistant/AgenticView';
 import { DashboardView } from '../components/assistant/DashboardView';
 import { TasksView } from '../components/assistant/TasksView';
 import { RemindersView } from '../components/assistant/RemindersView';
+import { CalendarView } from '../components/assistant/CalendarView';
 import { KnowledgeView } from '../components/assistant/KnowledgeView';
 import { MemoryView } from '../components/assistant/MemoryView';
 import { SettingsView } from '../components/assistant/SettingsView';
@@ -40,9 +42,11 @@ export default function HomePage() {
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {activeView === 'chat' && <ChatView />}
+        {activeView === 'agent' && <AgenticView />}
         {activeView === 'dashboard' && <DashboardView />}
         {activeView === 'tasks' && <TasksView />}
         {activeView === 'reminders' && <RemindersView />}
+        {activeView === 'calendar' && <CalendarView />}
         {activeView === 'knowledge' && <KnowledgeView />}
         {activeView === 'memory' && <MemoryView />}
         {activeView === 'settings' && <SettingsView />}

@@ -263,6 +263,46 @@ class ApiClient {
     });
   }
 
+  async queryKnowledge(query: string, topK: number = 3): Promise<any[]> {
+    return await this.request<any[]>('/assistant/knowledge/query', {
+      method: 'POST',
+      body: JSON.stringify({ query, topK })
+    });
+  }
+
+  // Calendar
+  async getCalendarEvents(): Promise<any[]> {
+    return await this.request<any[]>('/assistant/calendar');
+  }
+
+  async createCalendarEvent(event: { title: string; startTime: string; endTime: string; description?: string; location?: string }): Promise<any> {
+    return await this.request<any>('/assistant/calendar', {
+      method: 'POST',
+      body: JSON.stringify(event)
+    });
+  }
+
+  // Agentic Engine
+  async createAgentPlan(goal: string, conversationId?: string): Promise<any> {
+    return await this.request<any>('/assistant/agent/plan', {
+      method: 'POST',
+      body: JSON.stringify({ goal, conversationId })
+    });
+  }
+
+  async executeAgentPlan(planId: string): Promise<any> {
+    return await this.request<any>(`/assistant/agent/execute/${planId}`, {
+      method: 'POST'
+    });
+  }
+
+  async approveAgentStep(planId: string, stepIndex: number, approved: boolean): Promise<any> {
+    return await this.request<any>('/assistant/agent/approve-step', {
+      method: 'POST',
+      body: JSON.stringify({ planId, stepIndex, approved })
+    });
+  }
+
   // Models & System
   async getModels(): Promise<{ supportedModels: AIModelDescriptor[]; backend: unknown }> {
     return await this.request<{ supportedModels: AIModelDescriptor[]; backend: unknown }>('/learning/models');

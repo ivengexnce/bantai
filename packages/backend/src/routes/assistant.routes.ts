@@ -17,6 +17,10 @@ router.get('/reminders', (req, res) => assistantController.getReminders(req, res
 router.post('/reminders', (req, res) => assistantController.createReminder(req, res));
 router.delete('/reminders/:id', (req, res) => assistantController.deleteReminder(req, res));
 
+// Calendar Events
+router.get('/calendar', (req, res) => assistantController.getCalendarEvents(req, res));
+router.post('/calendar', (req, res) => assistantController.createCalendarEvent(req, res));
+
 // Personal Memory
 router.get('/memory', (req, res) => assistantController.getMemories(req, res));
 router.post('/memory', (req, res) => assistantController.createMemory(req, res));
