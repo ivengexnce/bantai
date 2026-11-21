@@ -39,24 +39,24 @@ export function Dialog({
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
+          {/* Backdrop (Solid non-glass overlay, no purple/black) */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#0d1117]/85"
           />
 
-          {/* Modal Container */}
+          {/* Modal Container (Soft corner radius, crisp borders, zero drop shadows) */}
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
             className={cn(
-              'relative z-10 w-full max-w-lg border border-[#2b303c] bg-[#0e1014] p-6 text-[#d4d6db] font-mono text-xs shadow-2xl rounded-none',
+              'relative z-10 w-full max-w-lg border border-[#2b3648] bg-[#121722] p-6 text-[#d4d6db] font-mono text-xs rounded-2xl',
               className
             )}
           >

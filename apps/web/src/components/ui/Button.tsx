@@ -29,17 +29,17 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-mono font-bold uppercase tracking-wider select-none transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#cc8e25] disabled:opacity-40 disabled:pointer-events-none rounded-none';
+      'group inline-flex items-center justify-center font-mono font-bold uppercase tracking-wider select-none transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#cc8e25] disabled:opacity-40 disabled:pointer-events-none rounded-lg';
 
     const variants = {
       primary:
-        'bg-[#cc8e25] hover:bg-[#b06f1d] active:bg-[#9a5d14] text-black border border-[#cc8e25]',
+        'bg-[#cc8e25] hover:bg-[#d99b26] active:bg-[#9a5d14] text-black border border-[#cc8e25] hover:-translate-y-0.5',
       secondary:
-        'bg-[#181b22] hover:bg-[#20242f] active:bg-[#12141a] text-[#f0f2f5] border border-[#2b303c]',
+        'bg-[#181b22] hover:bg-[#20242f] active:bg-[#12141a] text-[#f0f2f5] border border-[#2b303c] hover:border-[#3d4556] hover:-translate-y-0.5',
       outline:
-        'bg-transparent hover:bg-[#181b22] text-[#d4d6db] hover:text-[#f0f2f5] border border-[#2b303c] hover:border-[#404656]',
+        'bg-transparent hover:bg-[#181b22] text-[#d4d6db] hover:text-[#f0f2f5] border border-[#2b303c] hover:border-[#404656] hover:-translate-y-0.5',
       danger:
-        'bg-[#2a1315] hover:bg-[#3d181c] text-red-400 border border-red-500/40 hover:border-red-500',
+        'bg-[#2a1315] hover:bg-[#3d181c] text-red-400 border border-red-500/40 hover:border-red-500 hover:-translate-y-0.5',
       ghost:
         'bg-transparent hover:bg-[#181b22] text-[#8c919e] hover:text-[#f0f2f5] border border-transparent'
     };

@@ -3,7 +3,7 @@ import './globals.css';
 import { AppProvider } from '../context/AppContext';
 
 export const metadata: Metadata = {
-  title: 'BANTAI — Apna Model. Apna Dimaag. Apna AI.',
+  title: 'BANTAI - Apna Model. Apna Dimaag. Apna AI.',
   description: 'Production Self-Hosted Agentic AI Platform with authentic Mumbai personality and zero third-party AI APIs.'
 };
 

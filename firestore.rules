@@ -1,0 +1,520 @@
+rules_version = '2';
+
+// ===============================================================
+// BANTAI Application Firestore Security Rules
+// Project ID: bantai-369
+// ===============================================================
+//
+// Architecture Boundary & Guarantees:
+// 1. Dual-Database Architectural Boundary:
+//    - MongoDB: Dedicated store for user credentials, password hashes,
+//      and core user identity. Never exposed to direct client Firestore access.
+//    - Firestore: Handles user resources, agent memory, conversation
+//      telemetry, tasks, reminders, calendar entries, and knowledge bases.
+// 2. Strict User Isolation:
+//    - Every document across all collections is strictly user-scoped.
+//    - Direct client read, list, create, update, and delete operations
+//      require request.auth != null and request.auth.uid == userId.
+// 3. Server-Side Bypass:
+//    - Server-side administrative operations using the Firebase Admin SDK
+//      bypass these rules automatically. Client-side SDKs and emulators
+//      are strictly constrained by this policy.
+// 4. Default Deny:
+//    - Root wildcard denies all reads and writes across any unspecified
+//      collections (e.g., users, system, configs).
+// 5. Anti-Tampering & DoS Defenses:
+//    - Strict schema whitelist (hasOnlyAllowedFields) prevents schema pollution.
+//    - Bound string lengths and array sizes prevent resource exhaustion attacks.
+//    - Immutable ownership (userId) and creation metadata (createdAt, id)
+//      prevent privilege escalation and audit log tampering.
+//
+// ===============================================================
+// Assumed Data Models
+// ===============================================================
+//
+// Collection: conversations
+// Path: /conversations/{conversationId}
+// Fields:
+//   - id: string (required, 1-128 chars, matches conversationId, immutable)
+//   - userId: string (required, matches request.auth.uid, immutable)
+//   - title: string (required, 1-200 chars)
+//   - personalityMode: string (required, ['tapori', 'balanced', 'professional', 'developer', 'academic'])
+//   - modelId: string (required, 1-64 chars)
+//   - messageCount: int (required, >= 0)
+//   - isArchived: bool (required)
+//   - isPinned: bool (required)
+//   - createdAt: timestamp | string (required, immutable)
+//   - updatedAt: timestamp | string (required)
+//   - lastMessageAt: timestamp | string (required)
+//   - tags: list of strings (optional, max 20 items)
+//   - summary: string (optional, max 1000 chars)
+//
+// Collection: messages
+// Path: /messages/{messageId} or /conversations/{conversationId}/messages/{messageId}
+// Fields:
+//   - id: string (required, 1-128 chars, matches messageId, immutable)
+//   - conversationId: string (required, 1-128 chars, immutable)
+//   - userId: string (required, matches request.auth.uid, immutable)
+//   - role: string (required, ['user', 'assistant', 'system', 'tool'], immutable)
+//   - content: string (required, 1-32768 chars)
+//   - personalityMode: string (required, ['tapori', 'balanced', 'professional', 'developer', 'academic'])
+//   - createdAt: timestamp | string (required, immutable)
+//   - modelUsed: string (optional, max 64 chars)
+//   - toolCalls: list (optional, max 50 items)
+//   - attachments: list (optional, max 10 items)
+//   - feedback: map (optional)
+//   - tokensPrompt: int (optional, >= 0)
+//   - tokensCompletion: int (optional, >= 0)
+//   - totalTokens: int (optional, >= 0)
+//
+// Collection: tasks
+// Path: /tasks/{taskId}
+// Fields:
+//   - id: string (required, 1-128 chars, matches taskId, immutable)
+//   - userId: string (required, matches request.auth.uid, immutable)
+//   - title: string (required, 1-200 chars)
+//   - priority: string (required, ['low', 'medium', 'high', 'urgent'])
+//   - status: string (required, ['pending', 'in_progress', 'completed', 'cancelled'])
+//   - createdAt: timestamp | string (required, immutable)
+//   - updatedAt: timestamp | string (required)
+//   - description: string (optional, max 2000 chars)
+//   - dueDate: timestamp | string | null (optional)
+//   - subtasks: list (optional, max 50 items)
+//   - tags: list of strings (optional, max 20 items)
+//   - recurring: string (optional, ['none', 'daily', 'weekly', 'monthly'])
+//   - completedAt: timestamp | string | null (optional)
+//
+// Collection: reminders
+// Path: /reminders/{reminderId}
+// Fields:
+//   - id: string (required, 1-128 chars, matches reminderId, immutable)
+//   - userId: string (required, matches request.auth.uid, immutable)
+//   - title: string (required, 1-200 chars)
+//   - scheduledTime: timestamp | string (required)
+//   - timezone: string (required, 1-64 chars)
+//   - isTriggered: bool (required)
+//   - createdAt: timestamp | string (required, immutable)
+//   - status: string (optional, ['scheduled', 'fired', 'dismissed', 'cancelled'])
+//   - channel: string (optional, ['in_app', 'push', 'both'])
+//   - recurring: string (optional, ['none', 'daily', 'weekly', 'monthly'])
+//   - updatedAt: timestamp | string (optional)
+//
+// Collection: memories
+// Path: /memories/{memoryId}
+// Fields:
+//   - id: string (required, 1-128 chars, matches memoryId, immutable)
+//   - userId: string (required, matches request.auth.uid, immutable)
+//   - key: string (required, 1-100 chars)
+//   - category: string (required, ['preference', 'fact', 'project', 'goal', 'instruction'])
+//   - content: string (required, 1-5000 chars)
+//   - createdAt: timestamp | string (required, immutable)
+//   - updatedAt: timestamp | string (required)
+//   - confidence: number (optional, 0.0 - 1.0)
+//   - sourceConversationId: string (optional, max 128 chars)
+//
+// Collection: calendar
+// Path: /calendar/{eventId}
+// Fields:
+//   - id: string (required, 1-128 chars, matches eventId, immutable)
+//   - userId: string (required, matches request.auth.uid, immutable)
+//   - title: string (required, 1-200 chars)
+//   - startTime: timestamp | string (required)
+//   - endTime: timestamp | string (required)
+//   - location: string (required, 0-300 chars)
+//   - description: string (required, 0-2000 chars)
+//   - createdAt: timestamp | string (required, immutable)
+//   - updatedAt: timestamp | string (optional)
+//   - attendees: list (optional, max 50 items)
+//   - isAllDay: bool (optional)
+//   - hasConflict: bool (optional)
+//
+// Collection: knowledge
+// Path: /knowledge/{docId}
+// Fields:
+//   - id: string (required, 1-128 chars, matches docId, immutable)
+//   - userId: string (required, matches request.auth.uid, immutable)
+//   - filename: string (required, 1-255 chars)
+//   - chunkCount: int (required, >= 0)
+//   - chunks: list (required, max 500 items)
+//   - createdAt: timestamp | string (required, immutable)
+//   - originalName: string (optional, max 255 chars)
+//   - mimeType: string (optional, max 100 chars)
+//   - sizeBytes: int (optional, >= 0)
+//   - storageUrl: string (optional, max 500 chars)
+//   - embeddingModel: string (optional, max 100 chars)
+//   - summary: string (optional, max 2000 chars)
+//   - extractedKeywords: list (optional, max 50 items)
+//   - updatedAt: timestamp | string (optional)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Global Helper Functions
+    // ===============================================================
+
+    // Check if the request is from an authenticated user
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Verify user owns the document based on a provided userId
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if fields specified in the list are not modified during an update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate date/timestamp field (supports Firestore timestamp and ISO 8601 string)
+    function isValidDateTime(val) {
+      return val is timestamp ||
+        (val is string && val.size() >= 10 && val.size() <= 40 &&
+         val.matches('^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:?\\d{2})?)?$'));
+    }
+
+    // ===============================================================
+    // Domain Validator Functions
+    // ===============================================================
+
+    // Validate conversations document
+    function isValidConversation(data) {
+      return data.keys().hasAll([
+               'id', 'userId', 'title', 'personalityMode', 'modelId',
+               'messageCount', 'isArchived', 'isPinned', 'createdAt',
+               'updatedAt', 'lastMessageAt'
+             ]) &&
+             data.keys().hasOnly([
+               'id', 'userId', 'title', 'personalityMode', 'modelId',
+               'messageCount', 'isArchived', 'isPinned', 'createdAt',
+               'updatedAt', 'lastMessageAt', 'tags', 'summary'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.personalityMode in ['tapori', 'balanced', 'professional', 'developer', 'academic'] &&
+             data.modelId is string && data.modelId.size() >= 1 && data.modelId.size() <= 64 &&
+             data.messageCount is int && data.messageCount >= 0 &&
+             data.isArchived is bool &&
+             data.isPinned is bool &&
+             isValidDateTime(data.createdAt) &&
+             isValidDateTime(data.updatedAt) &&
+             isValidDateTime(data.lastMessageAt) &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 20)) &&
+             (!('summary' in data) || (data.summary is string && data.summary.size() <= 1000));
+    }
+
+    // Validate messages document
+    function isValidMessage(data) {
+      return data.keys().hasAll([
+               'id', 'conversationId', 'userId', 'role', 'content',
+               'personalityMode', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'id', 'conversationId', 'userId', 'role', 'content',
+               'personalityMode', 'createdAt', 'modelUsed', 'toolCalls',
+               'attachments', 'feedback', 'tokensPrompt', 'tokensCompletion',
+               'totalTokens'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.conversationId is string && data.conversationId.size() >= 1 && data.conversationId.size() <= 128 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.role in ['user', 'assistant', 'system', 'tool'] &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 32768 &&
+             data.personalityMode in ['tapori', 'balanced', 'professional', 'developer', 'academic'] &&
+             isValidDateTime(data.createdAt) &&
+             (!('modelUsed' in data) || (data.modelUsed is string && data.modelUsed.size() <= 64)) &&
+             (!('toolCalls' in data) || (data.toolCalls is list && data.toolCalls.size() <= 50)) &&
+             (!('attachments' in data) || (data.attachments is list && data.attachments.size() <= 10)) &&
+             (!('feedback' in data) || (data.feedback is map)) &&
+             (!('tokensPrompt' in data) || (data.tokensPrompt is int && data.tokensPrompt >= 0)) &&
+             (!('tokensCompletion' in data) || (data.tokensCompletion is int && data.tokensCompletion >= 0)) &&
+             (!('totalTokens' in data) || (data.totalTokens is int && data.totalTokens >= 0));
+    }
+
+    // Validate tasks document
+    function isValidTask(data) {
+      return data.keys().hasAll([
+               'id', 'userId', 'title', 'priority', 'status',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'id', 'userId', 'title', 'priority', 'status',
+               'createdAt', 'updatedAt', 'description', 'dueDate',
+               'subtasks', 'tags', 'recurring', 'completedAt'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.priority in ['low', 'medium', 'high', 'urgent'] &&
+             data.status in ['pending', 'in_progress', 'completed', 'cancelled'] &&
+             isValidDateTime(data.createdAt) &&
+             isValidDateTime(data.updatedAt) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             (!('dueDate' in data) || (data.dueDate == null || isValidDateTime(data.dueDate))) &&
+             (!('subtasks' in data) || (data.subtasks is list && data.subtasks.size() <= 50)) &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 20)) &&
+             (!('recurring' in data) || (data.recurring in ['none', 'daily', 'weekly', 'monthly'])) &&
+             (!('completedAt' in data) || (data.completedAt == null || isValidDateTime(data.completedAt)));
+    }
+
+    // Validate reminders document
+    function isValidReminder(data) {
+      return data.keys().hasAll([
+               'id', 'userId', 'title', 'scheduledTime', 'timezone',
+               'isTriggered', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'id', 'userId', 'title', 'scheduledTime', 'timezone',
+               'isTriggered', 'createdAt', 'status', 'channel',
+               'recurring', 'updatedAt'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             isValidDateTime(data.scheduledTime) &&
+             data.timezone is string && data.timezone.size() >= 1 && data.timezone.size() <= 64 &&
+             data.isTriggered is bool &&
+             isValidDateTime(data.createdAt) &&
+             (!('status' in data) || (data.status in ['scheduled', 'fired', 'dismissed', 'cancelled'])) &&
+             (!('channel' in data) || (data.channel in ['in_app', 'push', 'both'])) &&
+             (!('recurring' in data) || (data.recurring in ['none', 'daily', 'weekly', 'monthly'])) &&
+             (!('updatedAt' in data) || isValidDateTime(data.updatedAt));
+    }
+
+    // Validate memories document
+    function isValidMemory(data) {
+      return data.keys().hasAll([
+               'id', 'userId', 'key', 'category', 'content',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'id', 'userId', 'key', 'category', 'content',
+               'createdAt', 'updatedAt', 'confidence', 'sourceConversationId'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.key is string && data.key.size() >= 1 && data.key.size() <= 100 &&
+             data.category in ['preference', 'fact', 'project', 'goal', 'instruction'] &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 5000 &&
+             isValidDateTime(data.createdAt) &&
+             isValidDateTime(data.updatedAt) &&
+             (!('confidence' in data) || (data.confidence is number && data.confidence >= 0 && data.confidence <= 1)) &&
+             (!('sourceConversationId' in data) || (data.sourceConversationId is string && data.sourceConversationId.size() <= 128));
+    }
+
+    // Validate calendar document
+    function isValidCalendarEvent(data) {
+      return data.keys().hasAll([
+               'id', 'userId', 'title', 'startTime', 'endTime',
+               'location', 'description', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'id', 'userId', 'title', 'startTime', 'endTime',
+               'location', 'description', 'createdAt', 'updatedAt',
+               'attendees', 'isAllDay', 'hasConflict'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             isValidDateTime(data.startTime) &&
+             isValidDateTime(data.endTime) &&
+             data.location is string && data.location.size() <= 300 &&
+             data.description is string && data.description.size() <= 2000 &&
+             isValidDateTime(data.createdAt) &&
+             (!('updatedAt' in data) || isValidDateTime(data.updatedAt)) &&
+             (!('attendees' in data) || (data.attendees is list && data.attendees.size() <= 50)) &&
+             (!('isAllDay' in data) || data.isAllDay is bool) &&
+             (!('hasConflict' in data) || data.hasConflict is bool);
+    }
+
+    // Validate knowledge document
+    function isValidKnowledgeDoc(data) {
+      return data.keys().hasAll([
+               'id', 'userId', 'filename', 'chunkCount', 'chunks', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'id', 'userId', 'filename', 'chunkCount', 'chunks', 'createdAt',
+               'originalName', 'mimeType', 'sizeBytes', 'storageUrl',
+               'embeddingModel', 'summary', 'extractedKeywords', 'updatedAt'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.filename is string && data.filename.size() >= 1 && data.filename.size() <= 255 &&
+             data.chunkCount is int && data.chunkCount >= 0 &&
+             data.chunks is list && data.chunks.size() <= 500 &&
+             isValidDateTime(data.createdAt) &&
+             (!('originalName' in data) || (data.originalName is string && data.originalName.size() <= 255)) &&
+             (!('mimeType' in data) || (data.mimeType is string && data.mimeType.size() <= 100)) &&
+             (!('sizeBytes' in data) || (data.sizeBytes is int && data.sizeBytes >= 0)) &&
+             (!('storageUrl' in data) || (data.storageUrl is string && data.storageUrl.size() <= 500)) &&
+             (!('embeddingModel' in data) || (data.embeddingModel is string && data.embeddingModel.size() <= 100)) &&
+             (!('summary' in data) || (data.summary is string && data.summary.size() <= 2000)) &&
+             (!('extractedKeywords' in data) || (data.extractedKeywords is list && data.extractedKeywords.size() <= 50)) &&
+             (!('updatedAt' in data) || isValidDateTime(data.updatedAt));
+    }
+
+    // ===============================================================
+    // Root Rule: Default Deny
+    // Disallows access to any unspecified collection (e.g., users, system)
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // 1. Conversations Collection
+    // ===============================================================
+    match /conversations/{conversationId} {
+      allow read: if isOwner(resource.data.userId);
+
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
+                       request.resource.data.id == conversationId &&
+                       isValidConversation(request.resource.data);
+
+      allow update: if isOwner(resource.data.userId) &&
+                       isOwner(request.resource.data.userId) &&
+                       areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']) &&
+                       isValidConversation(request.resource.data);
+
+      allow delete: if isOwner(resource.data.userId);
+
+      // Subcollection messages under a conversation (if accessed hierarchically)
+      match /messages/{messageId} {
+        allow read: if isOwner(resource.data.userId);
+
+        allow create: if isAuthenticated() &&
+                         isOwner(request.resource.data.userId) &&
+                         request.resource.data.id == messageId &&
+                         request.resource.data.conversationId == conversationId &&
+                         isValidMessage(request.resource.data);
+
+        allow update: if isOwner(resource.data.userId) &&
+                         isOwner(request.resource.data.userId) &&
+                         areImmutableFieldsUnchanged(['id', 'userId', 'conversationId', 'createdAt', 'role']) &&
+                         isValidMessage(request.resource.data);
+
+        allow delete: if isOwner(resource.data.userId);
+      }
+    }
+
+    // ===============================================================
+    // 2. Messages Collection (Root Flat Collection)
+    // ===============================================================
+    match /messages/{messageId} {
+      allow read: if isOwner(resource.data.userId);
+
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
+                       request.resource.data.id == messageId &&
+                       isValidMessage(request.resource.data);
+
+      allow update: if isOwner(resource.data.userId) &&
+                       isOwner(request.resource.data.userId) &&
+                       areImmutableFieldsUnchanged(['id', 'userId', 'conversationId', 'createdAt', 'role']) &&
+                       isValidMessage(request.resource.data);
+
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ===============================================================
+    // 3. Tasks Collection
+    // ===============================================================
+    match /tasks/{taskId} {
+      allow read: if isOwner(resource.data.userId);
+
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
+                       request.resource.data.id == taskId &&
+                       isValidTask(request.resource.data);
+
+      allow update: if isOwner(resource.data.userId) &&
+                       isOwner(request.resource.data.userId) &&
+                       areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']) &&
+                       isValidTask(request.resource.data);
+
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ===============================================================
+    // 4. Reminders Collection
+    // ===============================================================
+    match /reminders/{reminderId} {
+      allow read: if isOwner(resource.data.userId);
+
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
+                       request.resource.data.id == reminderId &&
+                       isValidReminder(request.resource.data);
+
+      allow update: if isOwner(resource.data.userId) &&
+                       isOwner(request.resource.data.userId) &&
+                       areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']) &&
+                       isValidReminder(request.resource.data);
+
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ===============================================================
+    // 5. Memories Collection
+    // ===============================================================
+    match /memories/{memoryId} {
+      allow read: if isOwner(resource.data.userId);
+
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
+                       request.resource.data.id == memoryId &&
+                       isValidMemory(request.resource.data);
+
+      allow update: if isOwner(resource.data.userId) &&
+                       isOwner(request.resource.data.userId) &&
+                       areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']) &&
+                       isValidMemory(request.resource.data);
+
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ===============================================================
+    // 6. Calendar Collection
+    // ===============================================================
+    match /calendar/{eventId} {
+      allow read: if isOwner(resource.data.userId);
+
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
+                       request.resource.data.id == eventId &&
+                       isValidCalendarEvent(request.resource.data);
+
+      allow update: if isOwner(resource.data.userId) &&
+                       isOwner(request.resource.data.userId) &&
+                       areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']) &&
+                       isValidCalendarEvent(request.resource.data);
+
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ===============================================================
+    // 7. Knowledge Collection
+    // ===============================================================
+    match /knowledge/{docId} {
+      allow read: if isOwner(resource.data.userId);
+
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
+                       request.resource.data.id == docId &&
+                       isValidKnowledgeDoc(request.resource.data);
+
+      allow update: if isOwner(resource.data.userId) &&
+                       isOwner(request.resource.data.userId) &&
+                       areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']) &&
+                       isValidKnowledgeDoc(request.resource.data);
+
+      allow delete: if isOwner(resource.data.userId);
+    }
+  }
+}

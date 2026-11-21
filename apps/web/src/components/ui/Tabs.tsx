@@ -29,7 +29,7 @@ export function Tabs<T extends string = string>({
     <div
       role="tablist"
       className={cn(
-        'inline-flex items-center border border-[#20232b] bg-[#0e1014] p-0.5 font-mono text-xs select-none',
+        'inline-flex items-center border border-[#2b3648] bg-[#10141d] p-1 font-mono text-xs select-none rounded-lg',
         className
       )}
     >
@@ -42,7 +42,7 @@ export function Tabs<T extends string = string>({
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
             className={cn(
-              'relative px-3 py-1.5 font-bold uppercase transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#cc8e25] text-[11px]',
+              'relative px-3 py-1.5 font-bold uppercase transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#cc8e25] text-[11px] rounded-md',
               isActive ? 'text-black' : 'text-[#8c919e] hover:text-[#f0f2f5]'
             )}
           >
@@ -50,7 +50,7 @@ export function Tabs<T extends string = string>({
               <motion.div
                 layoutId={layoutId}
                 transition={{ type: 'spring', damping: 28, stiffness: 350 }}
-                className="absolute inset-0 bg-[#cc8e25]"
+                className="absolute inset-0 bg-[#cc8e25] rounded-md"
               />
             )}
             <span className="relative z-10 flex items-center gap-1.5">
