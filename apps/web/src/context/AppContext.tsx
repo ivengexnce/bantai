@@ -28,7 +28,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SafeUserProfile | null>(null);
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [activeView, setActiveView] = useState<AppView>('chat');
   const [conversations, setConversations] = useState<FirestoreConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -55,14 +55,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
+      const token = api.getToken();
+      if (!token) {
+        setIsLoadingUser(false);
+        return;
+      }
+      setIsLoadingUser(true);
       try {
-        const token = api.getToken();
-        if (token) {
-          const profile = await api.getMe();
-          setUser(profile);
-          if (profile.preferences?.defaultPersonalityMode) {
-            setPersonalityMode(profile.preferences.defaultPersonalityMode);
-          }
+        const profile = await api.getMe();
+        setUser(profile);
+        if (profile.preferences?.defaultPersonalityMode) {
+          setPersonalityMode(profile.preferences.defaultPersonalityMode);
         }
       } catch (err) {
         console.warn('Session expired or invalid:', err);
