@@ -3,27 +3,6 @@
 import React, { useState } from 'react';
 import { api } from '../../lib/api';
 import { AgentExecutionPlan } from '@bantai/shared';
-import {
-  Cpu,
-  Play,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  ShieldCheck,
-  ShieldAlert,
-  Terminal,
-  Calculator,
-  Search,
-  Database,
-  FileText,
-  Calendar,
-  Mail,
-  CheckSquare,
-  Sparkles,
-  ArrowRight,
-  RefreshCw,
-  Layers
-} from 'lucide-react';
 
 const PRESET_GOALS = [
   'Analyze project documents, compute cost variance, and schedule a review reminder',
@@ -31,19 +10,6 @@ const PRESET_GOALS = [
   'Execute a sandboxed Node.js data transformation script and verify the output',
   'Search personal knowledge base for architecture notes and extract key recommendations'
 ];
-
-const TOOL_ICONS: Record<string, React.ReactNode> = {
-  calculator: <Calculator className="w-4 h-4 text-emerald-400" />,
-  document_reader: <FileText className="w-4 h-4 text-blue-400" />,
-  file_search: <Search className="w-4 h-4 text-sky-400" />,
-  database_retrieval: <Database className="w-4 h-4 text-purple-400" />,
-  rag_retrieval: <Layers className="w-4 h-4 text-indigo-400" />,
-  sandbox_code_executor: <Terminal className="w-4 h-4 text-amber-400" />,
-  task_manager: <CheckSquare className="w-4 h-4 text-green-400" />,
-  reminder_scheduler: <Clock className="w-4 h-4 text-cyan-400" />,
-  calendar_connector: <Calendar className="w-4 h-4 text-orange-400" />,
-  email_connector: <Mail className="w-4 h-4 text-rose-400" />
-};
 
 export function AgenticView() {
   const [goal, setGoal] = useState('');
@@ -107,60 +73,61 @@ export function AgenticView() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-bantai-dark">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-bantai-500/10 border border-bantai-500/30 text-xs font-semibold text-bantai-400 mb-2">
-            <Cpu className="w-3.5 h-3.5" /> BANTAI Autonomous Agentic Engine
+    <div className="flex-1 overflow-y-auto p-6 bg-[#0e1014] text-[#d4d6db] font-mono text-xs select-none">
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* 1. Header Specification */}
+        <div className="border-b border-[#20232b] pb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-1.5 bg-[#cc8e25] inline-block" />
+            <span className="text-[10px] uppercase tracking-widest text-[#cc8e25] font-bold">
+              [AUTONOMOUS AGENTIC EXECUTION ENGINE]
+            </span>
+            <span className="text-[10px] text-[#5a6070]">|</span>
+            <span className="text-[10px] text-[#10b981]">10 VERIFIED LOCAL TOOLS</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Multi-Step Goal Planner & Tool Executor
+          <h1 className="text-xl font-bold text-[#f0f2f5] tracking-tight uppercase">
+            Deterministic Multi-Step Goal Planner
           </h1>
-          <p className="text-xs text-gray-400 mt-1 max-w-2xl">
-            BANTAI breaks high-level goals into ordered execution plans, selects deterministic tools, and strictly halts for human authorization on sensitive operations.
+          <p className="text-xs text-[#8c919e] mt-1 max-w-2xl leading-relaxed">
+            Decomposes high-level objectives into ordered execution DAGs, executes sandboxed local tools, and halts at deterministic security checkpoints for human operator authorization.
           </p>
         </div>
 
-        {error ? (
-          <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-red-300 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {error}
+        {error && (
+          <div className="p-3 bg-[#181012] border border-red-500/50 text-red-400 text-xs">
+            [EXECUTION ERROR]: {error}
           </div>
-        ) : null}
+        )}
 
-        {/* Goal Input Card */}
-        <div className="p-6 bg-bantai-darkCard border border-bantai-darkBorder rounded-2xl shadow-xl space-y-4">
-          <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
-            Define Objective / Multi-Step Task
-          </label>
-          <div className="flex gap-2">
+        {/* 2. Goal Input Section */}
+        <div className="border border-[#2b303c] bg-[#12141a] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] uppercase tracking-widest text-[#8c919e] font-bold">
+              [SPECIFY OBJECTIVE / MULTI-STEP TASK]
+            </label>
+            <span className="text-[10px] text-[#5a6070]">AIR-GAPPED RUNTIME</span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
             <textarea
               rows={2}
               value={goal}
               onChange={e => setGoal(e.target.value)}
               placeholder="E.g., Read project documentation, execute calculation in sandbox, and schedule a task reminder..."
-              className="flex-1 bg-black/40 border border-bantai-darkBorder rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-bantai-500 resize-none"
+              className="flex-1 bg-[#090b0e] border border-[#20232b] p-3 text-xs text-[#f0f2f5] placeholder-[#5a6070] focus:outline-none focus:border-[#cc8e25] resize-none font-mono"
             />
             <button
               onClick={() => handleCreatePlan()}
               disabled={!goal.trim() || isPlanning}
-              className="px-6 bg-bantai-500 hover:bg-bantai-600 disabled:opacity-50 text-black font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-bantai-500/20"
+              className="px-6 py-3 bg-[#cc8e25] hover:bg-[#b06f1d] disabled:opacity-50 text-black font-bold uppercase text-xs transition-colors flex items-center justify-center gap-1.5"
             >
-              {isPlanning ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" /> Planning...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" /> Generate Plan
-                </>
-              )}
+              {isPlanning ? '[GENERATING DAG...]' : '[DISPATCH PLANNER]'}
             </button>
           </div>
 
-          {/* Quick Presets */}
-          <div className="pt-2">
-            <p className="text-[11px] font-semibold text-gray-400 mb-2">Example Agentic Prompts:</p>
+          {/* Preset Prompts */}
+          <div className="pt-2 border-t border-[#20232b]">
+            <p className="text-[10px] uppercase text-[#5a6070] mb-2 font-bold">[VERIFIED OBJECTIVE TEMPLATES]:</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {PRESET_GOALS.map((preset, idx) => (
                 <button
@@ -169,48 +136,40 @@ export function AgenticView() {
                     setGoal(preset);
                     handleCreatePlan(preset);
                   }}
-                  className="text-left p-2.5 bg-white/5 hover:bg-white/10 border border-bantai-darkBorder rounded-xl text-xs text-gray-300 hover:text-white transition flex items-center justify-between group"
+                  className="text-left p-2.5 bg-[#161922] hover:bg-[#1c202b] border border-[#20232b] hover:border-[#cc8e25] text-xs text-[#8c919e] hover:text-[#f0f2f5] transition-colors"
                 >
-                  <span className="truncate pr-2">{preset}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-gray-500 group-hover:text-bantai-400 flex-shrink-0 transition" />
+                  <span className="text-[#cc8e25] mr-1.5">&gt;</span>
+                  <span>{preset}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Active Plan Execution Visualizer */}
+        {/* 3. Active Plan Execution DAG View */}
         {activePlan && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-bantai-darkCard border border-bantai-darkBorder rounded-2xl">
+          <div className="space-y-3">
+            <div className="border border-[#2b303c] bg-[#12141a] p-3 flex items-center justify-between flex-wrap gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-400">Plan ID:</span>
-                  <code className="text-[11px] text-bantai-400 font-mono">{activePlan.planId.slice(0, 8)}...</code>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                    activePlan.status === 'completed'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : activePlan.status === 'waiting_approval'
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
-                      : activePlan.status === 'executing'
-                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                      : 'bg-gray-500/20 text-gray-300'
-                  }`}>
-                    {activePlan.status.replace('_', ' ')}
+                  <span className="text-[10px] uppercase text-[#5a6070]">PLAN ID:</span>
+                  <code className="text-[11px] text-[#cc8e25] font-bold">{activePlan.planId.slice(0, 12)}</code>
+                  <span className="text-[10px] px-1.5 py-0.5 border border-[#2b303c] uppercase text-[#f0f2f5]">
+                    [{activePlan.status.replace('_', ' ')}]
                   </span>
                 </div>
-                <h3 className="text-sm font-bold text-white mt-1">{activePlan.goal}</h3>
+                <h3 className="text-xs font-bold text-[#f0f2f5] mt-1 uppercase">&gt; {activePlan.goal}</h3>
               </div>
 
-              {activePlan.status === 'waiting_approval' ? (
-                <div className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 animate-bounce" /> Action Blocked: Authorization Needed
+              {activePlan.status === 'waiting_approval' && (
+                <div className="text-[11px] font-bold text-[#cc8e25] border border-[#cc8e25] px-2.5 py-1 bg-[#1a150e]">
+                  [CHECKPOINT: OPERATOR AUTHORIZATION REQUIRED]
                 </div>
-              ) : null}
+              )}
             </div>
 
             {/* Plan Steps */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               {activePlan.steps.map((step: any, idx: number) => {
                 const isStepActive = idx === activePlan.currentStepIndex;
                 const isCompleted = step.status === 'completed';
@@ -219,90 +178,75 @@ export function AgenticView() {
                 return (
                   <div
                     key={idx}
-                    className={`p-5 rounded-2xl border transition ${
+                    className={`border p-3.5 transition-colors ${
                       isWaitingApproval
-                        ? 'bg-amber-950/20 border-amber-500/50 shadow-lg shadow-amber-500/5'
+                        ? 'bg-[#18130e] border-[#cc8e25]'
                         : isCompleted
-                        ? 'bg-bantai-darkCard border-emerald-500/30'
+                        ? 'bg-[#12141a] border-[#10b981]/50'
                         : isStepActive
-                        ? 'bg-bantai-darkCard border-bantai-500/50 shadow-md'
-                        : 'bg-bantai-darkCard/50 border-bantai-darkBorder opacity-80'
+                        ? 'bg-[#161922] border-[#2b303c]'
+                        : 'bg-[#0e1014] border-[#20232b] opacity-75'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5 ${
-                          isCompleted
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                            : isWaitingApproval
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                            : 'bg-white/10 text-gray-300 border border-white/10'
-                        }`}>
-                          {isCompleted ? <CheckCircle className="w-4 h-4" /> : idx + 1}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-[#cc8e25]">[{String(idx + 1).padStart(2, '0')}]</span>
+                          <span className="text-xs font-bold text-[#f0f2f5] uppercase">{step.action}</span>
+                          <span className="px-1.5 py-0.5 border border-[#20232b] bg-[#090b0e] text-[10px] text-[#8c919e]">
+                            TOOL: {step.toolName.toUpperCase()}
+                          </span>
                         </div>
-
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-white">{step.action}</span>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-black/50 border border-white/10 rounded-md text-[10px] font-mono text-gray-300">
-                              {TOOL_ICONS[step.toolName] || <Cpu className="w-3 h-3 text-gray-400" />}
-                              {step.toolName}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-400">{step.rationale}</p>
-                        </div>
+                        <p className="text-[11px] text-[#8c919e] pl-6">&gt; {step.rationale}</p>
                       </div>
 
                       <div className="flex items-center gap-2">
                         {step.requiresApproval ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                            <ShieldAlert className="w-3 h-3" /> Requires Approval
+                          <span className="text-[10px] text-[#cc8e25] border border-[#cc8e25]/60 px-1.5 py-0.5 uppercase">
+                            [HUMAN GATE]
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400/80 bg-emerald-500/5 px-2 py-0.5 rounded-full">
-                            <ShieldCheck className="w-3 h-3" /> Auto-Authorized
+                          <span className="text-[10px] text-[#10b981] border border-[#10b981]/60 px-1.5 py-0.5 uppercase">
+                            [AUTO PERMITTED]
                           </span>
                         )}
                       </div>
                     </div>
 
                     {/* Human In The Loop Gate UI */}
-                    {isWaitingApproval ? (
-                      <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/40 rounded-xl flex flex-col md:flex-row items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5 text-xs text-amber-200">
-                          <ShieldAlert className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                          <span>
-                            <strong>Security Checkpoint:</strong> This step triggers <code>{step.toolName}</code>. Do you authorize BANTAI to execute this step?
-                          </span>
+                    {isWaitingApproval && (
+                      <div className="mt-3 p-3 bg-[#12141a] border border-[#cc8e25] flex flex-col md:flex-row items-center justify-between gap-3">
+                        <div className="text-[11px] text-[#cc8e25]">
+                          <strong>SECURITY CHECKPOINT:</strong> Action requires executing <code>{step.toolName}</code>. Authorize execution?
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleApproveStep(step.stepIndex, false)}
                             disabled={isExecuting}
-                            className="px-3.5 py-1.5 bg-white/10 hover:bg-white/15 text-gray-300 text-xs font-semibold rounded-lg transition"
+                            className="px-3 py-1 border border-[#2b303c] hover:border-red-500 hover:text-red-400 text-xs uppercase"
                           >
-                            Reject & Skip
+                            [REJECT]
                           </button>
                           <button
                             onClick={() => handleApproveStep(step.stepIndex, true)}
                             disabled={isExecuting}
-                            className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-lg transition shadow-md shadow-amber-500/20"
+                            className="px-4 py-1 bg-[#cc8e25] hover:bg-[#b06f1d] text-black text-xs font-bold uppercase"
                           >
-                            {isExecuting ? 'Executing...' : 'Approve & Execute'}
+                            {isExecuting ? '[EXECUTING...]' : '[APPROVE & EXECUTE]'}
                           </button>
                         </div>
                       </div>
-                    ) : null}
+                    )}
 
                     {/* Step Result Output */}
-                    {step.result ? (
-                      <div className="mt-3 p-3 bg-black/60 border border-white/10 rounded-xl font-mono text-xs text-emerald-400 overflow-x-auto">
-                        <div className="text-[10px] text-gray-500 font-sans uppercase font-bold tracking-wider mb-1">
-                          Verified Execution Evidence:
+                    {step.result && (
+                      <div className="mt-2.5 p-2.5 bg-[#090b0e] border border-[#20232b] text-[11px] text-[#10b981]">
+                        <div className="text-[9px] uppercase tracking-wider text-[#5a6070] mb-1">
+                          [EVIDENCE OUTPUT]:
                         </div>
-                        <pre className="whitespace-pre-wrap">{JSON.stringify(step.result, null, 2)}</pre>
+                        <pre className="whitespace-pre-wrap overflow-x-auto">{JSON.stringify(step.result, null, 2)}</pre>
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 );
               })}
@@ -310,41 +254,38 @@ export function AgenticView() {
           </div>
         )}
 
-        {/* 10 Tools Registry Reference Table */}
-        <div className="p-6 bg-bantai-darkCard border border-bantai-darkBorder rounded-2xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-bantai-400" /> Sandboxed Tool Registry (10 Tools)
-            </h2>
-            <span className="text-[11px] text-gray-500">Zero unverified outputs</span>
+        {/* 4. Verified Tools Registry Reference Matrix */}
+        <div className="border border-[#20232b] bg-[#12141a] p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-[#20232b] pb-2">
+            <span className="text-[10px] uppercase tracking-widest text-[#cc8e25] font-bold">
+              [SANDBOXED TOOL REGISTRY: 10 DETERMINISTIC MODULES]
+            </span>
+            <span className="text-[10px] text-[#5a6070]">ZERO LLM HALLUCINATIONS</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
             {[
-              { name: 'calculator', desc: 'Deterministic math parser. No LLM hallucinations.', safe: true },
-              { name: 'document_reader', desc: 'Read uploaded text files and PDF extracts by docId.', safe: true },
-              { name: 'file_search', desc: 'Keyword search across the personal knowledge base.', safe: true },
+              { name: 'calculator', desc: 'Deterministic mathematical parser.', safe: true },
+              { name: 'document_reader', desc: 'Read local text files and markdown extracts.', safe: true },
+              { name: 'file_search', desc: 'Keyword search across personal knowledge documents.', safe: true },
               { name: 'database_retrieval', desc: 'Query tasks, reminders, calendar, and memories.', safe: true },
-              { name: 'rag_retrieval', desc: '384-dimensional cosine similarity search over local vector chunks.', safe: true },
-              { name: 'sandbox_code_executor', desc: 'Isolated Node.js VM with CPU/memory limits. Requires human approval.', safe: false },
-              { name: 'task_manager', desc: 'Create, update, and complete personal tasks.', safe: true },
-              { name: 'reminder_scheduler', desc: 'Schedule verified notifications with timezone awareness.', safe: true },
-              { name: 'calendar_connector', desc: 'Conflict detection and schedule management.', safe: true },
-              { name: 'email_connector', desc: 'Search and draft emails. Sending requires explicit user authorization.', safe: false }
+              { name: 'rag_retrieval', desc: '384-dimensional cosine similarity over dense local vectors.', safe: true },
+              { name: 'sandbox_code_executor', desc: 'Isolated VM execution. Requires operator authorization.', safe: false },
+              { name: 'task_manager', desc: 'CRUD operations on personal task registry.', safe: true },
+              { name: 'reminder_scheduler', desc: 'Timezone-aware local reminder scheduling.', safe: true },
+              { name: 'calendar_connector', desc: 'Conflict detection and calendar event management.', safe: true },
+              { name: 'email_connector', desc: 'Search and draft emails. Dispatch requires operator signature.', safe: false }
             ].map(tool => (
-              <div key={tool.name} className="p-3 bg-black/30 border border-bantai-darkBorder rounded-xl flex items-start gap-2.5">
-                <div className="mt-0.5">{TOOL_ICONS[tool.name] || <Cpu className="w-4 h-4" />}</div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <code className="font-mono text-bantai-300 font-semibold">{tool.name}</code>
-                    {tool.safe ? (
-                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Safe</span>
-                    ) : (
-                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">Needs Gate</span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-1">{tool.desc}</p>
+              <div key={tool.name} className="p-2.5 bg-[#090b0e] border border-[#20232b] flex items-start justify-between gap-2">
+                <div>
+                  <code className="text-[#cc8e25] font-bold text-[11px] uppercase">[{tool.name}]</code>
+                  <p className="text-[10px] text-[#8c919e] mt-0.5">{tool.desc}</p>
                 </div>
+                <span className={`text-[9px] px-1.5 py-0.2 uppercase border ${
+                  tool.safe ? 'text-[#10b981] border-[#10b981]/40' : 'text-[#cc8e25] border-[#cc8e25]/40'
+                }`}>
+                  {tool.safe ? 'SAFE' : 'GATE'}
+                </span>
               </div>
             ))}
           </div>

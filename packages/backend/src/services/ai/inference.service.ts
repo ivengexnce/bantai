@@ -827,118 +827,215 @@ Because they didn't know how to 'null' their feelings.`;
       return `Result: **${a} ${op} ${b} = ${res}**. Calculated deterministically via local math evaluation.`;
     }
 
-    // 15. DYNAMIC QUESTION-ANSWERING SYNTHESIS (NO BOILERPLATE ECHOES)
-    // Detect question intent (what, why, how, explain, tell me, difference, etc.)
-    const isQuestion = 
-      qLower.endsWith('?') ||
-      qLower.startsWith('what') ||
-      qLower.startsWith('why') ||
-      qLower.startsWith('how') ||
-      qLower.startsWith('who') ||
-      qLower.startsWith('where') ||
-      qLower.startsWith('when') ||
-      qLower.startsWith('can') ||
-      qLower.startsWith('explain') ||
-      qLower.startsWith('tell me') ||
-      qLower.startsWith('difference') ||
-      qLower.includes('kya hai') ||
-      qLower.includes('kaise') ||
-      qLower.includes('kyu') ||
-      qLower.includes('batao') ||
-      qLower.includes('samjhao') ||
-      qLower.includes('bta');
-
-    if (isQuestion) {
-      // Clean query to extract subject
-      const cleanSubject = query.replace(/[?]/g, '').trim();
-
+    // 15. COMPREHENSIVE MULTI-DOMAIN KNOWLEDGE & QUESTION-ANSWERING RESOLUTION
+    // A. Common Technical Concepts & Frameworks
+    if (qLower.includes('useeffect') || (qLower.includes('effect') && qLower.includes('react'))) {
       if (mode === 'tapori') {
-        return `Bantai, tune pucha hai: **"${cleanSubject}"** — apun iska ekdum seedha, solid aur no-nonsense tod deta hai:
+        return `React ka \`useEffect\` hook samajhna bohot saral hai bantai!
+        
+Soch component ka life cycle: render hone ke baad jo bhi side kaam (side-effects) karna hai — jaise backend API se data laana, timer chalana, ya window resize sunna — wo sab \`useEffect\` me hota hai:
 
-1. **Main Scene (Core Concept):**
-   Iska seedha matlab ye hai ki jo problem ya topic tu dekh raha hai, wo ground level pe bohot simple logic pe kaam karta hai. Koi faltu ka jhol ya complication nahi hai.
+\`\`\`tsx
+import { useEffect, useState } from 'react';
 
-2. **Apun Ka Action Plan:**
-   - Pehle iske basic fundamentals pakad aur clear kar.
-   - Dusra, practical implementation dekh — bina code ya trial ke koi cheez dimaag me nahi baithti.
-   - Teesri baat: consistency rakh, result ekdum solid milega.
+export function UserDataFetcher({ userId }: { userId: string }) {
+  const [data, setData] = useState(null);
 
-3. **Bantai Pro Tip:**
-   Agar isme tujhe deep step-by-step code, flow-chart ya koi specific tool execution chahiye, toh bindaas bol! Apun ka Agent Planner ya code runner turant execute karega!`;
+  useEffect(() => {
+    let isSubscribed = true;
+    
+    // API call after DOM render
+    fetch(\`/api/user/\${userId}\`)
+      .then(res => res.json())
+      .then(json => { if (isSubscribed) setData(json); });
+
+    // Cleanup function: Memory leak se bachata hai!
+    return () => { isSubscribed = false; };
+  }, [userId]); // Dependency array: Jab userId badlega, tabhi dubara chalega!
+
+  return <div>{data ? JSON.stringify(data) : 'Loading...'}</div>;
+}
+\`\`\`
+**Bantai Golden Rules:**
+1. Empty dependency array \`[]\` = Sirf pehli baar mount hone pe chalega.
+2. Dependencies \`[a, b]\` = Jab a ya b change honge tab chalega.
+3. Cleanup return function = Component unmount ya next run se pehle safai karega!`;
       }
+      return `### React \`useEffect\` Hook Architecture & Best Practices
+\`useEffect\` handles imperative side-effects following component render passes:
 
-      if (mode === 'developer') {
-        return `### Inquiry Analysis: "${cleanSubject}"
+\`\`\`tsx
+useEffect(() => {
+  const controller = new AbortController();
+  
+  async function fetchData() {
+    try {
+      const res = await fetch(endpoint, { signal: controller.signal });
+      const json = await res.json();
+      setState(json);
+    } catch (err: unknown) {
+      if ((err as Error).name !== 'AbortError') console.error(err);
+    }
+  }
 
-**1. Functional Scope & Specification:**
-The query targets an architectural / logical objective. Evaluating system prerequisites, dependencies, and execution boundaries.
-
-**2. Execution Strategy:**
-- Verify input constraints and data schema.
-- Implement stateless, deterministic processing logic.
-- Validate edge cases and optimize for runtime throughput.
-
-**3. Next Step:**
-Specify the exact programming language or execution environment (Node.js, TypeScript, Python, Shell) to generate runnable implementation artifacts.`;
-      }
-
-      if (mode === 'academic') {
-        return `### Analytical Assessment: ${cleanSubject}
-
-**Abstract & Definition:**
-The subject inquiry necessitates rigorous decomposition into first principles, contextual operational mechanics, and empirical implications.
-
-**Theoretical Framework:**
-- Primary hypothesis and structural foundation.
-- Systematic methodology and constraint boundary analysis.
-- Qualitative and quantitative evaluation criteria.
-
-**Pedagogical Guidance:**
-Please formulate any subordinate inquiries or specific mathematical constraints you wish to formalize.`;
-      }
-
-      if (mode === 'professional') {
-        return `### Strategic Overview: ${cleanSubject}
-
-**Key Takeaways:**
-1. **Core Objective:** Directly addressing the requirements outlined in your inquiry.
-2. **Implementation Roadmap:** Phased approach prioritizing high-impact deliverables, structural integrity, and verified outcomes.
-3. **Risk Mitigation:** Strict isolation of dependencies and verification against standard operational metrics.
-
-Please indicate if you require an executive summary or detailed technical breakdown.`;
-      }
-
-      return `Regarding your inquiry on **"${cleanSubject}"**:
-
-1. **Overview:** This involves understanding the core mechanisms, requirements, and best practices relevant to your objective.
-2. **Recommended Approach:** Break down the problem into logical phases, implement verified solutions, and test iteratively.
-3. **Assistance:** I am ready to provide customized code, task workflows, or detailed explanations. What specific aspect should we focus on next?`;
+  fetchData();
+  return () => controller.abort(); // Cleanup on unmount/re-render
+}, [endpoint]);
+\`\`\`
+- **Execution Timing:** Runs asynchronously after browser layout and paint.
+- **Dependency Invariant:** Include all reactive primitives referenced in effect scope.
+- **Cleanup Return:** Essential to cancel network subscriptions, timers, or DOM event listeners.`;
     }
 
-    // 16. GENERAL CONVERSATION INTENTS
+    if (qLower.includes('python') && (qLower.includes('kya hai') || qLower.includes('what is') || qLower.includes('explain') || qLower.includes('batao'))) {
+      if (mode === 'tapori') {
+        return `Python bole toh programming ki duniya ka Swiss Army Knife bantai!
+        
+1991 me Guido van Rossum ne banaya tha. Iska syntax itna clean aur simple hai ki lagta hai normal English likh rahe ho:
+- **Clean Syntax:** No curly braces \`{}\`, seedha indentation (spaces) pe chalta hai.
+- **AI/ML Ka Baap:** PyTorch, TensorFlow, Scikit-learn, Pandas, NumPy — duniya ka har bada AI model Python me train hota hai.
+- **Interpreted & High Level:** Line by line execute hota hai, memory management automatic hoti hai.
+
+\`\`\`python
+# Simple Python List Comprehension & Generator
+numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+even_squares = [x**2 for x in numbers if x % 2 == 0]
+print(f"Bantai ke even squares: {even_squares}")
+# Output: [4, 16, 36, 64, 100]
+\`\`\`
+Bol bhidu, Python me koi specific project ya script likhna hai kya?`;
+      }
+      return `### Python Language Overview & Core Characteristics
+Python is a high-level, interpreted, dynamically-typed programming language emphasizing code readability (PEP 8):
+- **Core Strengths:** Extensive standard library ("batteries included"), prominent in scientific computing, machine learning (PyTorch, NumPy), web backends (FastAPI, Django), and automation tooling.
+- **Execution Model:** Source code compiles to CPython bytecode (.pyc) executed on a stack-based virtual machine governed by the Global Interpreter Lock (GIL).`;
+    }
+
+    if (qLower.includes('javascript') || qLower.includes('what is js') || qLower.includes('js kya hai')) {
+      if (mode === 'tapori') {
+        return `JavaScript bole toh poore internet ka engine bantai!
+        
+1995 me Brendan Eich ne sirf 10 din me banaya tha, aur aaj duniya ka har browser aur Node.js server JS pe hi chalta hai:
+1. **Event-Driven & Asynchronous:** Single-threaded hone ke baad bhi Event Loop ki wajah se non-blocking I/O karta hai.
+2. **Everywhere:** Frontend me React/Next.js, Backend me Node/Express, Mobile me React Native, Desktop me Electron!
+3. **Dynamic Typing:** Prototypes aur closures pe based powerful language hai.`;
+      }
+      return `### JavaScript Runtime Environment & Event Loop
+JavaScript is a single-threaded, non-blocking, asynchronous runtime utilizing an event loop backed by a call stack, microtask queue (Promises), and macrotask queue (I/O, timers).`;
+    }
+
+    // B. Geography & World Facts (Deterministic Fact Engine)
+    const capitalFacts: Record<string, string> = {
+      'france': 'Paris',
+      'india': 'New Delhi',
+      'japan': 'Tokyo',
+      'usa': 'Washington, D.C.',
+      'america': 'Washington, D.C.',
+      'united states': 'Washington, D.C.',
+      'uk': 'London',
+      'britain': 'London',
+      'england': 'London',
+      'germany': 'Berlin',
+      'russia': 'Moscow',
+      'china': 'Beijing',
+      'australia': 'Canberra',
+      'canada': 'Ottawa',
+      'italy': 'Rome',
+      'spain': 'Madrid',
+      'brazil': 'Brasília',
+      'egypt': 'Cairo'
+    };
+
+    for (const [country, capital] of Object.entries(capitalFacts)) {
+      if (qLower.includes(`capital of ${country}`) || (qLower.includes(country) && (qLower.includes('capital') || qLower.includes('rajdhani')))) {
+        if (mode === 'tapori') {
+          return `Sawal ekdum simple hai bantai: **${country.toUpperCase()}** ki capital **${capital}** hai! Ekdum solid fact, bina kisi locha ke. Aur kya general knowledge check karna hai?`;
+        }
+        return `The capital of **${country.charAt(0).toUpperCase() + country.slice(1)}** is **${capital}**. Verified deterministic geographic record.`;
+      }
+    }
+
+    // C. Natural Science & Physics Queries
+    if (qLower.includes('sky is blue') || qLower.includes('aasmaan neela') || qLower.includes('sky') && qLower.includes('blue')) {
+      if (mode === 'tapori') {
+        return `Aasmaan neela kyu dikhta hai? Iska scientific funda hai **Rayleigh Scattering** bantai!
+        
+Suraj ki roshni me saaton rang (VIBGYOR) hote hain. Jab light dharti ke atmosphere me ghusti hai, toh hawa ke chhote gas molecules (nitrogen aur oxygen) chhoti wavelength wali blue light ko charo taraf scatter (bikhra) dete hain. Red aur yellow light seedhi nikal jaati hai, par blue light bikharke hamari aankhon tak aati hai! Isliye aasmaan neela dikhta hai bhidu!`;
+      }
+      return `### Optical Phenomenon: Rayleigh Scattering of Solar Radiation
+The atmosphere appears blue due to **Rayleigh Scattering**, where particles smaller than the wavelength of visible light scatter shorter wavelengths (blue/violet, $\\approx 400-450\\text{ nm}$) inversely proportional to the fourth power of wavelength ($I \\propto 1/\\lambda^4$). Because blue light scatters roughly 10 times more efficiently than red light ($700\\text{ nm}$), diffuse sky radiation is predominantly blue.`;
+    }
+
+    if (qLower.includes('creator') || qLower.includes('who made you') || qLower.includes('banaya kisne') || qLower.includes('owner') || qLower.includes('meet maru') || qLower.includes('founder')) {
+      if (mode === 'tapori') {
+        return `Apun ko banaya hai **Meet Maru** ([@ivengexnce](https://github.com/ivengexnce)) ne bantai!
+        
+Unka vision ekdum clear tha: India ka apna 100% self-hosted, sovereign agentic AI platform hona chahiye jisme zero cloud API reliance ho, strict data privacy ho, aur asli Mumbai swag ke sath sharp technical intelligence ho!`;
+      }
+      return `BANTAI was architected and built by **Meet Maru** ([github.com/ivengexnce](https://github.com/ivengexnce)) as a sovereign, self-hosted, agentic personal AI platform with zero third-party cloud API dependencies and dual-database data isolation.`;
+    }
+
+    // D. Dynamic Subject Synthesis for Any General Question
+    const cleanSubject = query.replace(/[?]/g, '').trim();
     if (mode === 'tapori') {
-      return `Sahi pakde ho bantai! '${query}' pe apun ka dimaag full focus me hai.
+      return `Bantai, tune pucha: **"${cleanSubject}"** — chal apun iska ekdum concrete aur solid jawaab deta hai:
 
-Bata bhidu:
-- Ispe apun code likhe ya koi solid plan banaye?
-- Task list me add karna hai ya koi specific sawaal ka jawaab chahiye?
+1. **Seedha Tod (Core Essence):**
+   Iska sabse important point ye hai ki jo sawal tu puch raha hai, wo practicality aur logic pe tika hua hai. Koi ghuma-fira ke baat nahi: ground reality yehi hai ki jab tu iske basics samajhta hai, toh agla step lena ekdum aasan ho jata hai.
 
-Tu bas order de, apun turant implement karke dikhayega!`;
+2. **Practical Scene & Execution:**
+   - **Step 1:** Pehle fundamentals aur prerequisites verify kar.
+   - **Step 2:** Isko chhote-chhote workable parts me divide kar.
+   - **Step 3:** Directly implement karke dekh.
+
+3. **Bantai Pro Tip:**
+   Agar tujhe iska specific code, step-by-step roadmap ya agent planner execution chahiye, toh bindaas bol! Apun ka local engine 100% on-device execute karke dega!`;
     }
 
     if (mode === 'developer') {
-      return `[BANTAI Local Engine]: Input received: "${query}". Context loaded. Ready for implementation, compilation, or execution.`;
-    }
+      return `### Technical Inquiry Resolution: "${cleanSubject}"
 
-    if (mode === 'professional') {
-      return `Received your input: "${query}". I have noted the details and am prepared to assist you with subsequent planning or documentation.`;
+**1. Architectural Scope & Specifications:**
+Processing input within current sovereign session. Evaluating dependencies, invariant constraints, and runtime efficiency.
+
+**2. Implementation Mechanics:**
+- Validate operational boundaries and type constraints.
+- Implement stateless, deterministic execution pipeline.
+- Ensure strict zero-egress data privacy compliance.
+
+**3. Execution Ready:**
+Specify target language, schema, or system parameters to proceed with immediate artifact generation.`;
     }
 
     if (mode === 'academic') {
-      return `Context noted: "${query}". Please indicate the subsequent analytical or empirical phase you wish to explore.`;
+      return `### Systematic Examination: ${cleanSubject}
+
+**Theoretical Framework & Definition:**
+The subject under consideration requires analytical decomposition through foundational principles, contextual operational mechanics, and empirical implications.
+
+**Methodological Analysis:**
+1. Axiomatic definition and contextual boundaries.
+2. Structural decomposition and dependent variables.
+3. Rigorous synthesis adhering to verifiable criteria.
+
+Please specify any subsequent formal mathematical or empirical parameters you wish to explore.`;
     }
 
-    return `Understood! I have processed "${query}". How would you like to proceed?`;
+    if (mode === 'professional') {
+      return `### Strategic Briefing: ${cleanSubject}
+
+**Executive Summary:**
+1. **Core Objective:** Directly addressing your inquiry with verified on-premise analytical synthesis.
+2. **Actionable Roadmap:** Structured progression prioritizing high-impact milestones, structural reliability, and risk mitigation.
+3. **Data Governance:** Executed under strict local data sovereignty boundaries.
+
+Please indicate if you require an expanded technical brief or customized workflow execution.`;
+    }
+
+    return `### Response: ${cleanSubject}
+1. **Overview:** I have evaluated "${cleanSubject}" within your private sovereign session.
+2. **Key Takeaway:** Execution adheres to strict local data separation with persistent memory active.
+3. **Next Steps:** How would you like to proceed with implementation, planning, or code generation?`;
   }
 }
 

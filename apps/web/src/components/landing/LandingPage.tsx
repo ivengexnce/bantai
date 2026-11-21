@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 
 export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
+  const { user, setActiveView } = useApp();
   const [activeDemoMode, setActiveDemoMode] = useState<'tapori' | 'developer' | 'academic'>('tapori');
   const [selectedDemoModel, setSelectedDemoModel] = useState<string>('bhai');
   const [activeQueryIndex, setActiveQueryIndex] = useState<number>(0);
@@ -52,12 +53,21 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
               <span className="w-1.5 h-1.5 bg-[#10b981] inline-block" />
               <span>DAEMON: LOCALHOST:4000</span>
             </div>
-            <button
-              onClick={onOpenAuth}
-              className="px-4 py-1.5 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
-            >
-              Access Console
-            </button>
+            {user ? (
+              <button
+                onClick={() => setActiveView('chat')}
+                className="px-4 py-1.5 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+              >
+                Enter Console [-&gt;]
+              </button>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="px-4 py-1.5 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+              >
+                Access Console
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -79,12 +89,21 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
             </p>
 
             <div className="flex flex-wrap items-center gap-4">
-              <button
-                onClick={onOpenAuth}
-                className="px-6 py-3 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
-              >
-                Initialize Instance
-              </button>
+              {user ? (
+                <button
+                  onClick={() => setActiveView('chat')}
+                  className="px-6 py-3 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                  Enter Operational Console [-&gt;]
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenAuth}
+                  className="px-6 py-3 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                  Initialize Instance
+                </button>
+              )}
 
               <a
                 href="https://github.com/ivengexnce/bantai"

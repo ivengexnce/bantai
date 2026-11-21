@@ -34,8 +34,8 @@ export default function HomePage() {
 
   const [showAuth, setShowAuth] = useState(false);
 
-  // If user is not authenticated, show the Sovereign Landing Page
-  if (!user) {
+  // If user is not authenticated or explicitly viewing landing page
+  if (!user || activeView === 'landing') {
     return (
       <>
         <LandingPage onOpenAuth={() => setShowAuth(true)} />
