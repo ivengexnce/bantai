@@ -52,12 +52,18 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0E0E0E] text-white selection:bg-[#2F6BFF] selection:text-white font-sans">
+    <div className="flex h-screen overflow-hidden bg-[#0A0B0E] text-white selection:bg-[#2F6BFF] selection:text-white font-sans relative">
+      {/* Cinematic Atmospheric Noise Overlay */}
+      <div className="fixed inset-0 bg-noise pointer-events-none z-50 opacity-40" />
+
+      {/* Atmospheric Volumetric Overhead Light Cone */}
+      <div className="fixed inset-0 volumetric-light-cone pointer-events-none z-0" />
+
       {/* 3.A Left Navigation Rail (Compact 56px reference width) */}
       <GlassIrisNavRail />
 
       {/* Main App Column */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#0E0E0E]">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         {/* 3.B Top Navigation Bar */}
         <GlassIrisTopBar />
 

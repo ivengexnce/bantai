@@ -85,7 +85,7 @@ export function GlassIrisNavRail() {
   ];
 
   return (
-    <nav className="w-14 sm:w-16 bg-[#111111] border-r border-white/5 flex flex-col items-center py-4 justify-between select-none z-40 shrink-0">
+    <nav className="w-14 sm:w-16 bg-[#0E1015]/85 backdrop-blur-2xl border-r border-white/[0.08] flex flex-col items-center py-4 justify-between select-none z-40 shrink-0 shadow-2xl">
       {/* Top: BANTAI Glass Iris Emblem */}
       <div className="flex flex-col items-center gap-6">
         <button
@@ -94,8 +94,8 @@ export function GlassIrisNavRail() {
           title="BANTAI Iris Home"
         >
           {/* Glowing Iris Orb Icon */}
-          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#2453DB] via-[#2F6BFF] to-[#7C48F0] p-[1.5px] shadow-lg shadow-[#2F6BFF]/25">
-            <div className="w-full h-full rounded-full bg-[#0E0E0E] flex items-center justify-center relative overflow-hidden">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#2453DB] via-[#2F6BFF] to-[#7C48F0] p-[1.5px] shadow-lg shadow-[#2F6BFF]/35">
+            <div className="w-full h-full rounded-full bg-[#0A0B0E] flex items-center justify-center relative overflow-hidden">
               <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#2F6BFF] to-[#5A4CF5] animate-pulse" />
               <div className="absolute top-1 left-2 w-1.5 h-1 rounded-full bg-white/70 blur-[0.5px]" />
             </div>
@@ -118,20 +118,20 @@ export function GlassIrisNavRail() {
                   }}
                   className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 relative ${
                     isActive
-                      ? 'bg-[#1D1D1D] text-[#2F6BFF] shadow-sm'
-                      : 'text-[#8C8C8C] hover:text-[#FFFFFF] hover:bg-[#181818]'
+                      ? 'bg-white/[0.08] text-[#2F6BFF] border border-[#2F6BFF]/30 shadow-[0_0_15px_-3px_rgba(47,107,255,0.3)]'
+                      : 'text-[#94A3B8] hover:text-[#FFFFFF] hover:bg-white/[0.05]'
                   }`}
                   title={item.label}
                 >
                   {/* Active Indicator Left Pill */}
                   {isActive && (
-                    <span className="absolute -left-2 sm:-left-3 top-2 bottom-2 w-1 bg-[#2F6BFF] rounded-r-full shadow-[0_0_8px_#2F6BFF]" />
+                    <span className="absolute -left-2 sm:-left-3 top-2 bottom-2 w-1 bg-[#2F6BFF] rounded-r-full shadow-[0_0_10px_#2F6BFF]" />
                   )}
                   {item.icon}
                 </button>
 
                 {/* Tooltip on Hover */}
-                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-[#1D1D1D] text-[#FFFFFF] text-[11px] font-medium border border-white/10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 whitespace-nowrap shadow-xl z-50">
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-[#12141A] text-[#FFFFFF] text-[11px] font-medium border border-white/10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 whitespace-nowrap shadow-2xl z-50">
                   {item.label}
                 </div>
               </div>

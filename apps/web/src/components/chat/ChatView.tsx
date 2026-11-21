@@ -364,7 +364,7 @@ export function ChatView() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.45 }}
-              className="text-3xl sm:text-4xl md:text-[44px] font-semibold text-white tracking-tight leading-[1.12]"
+              className="text-3xl sm:text-4xl md:text-[46px] font-semibold text-gradient-iris tracking-tight leading-[1.12] drop-shadow-[0_4px_24px_rgba(47,107,255,0.2)]"
             >
               WHAT&apos;S ON YOUR MIND?
             </motion.h1>
@@ -374,7 +374,7 @@ export function ChatView() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.4 }}
-              className="text-xs sm:text-sm text-[#8C8C8C] max-w-lg leading-relaxed"
+              className="text-xs sm:text-sm text-[#94A3B8] max-w-lg leading-relaxed font-normal"
             >
               Your intelligent companion for thinking, creating, learning, and getting things done.
             </motion.p>
@@ -396,7 +396,7 @@ export function ChatView() {
               transition={{ delay: 0.35, duration: 0.4 }}
               className="w-full"
             >
-              <div className="w-full rounded-[14px] bg-[#151515]/95 border border-white/10 hover:border-[#2F6BFF]/40 focus-within:border-[#2F6BFF] transition-all duration-200 p-3.5 backdrop-blur-md shadow-2xl">
+              <div className="w-full rounded-2xl glass-composer p-4">
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -404,11 +404,11 @@ export function ChatView() {
                   onKeyDown={handleKeyDown}
                   placeholder="Ask BANTAI anything..."
                   rows={2}
-                  className="w-full bg-transparent border-0 text-sm text-white placeholder-[#6E6E6E] focus:outline-none resize-none leading-relaxed"
+                  className="w-full bg-transparent border-0 text-sm text-white placeholder-[#64748B] focus:outline-none resize-none leading-relaxed font-sans"
                 />
 
                 {/* Composer Controls Row */}
-                <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-white/5">
+                <div className="flex items-center justify-between pt-3 mt-1 border-t border-white/[0.08]">
                   <div className="flex items-center gap-2">
                     {/* Attachment Button */}
                     <input
@@ -420,7 +420,7 @@ export function ChatView() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-[#8C8C8C] hover:text-white hover:bg-[#1D1D1D] transition-colors"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-white hover:bg-white/[0.08] transition-colors"
                       title="Attach file"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -435,7 +435,7 @@ export function ChatView() {
                       className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                         isListening
                           ? 'bg-rose-500/20 text-rose-400 animate-pulse'
-                          : 'text-[#8C8C8C] hover:text-white hover:bg-[#1D1D1D]'
+                          : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.08]'
                       }`}
                       title="Voice input"
                     >
@@ -448,22 +448,22 @@ export function ChatView() {
                     <select
                       value={personalityMode}
                       onChange={e => setPersonalityMode(e.target.value as PersonalityMode)}
-                      className="bg-[#1D1D1D] text-[#8C8C8C] hover:text-white border border-white/5 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-[#2F6BFF] cursor-pointer"
+                      className="bg-white/[0.05] text-[#94A3B8] hover:text-white border border-white/10 hover:border-[#2F6BFF]/40 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-[#2F6BFF] transition-colors cursor-pointer"
                     >
-                      <option value="tapori">Tapori</option>
-                      <option value="balanced">Balanced</option>
-                      <option value="developer">Developer</option>
-                      <option value="academic">Academic</option>
+                      <option value="tapori" className="bg-[#12141A] text-white">Tapori</option>
+                      <option value="balanced" className="bg-[#12141A] text-white">Balanced</option>
+                      <option value="developer" className="bg-[#12141A] text-white">Developer</option>
+                      <option value="academic" className="bg-[#12141A] text-white">Academic</option>
                     </select>
 
                     {/* Model Family Selector Pill */}
                     <select
                       value={selectedModel}
                       onChange={e => setSelectedModel(e.target.value)}
-                      className="bg-[#1D1D1D] text-[#8C8C8C] hover:text-white border border-white/5 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-[#2F6BFF] cursor-pointer hidden sm:inline-block"
+                      className="bg-white/[0.05] text-[#94A3B8] hover:text-white border border-white/10 hover:border-[#2F6BFF]/40 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-[#2F6BFF] transition-colors cursor-pointer hidden sm:inline-block"
                     >
                       {APP_MODELS.map(m => (
-                        <option key={m.id} value={m.id}>
+                        <option key={m.id} value={m.id} className="bg-[#12141A] text-white">
                           {m.name} ({m.parameters})
                         </option>
                       ))}
@@ -474,10 +474,10 @@ export function ChatView() {
                   <button
                     onClick={() => handleSend()}
                     disabled={!input.trim() || isStreaming}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all duration-200 ${
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
                       input.trim() && !isStreaming
-                        ? 'bg-gradient-to-r from-[#2F6BFF] to-[#5A4CF5] text-white hover:opacity-95 shadow-lg shadow-[#2F6BFF]/20 active:scale-95'
-                        : 'bg-[#1D1D1D] text-[#6E6E6E] cursor-not-allowed'
+                        ? 'glass-btn-primary text-white cursor-pointer active:scale-95'
+                        : 'bg-white/[0.04] text-[#64748B] border border-white/5 cursor-not-allowed'
                     }`}
                   >
                     <span>Send</span>
@@ -499,66 +499,66 @@ export function ChatView() {
               {/* Card 1: Ask Anything */}
               <button
                 onClick={() => handleSend("Explain how BANTAI executes models locally with zero cloud API dependencies.")}
-                className="p-3.5 rounded-xl bg-[#151515] hover:bg-[#1D1D1D] border border-white/5 hover:border-[#2F6BFF]/30 transition-all duration-200 group flex flex-col justify-between"
+                className="p-4 rounded-2xl glass-card-interactive group flex flex-col justify-between"
               >
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#2F6BFF]" />
+                    <span className="w-2 h-2 rounded-full bg-[#2F6BFF] shadow-[0_0_8px_#2F6BFF]" />
                     <span className="text-xs font-semibold text-white group-hover:text-[#2F6BFF] transition-colors">
                       01 — Ask Anything
                     </span>
                   </div>
-                  <p className="text-[11px] text-[#8C8C8C] leading-snug">
-                    Get answers and explore ideas.
+                  <p className="text-[11px] text-[#94A3B8] leading-snug">
+                    Get answers and explore ideas with instant local inference.
                   </p>
                 </div>
-                <div className="text-[10px] text-[#6E6E6E] pt-3 group-hover:text-[#2F6BFF] transition-colors flex items-center gap-1">
+                <div className="text-[10px] text-[#64748B] pt-3 group-hover:text-[#2F6BFF] transition-colors flex items-center gap-1 font-medium">
                   <span>Run prompt</span>
-                  <span>→</span>
+                  <span className="transition-transform group-hover:translate-x-0.5">→</span>
                 </div>
               </button>
 
               {/* Card 2: Deep Think */}
               <button
                 onClick={() => handleSend("Analyze the computational and architectural differences between Qwen 2.5 and Llama 3 models.")}
-                className="p-3.5 rounded-xl bg-[#151515] hover:bg-[#1D1D1D] border border-white/5 hover:border-[#5A4CF5]/30 transition-all duration-200 group flex flex-col justify-between"
+                className="p-4 rounded-2xl glass-card-interactive group flex flex-col justify-between"
               >
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#5A4CF5]" />
+                    <span className="w-2 h-2 rounded-full bg-[#5A4CF5] shadow-[0_0_8px_#5A4CF5]" />
                     <span className="text-xs font-semibold text-white group-hover:text-[#5A4CF5] transition-colors">
                       02 — Deep Think
                     </span>
                   </div>
-                  <p className="text-[11px] text-[#8C8C8C] leading-snug">
-                    Explore complex questions with deeper reasoning.
+                  <p className="text-[11px] text-[#94A3B8] leading-snug">
+                    Explore complex questions with multi-step deterministic reasoning.
                   </p>
                 </div>
-                <div className="text-[10px] text-[#6E6E6E] pt-3 group-hover:text-[#5A4CF5] transition-colors flex items-center gap-1">
+                <div className="text-[10px] text-[#64748B] pt-3 group-hover:text-[#5A4CF5] transition-colors flex items-center gap-1 font-medium">
                   <span>Run prompt</span>
-                  <span>→</span>
+                  <span className="transition-transform group-hover:translate-x-0.5">→</span>
                 </div>
               </button>
 
               {/* Card 3: Create Something */}
               <button
                 onClick={() => handleSend("Plan an autonomous agent workflow to build a full-stack Next.js app with Tailwind.")}
-                className="p-3.5 rounded-xl bg-[#151515] hover:bg-[#1D1D1D] border border-white/5 hover:border-[#2453DB]/30 transition-all duration-200 group flex flex-col justify-between"
+                className="p-4 rounded-2xl glass-card-interactive group flex flex-col justify-between"
               >
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#2453DB]" />
-                    <span className="text-xs font-semibold text-white group-hover:text-[#2F6BFF] transition-colors">
+                    <span className="w-2 h-2 rounded-full bg-[#38BDF8] shadow-[0_0_8px_#38BDF8]" />
+                    <span className="text-xs font-semibold text-white group-hover:text-[#38BDF8] transition-colors">
                       03 — Create Something
                     </span>
                   </div>
-                  <p className="text-[11px] text-[#8C8C8C] leading-snug">
-                    Write, brainstorm, plan, and build.
+                  <p className="text-[11px] text-[#94A3B8] leading-snug">
+                    Write, brainstorm, plan, and build autonomous agents.
                   </p>
                 </div>
-                <div className="text-[10px] text-[#6E6E6E] pt-3 group-hover:text-[#2F6BFF] transition-colors flex items-center gap-1">
+                <div className="text-[10px] text-[#64748B] pt-3 group-hover:text-[#38BDF8] transition-colors flex items-center gap-1 font-medium">
                   <span>Run prompt</span>
-                  <span>→</span>
+                  <span className="transition-transform group-hover:translate-x-0.5">→</span>
                 </div>
               </button>
             </motion.div>
@@ -653,8 +653,8 @@ export function ChatView() {
                   <div
                     className={`max-w-[90%] sm:max-w-[85%] rounded-2xl ${
                       isUser
-                        ? 'bg-[#2F6BFF]/15 border border-[#2F6BFF]/30 text-white rounded-tr-sm p-4'
-                        : 'bg-[#181818]/90 border border-white/10 text-[#EDEDED] rounded-tl-sm p-4 space-y-3'
+                        ? 'bg-[#2F6BFF]/15 border border-[#2F6BFF]/35 backdrop-blur-xl text-white rounded-tr-sm p-4 shadow-[0_8px_24px_-6px_rgba(47,107,255,0.25)]'
+                        : 'glass-panel-elevated text-[#E2E8F0] rounded-tl-sm p-4.5 space-y-3'
                     }`}
                   >
                     <FormattedContent content={msg.content} />
@@ -685,12 +685,12 @@ export function ChatView() {
             {/* Live Streaming Content Chunk */}
             {isStreaming && (
               <div className="flex flex-col items-start">
-                <div className="text-[11px] text-[#2F6BFF] mb-1 px-1 flex items-center gap-1.5">
+                <div className="text-[11px] text-[#2F6BFF] mb-1 px-1 flex items-center gap-1.5 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] animate-pulse" />
                   <span>BANTAI is thinking...</span>
                 </div>
 
-                <div className="max-w-[90%] sm:max-w-[85%] rounded-2xl bg-[#181818]/90 border border-white/10 text-[#EDEDED] rounded-tl-sm p-4 space-y-3">
+                <div className="max-w-[90%] sm:max-w-[85%] rounded-2xl glass-panel-elevated text-[#E2E8F0] rounded-tl-sm p-4.5 space-y-3">
                   <FormattedContent content={streamingContent || 'Processing deterministic model weights...'} />
                 </div>
               </div>
@@ -703,8 +703,8 @@ export function ChatView() {
 
       {/* Floating Glass Composer (Docked at Bottom in Active Mode) */}
       {hasMessages && (
-        <div className="fixed bottom-0 left-14 sm:left-16 right-0 p-4 bg-gradient-to-t from-[#0E0E0E] via-[#0E0E0E]/90 to-transparent flex justify-center z-30">
-          <div className="w-full max-w-[708px] rounded-[14px] bg-[#151515]/95 border border-white/10 hover:border-[#2F6BFF]/40 focus-within:border-[#2F6BFF] transition-all duration-200 p-3 backdrop-blur-md shadow-2xl">
+        <div className="fixed bottom-0 left-14 sm:left-16 right-0 p-4 bg-gradient-to-t from-[#0A0B0E] via-[#0A0B0E]/90 to-transparent flex justify-center z-30">
+          <div className="w-full max-w-[708px] rounded-2xl glass-composer p-3.5">
             <textarea
               ref={textareaRef}
               value={input}
@@ -712,15 +712,16 @@ export function ChatView() {
               onKeyDown={handleKeyDown}
               placeholder="Ask BANTAI anything..."
               rows={1}
-              className="w-full bg-transparent border-0 text-sm text-white placeholder-[#6E6E6E] focus:outline-none resize-none leading-relaxed"
+              className="w-full bg-transparent border-0 text-sm text-white placeholder-[#64748B] focus:outline-none resize-none leading-relaxed font-sans"
             />
 
-            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+            <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.08]">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8C8C8C] hover:text-white hover:bg-[#1D1D1D]"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[#94A3B8] hover:text-white hover:bg-white/[0.08] transition-colors"
+                  title="Attach file"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -730,9 +731,10 @@ export function ChatView() {
                 <button
                   type="button"
                   onClick={toggleListening}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                    isListening ? 'bg-rose-500/20 text-rose-400 animate-pulse' : 'text-[#8C8C8C] hover:text-white hover:bg-[#1D1D1D]'
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                    isListening ? 'bg-rose-500/20 text-rose-400 animate-pulse' : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.08]'
                   }`}
+                  title="Voice input"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -742,22 +744,22 @@ export function ChatView() {
                 <select
                   value={personalityMode}
                   onChange={e => setPersonalityMode(e.target.value as PersonalityMode)}
-                  className="bg-[#1D1D1D] text-[#8C8C8C] hover:text-white border border-white/5 rounded-lg px-2 py-0.5 text-xs focus:outline-none"
+                  className="bg-white/[0.05] text-[#94A3B8] hover:text-white border border-white/10 hover:border-[#2F6BFF]/40 rounded-lg px-2 py-0.5 text-xs focus:outline-none cursor-pointer"
                 >
-                  <option value="tapori">Tapori</option>
-                  <option value="balanced">Balanced</option>
-                  <option value="developer">Developer</option>
-                  <option value="academic">Academic</option>
+                  <option value="tapori" className="bg-[#12141A] text-white">Tapori</option>
+                  <option value="balanced" className="bg-[#12141A] text-white">Balanced</option>
+                  <option value="developer" className="bg-[#12141A] text-white">Developer</option>
+                  <option value="academic" className="bg-[#12141A] text-white">Academic</option>
                 </select>
               </div>
 
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isStreaming}
-                className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
+                className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
                   input.trim() && !isStreaming
-                    ? 'bg-gradient-to-r from-[#2F6BFF] to-[#5A4CF5] text-white hover:opacity-95'
-                    : 'bg-[#1D1D1D] text-[#6E6E6E] cursor-not-allowed'
+                    ? 'glass-btn-primary text-white cursor-pointer active:scale-95'
+                    : 'bg-white/[0.04] text-[#64748B] border border-white/5 cursor-not-allowed'
                 }`}
               >
                 <span>Send</span>
