@@ -273,10 +273,17 @@ export function ChatView() {
     }
 
     try {
-      const SpeechRecognition =
+      const SpeechRecognitionClass =
         (window as unknown as { SpeechRecognition?: new () => any }).SpeechRecognition ||
         (window as unknown as { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
+
+      if (!SpeechRecognitionClass) {
+        alert('Speech recognition is not supported in this browser.');
+        setIsListening(false);
+        return;
+      }
+
+      const recognition = new SpeechRecognitionClass();
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'en-US';
