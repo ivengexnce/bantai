@@ -2,16 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
-import {
-  Calendar as CalendarIcon,
-  Plus,
-  Clock,
-  MapPin,
-  AlertCircle,
-  CheckCircle,
-  Trash2,
-  CalendarDays
-} from 'lucide-react';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { Dialog } from '../ui/Dialog';
 
 interface CalendarEvent {
   id: string;
@@ -85,105 +78,91 @@ export function CalendarView() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-bantai-dark">
+    <div className="flex-1 overflow-y-auto p-6 bg-[#0e1014] text-[#d4d6db] font-mono text-xs select-none">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+        {/* Header Specification */}
+        <div className="flex items-center justify-between border-b border-[#20232b] pb-4 flex-wrap gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-bantai-500/10 border border-bantai-500/30 text-xs font-semibold text-bantai-400 mb-2">
-              <CalendarIcon className="w-3.5 h-3.5" /> BANTAI Schedule & Assistant
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="warning">[06] CALENDAR RUNNER</Badge>
+              <Badge variant="success">LOCAL CONFLICT ENGINE</Badge>
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Calendar & Event Planner</h1>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h1 className="text-xl font-bold text-[#f0f2f5] uppercase tracking-wider">
+              Calendar & Event Scheduler
+            </h1>
+            <p className="text-xs text-[#8c919e] mt-1">
               Automated conflict detection and schedule management running locally under BANTAI control.
             </p>
           </div>
 
-          <button
+          <Button
+            variant="primary"
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2.5 bg-bantai-500 hover:bg-bantai-600 text-black font-semibold text-xs rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-bantai-500/20"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" /> Schedule Event
-          </button>
+            [+] SCHEDULE EVENT
+          </Button>
         </div>
 
-        {/* Conflict Notice if any */}
+        {/* Conflict Alert Banner */}
         {events.some(hasConflict) && (
-          <div className="p-3.5 bg-amber-950/30 border border-amber-500/40 rounded-xl text-amber-300 text-xs flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-            <span>
-              <strong>Schedule Conflict Detected:</strong> Two or more events overlap in your calendar. Check conflicting times below.
-            </span>
+          <div className="p-3 bg-[#1c140a] border border-[#cc8e25] text-[#cc8e25] text-xs flex items-center justify-between">
+            <span className="font-bold">&gt; [SCHEDULE CONFLICT DETECTED]: Overlapping calendar events detected. Review timestamps below.</span>
+            <span className="text-[10px] uppercase">[ALERT]</span>
           </div>
         )}
 
         {/* Events Grid */}
         <div className="space-y-3">
           {events.length === 0 ? (
-            <div className="p-12 text-center bg-bantai-darkCard border border-bantai-darkBorder rounded-2xl space-y-3">
-              <CalendarDays className="w-10 h-10 text-gray-600 mx-auto" />
-              <h3 className="text-sm font-semibold text-white">No upcoming events scheduled</h3>
-              <p className="text-xs text-gray-400 max-w-sm mx-auto">
-                Schedule your meetings, review calls, and focus sessions. BANTAI automatically checks for overlaps and conflicts.
-              </p>
-              <button
+            <div className="p-12 text-center bg-[#12141a] border border-[#20232b] space-y-3">
+              <p className="text-[#8c919e] uppercase tracking-wider">NO CALENDAR EVENTS REGISTERED</p>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowAddModal(true)}
-                className="mt-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition"
               >
-                Create First Event
-              </button>
+                [+] CREATE FIRST EVENT
+              </Button>
             </div>
           ) : (
             events.map(ev => {
               const conflict = hasConflict(ev);
-              const startFmt = new Date(ev.startTime).toLocaleString(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short'
-              });
-              const endFmt = new Date(ev.endTime).toLocaleTimeString(undefined, {
-                timeStyle: 'short'
-              });
-
               return (
                 <div
                   key={ev.id}
-                  className={`p-4 bg-bantai-darkCard border rounded-2xl flex items-center justify-between gap-4 transition ${
-                    conflict ? 'border-amber-500/50 shadow-sm shadow-amber-500/10' : 'border-bantai-darkBorder hover:border-bantai-500/40'
+                  className={`p-4 bg-[#12141a] border flex items-center justify-between gap-4 transition-colors ${
+                    conflict ? 'border-[#cc8e25]' : 'border-[#20232b]'
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-bantai-500/10 border border-bantai-500/30 text-bantai-400 flex flex-col items-center justify-center flex-shrink-0">
-                      <span className="text-[10px] uppercase font-bold text-gray-400">
-                        {new Date(ev.startTime).toLocaleDateString(undefined, { month: 'short' })}
+                    <div className="w-12 h-12 bg-[#181b22] border border-[#20232b] text-[#cc8e25] flex flex-col items-center justify-center flex-shrink-0 font-bold">
+                      <span className="text-[9px] uppercase text-[#8c919e]">
+                        {new Date(ev.startTime).toLocaleString('default', { month: 'short' })}
                       </span>
-                      <span className="text-base font-bold text-white leading-none">
+                      <span className="text-sm">
                         {new Date(ev.startTime).getDate()}
                       </span>
                     </div>
 
-                    <div className="space-y-1">
+                    <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-white">{ev.title}</h4>
+                        <h3 className="font-bold text-[#f0f2f5] text-xs uppercase">{ev.title}</h3>
                         {conflict && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                            Overlap Conflict
-                          </span>
+                          <Badge variant="warning">[CONFLICT]</Badge>
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-gray-500" /> {startFmt} – {endFmt}
+                      <div className="flex items-center gap-4 text-[11px] text-[#8c919e] mt-1">
+                        <span>
+                          {new Date(ev.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(ev.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         {ev.location && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-gray-500" /> {ev.location}
-                          </span>
+                          <span>· LOC: {ev.location}</span>
                         )}
                       </div>
 
                       {ev.description && (
-                        <p className="text-xs text-gray-400 mt-1">{ev.description}</p>
+                        <p className="text-[11px] text-[#5a6070] mt-1">{ev.description}</p>
                       )}
                     </div>
                   </div>
@@ -192,102 +171,92 @@ export function CalendarView() {
             })
           )}
         </div>
+      </div>
 
-        {/* Add Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-bantai-darkCard border border-bantai-darkBorder rounded-2xl p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-bantai-darkBorder pb-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <CalendarIcon className="w-4 h-4 text-bantai-400" /> Schedule Calendar Event
-                </h3>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="text-gray-400 hover:text-white text-sm"
-                >
-                  ✕
-                </button>
-              </div>
+      {/* Add Event Modal Dialog */}
+      <Dialog
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="SCHEDULE NEW CALENDAR EVENT"
+      >
+        <form onSubmit={handleCreate} className="space-y-3">
+          <div>
+            <label className="block text-[10px] uppercase text-[#8c919e] mb-1">[EVENT TITLE]</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Architecture Review / Model Evaluation"
+              className="w-full px-3 py-2 bg-[#12141a] border border-[#20232b] text-xs text-[#f0f2f5] placeholder-[#5a6070] focus:outline-none focus:border-[#cc8e25]"
+            />
+          </div>
 
-              <form onSubmit={handleCreate} className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-gray-300 font-medium mb-1">Event Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                    placeholder="E.g., Architecture Review / Model Evaluation"
-                    className="w-full px-3 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-white focus:outline-none focus:border-bantai-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-gray-300 font-medium mb-1">Start Time</label>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={startTime}
-                      onChange={e => setStartTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-white focus:outline-none focus:border-bantai-500 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-300 font-medium mb-1">End Time</label>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={endTime}
-                      onChange={e => setEndTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-white focus:outline-none focus:border-bantai-500 text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-gray-300 font-medium mb-1">Location / Meeting Link</label>
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={e => setLocation(e.target.value)}
-                    placeholder="E.g., Mumbai HQ or Google Meet"
-                    className="w-full px-3 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-white focus:outline-none focus:border-bantai-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-300 font-medium mb-1">Notes / Description</label>
-                  <textarea
-                    rows={2}
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder="Event agenda and details..."
-                    className="w-full px-3 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-white focus:outline-none focus:border-bantai-500 resize-none"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2 border-t border-bantai-darkBorder">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 font-medium rounded-xl transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-5 py-2 bg-bantai-500 hover:bg-bantai-600 disabled:opacity-50 text-black font-bold rounded-xl transition shadow-md shadow-bantai-500/20"
-                  >
-                    {loading ? 'Saving...' : 'Save Event'}
-                  </button>
-                </div>
-              </form>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] uppercase text-[#8c919e] mb-1">[START TIME]</label>
+              <input
+                type="datetime-local"
+                required
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                className="w-full px-3 py-2 bg-[#12141a] border border-[#20232b] text-xs text-[#f0f2f5] focus:outline-none focus:border-[#cc8e25]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase text-[#8c919e] mb-1">[END TIME]</label>
+              <input
+                type="datetime-local"
+                required
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                className="w-full px-3 py-2 bg-[#12141a] border border-[#20232b] text-xs text-[#f0f2f5] focus:outline-none focus:border-[#cc8e25]"
+              />
             </div>
           </div>
-        )}
-      </div>
+
+          <div>
+            <label className="block text-[10px] uppercase text-[#8c919e] mb-1">[LOCATION]</label>
+            <input
+              type="text"
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder="Mumbai HQ or Localhost Sandbox"
+              className="w-full px-3 py-2 bg-[#12141a] border border-[#20232b] text-xs text-[#f0f2f5] placeholder-[#5a6070] focus:outline-none focus:border-[#cc8e25]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] uppercase text-[#8c919e] mb-1">[DETAILS & AGENDA]</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Event agenda and details..."
+              className="w-full px-3 py-2 bg-[#12141a] border border-[#20232b] text-xs text-[#f0f2f5] placeholder-[#5a6070] focus:outline-none focus:border-[#cc8e25] resize-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#20232b]">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddModal(false)}
+            >
+              CANCEL
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={loading}
+            >
+              {loading ? '[SAVING...]' : '[CONFIRM SCHEDULE]'}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

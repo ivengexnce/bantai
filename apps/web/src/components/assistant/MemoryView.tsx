@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import { FirestoreMemory, MemoryCategory } from '@bantai/shared';
-import { Brain, Plus, Trash2, ShieldCheck, Tag } from 'lucide-react';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
 
 export function MemoryView() {
   const [memories, setMemories] = useState<FirestoreMemory[]>([]);
@@ -41,7 +42,7 @@ export function MemoryView() {
   };
 
   const handleClearAll = async () => {
-    if (!confirm('Are you sure you want to erase all personal memory? BANTAI will forget all saved preferences.')) return;
+    if (!confirm('Permanently purge all personal memory? BANTAI will forget all saved preferences.')) return;
     try {
       await api.clearAllMemories();
       setMemories([]);
@@ -51,54 +52,62 @@ export function MemoryView() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-bantai-dark">
+    <div className="flex-1 overflow-y-auto p-6 bg-[#0e1014] text-[#d4d6db] font-mono text-xs select-none">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Header Specification */}
+        <div className="flex items-center justify-between border-b border-[#20232b] pb-4 flex-wrap gap-4">
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <Brain className="w-5 h-5 text-purple-400" /> Personal Memory Manager
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="warning">[08] PRIVATE MEMORY</Badge>
+              <Badge variant="success">ISOLATED USER PARTITION</Badge>
+            </div>
+            <h1 className="text-xl font-bold text-[#f0f2f5] uppercase tracking-wider">
+              Personal Memory Manager
             </h1>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Isolated user preferences, facts, and projects remembered across sessions.
+            <p className="text-xs text-[#8c919e] mt-1">
+              Isolated user preferences, facts, and projects remembered across sessions. Zero telemetry leakage.
             </p>
           </div>
 
           {memories.length > 0 && (
-            <button
+            <Button
+              variant="danger"
+              size="sm"
               onClick={handleClearAll}
-              className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/50 border border-red-800/60 text-red-300 text-xs rounded-xl transition"
             >
-              Clear All Memory
-            </button>
+              [!] PURGE ALL MEMORY
+            </Button>
           )}
         </div>
 
         {/* Security Banner */}
-        <div className="p-4 bg-purple-950/20 border border-purple-800/40 rounded-2xl flex items-center gap-3 text-xs text-purple-300">
-          <ShieldCheck className="w-5 h-5 flex-shrink-0 text-purple-400" />
+        <div className="p-3 bg-[#12151d] border border-[#20232b] flex items-center justify-between text-xs text-[#8c919e]">
           <span>
-            Personal memory is strictly isolated to your user account and never shared with other users or incorporated into base model weights without consent.
+            [ENCRYPTION BOUNDARY]: Personal memory is strictly isolated to your user account and never shared with other users or incorporated into base model weights without consent.
           </span>
+          <Badge variant="neutral">AIR-GAPPED</Badge>
         </div>
 
         {/* Add Memory Item */}
-        <form onSubmit={handleAdd} className="p-5 bg-bantai-darkCard border border-bantai-darkBorder rounded-2xl space-y-3">
-          <div className="text-xs font-semibold text-white">Add New Personal Memory Fact</div>
+        <form onSubmit={handleAdd} className="p-5 bg-[#12141a] border border-[#20232b] space-y-3">
+          <div className="text-xs font-bold text-[#f0f2f5] uppercase">
+            [+] REGISTER NEW MEMORY FACT
+          </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               required
               value={content}
               onChange={e => setContent(e.target.value)}
               placeholder="e.g., I am building a self-hosted agent platform; my preferred language is TypeScript..."
-              className="flex-1 px-3.5 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-bantai-500"
+              className="flex-1 px-3 py-2 bg-[#090b0e] border border-[#20232b] text-xs text-[#f0f2f5] placeholder-[#5a6070] focus:outline-none focus:border-[#cc8e25]"
             />
 
             <select
               value={category}
               onChange={e => setCategory(e.target.value as MemoryCategory)}
-              className="px-3 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-xs text-white focus:outline-none focus:border-bantai-500"
+              className="px-3 py-2 bg-[#090b0e] border border-[#20232b] text-xs text-[#f0f2f5] focus:outline-none focus:border-[#cc8e25] font-mono uppercase"
             >
               <option value="preference">Preference</option>
               <option value="fact">Fact</option>
@@ -107,40 +116,41 @@ export function MemoryView() {
               <option value="instruction">Instruction</option>
             </select>
 
-            <button
+            <Button
               type="submit"
-              className="px-4 py-2 bg-bantai-500 hover:bg-bantai-600 text-black font-semibold text-xs rounded-xl flex items-center gap-1.5 transition"
+              variant="primary"
+              size="sm"
             >
-              <Plus className="w-4 h-4" /> Save Memory
-            </button>
+              [+] SAVE
+            </Button>
           </div>
         </form>
 
         {/* Memories List */}
         <div className="space-y-2">
           {memories.length === 0 ? (
-            <div className="p-12 text-center text-xs text-gray-500 bg-bantai-darkCard/40 border border-bantai-darkBorder rounded-2xl">
-              No personal memories saved yet. BANTAI automatically learns preferences during conversation if enabled.
+            <div className="p-12 text-center text-xs text-[#8c919e] bg-[#12141a] border border-[#20232b] uppercase tracking-wider">
+              NO PERSONAL MEMORIES SAVED YET. BANTAI AUTOMATICALLY LEARNS PREFERENCES DURING CONVERSATION.
             </div>
           ) : (
             memories.map(m => (
               <div
                 key={m.id}
-                className="p-3.5 bg-bantai-darkCard border border-bantai-darkBorder rounded-xl flex items-center justify-between text-xs"
+                className="p-3 bg-[#12141a] border border-[#20232b] flex items-center justify-between text-xs"
               >
                 <div className="flex items-center gap-3">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-500/20 text-purple-300 flex items-center gap-1">
-                    <Tag className="w-3 h-3" /> {m.category}
+                  <span className="px-2 py-0.5 border border-[#20232b] bg-[#181b22] text-[10px] font-bold uppercase text-[#cc8e25]">
+                    [{m.category}]
                   </span>
-                  <span className="text-gray-200">{m.content}</span>
+                  <span className="text-[#f0f2f5]">{m.content}</span>
                 </div>
 
                 <button
                   onClick={() => handleDelete(m.id)}
-                  className="text-gray-500 hover:text-red-400 transition"
+                  className="text-[#8c919e] hover:text-red-400 font-bold uppercase text-[10px] transition-colors"
                   title="Forget this memory"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  [PURGE]
                 </button>
               </div>
             ))

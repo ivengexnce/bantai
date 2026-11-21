@@ -1,7 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
+import { SiliconMeshCanvas } from '../ui/SiliconMeshCanvas';
+import { BorderBeam } from '../ui/BorderBeam';
+import { NumberTicker } from '../ui/NumberTicker';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { Tabs } from '../ui/Tabs';
+import { FADE_IN_UP, STAGGER_CONTAINER } from '../../lib/utils';
 
 export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
   const { user, setActiveView } = useApp();
@@ -33,186 +41,234 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
   const currentSample = sampleQueries[activeQueryIndex];
   const activeResponse = currentSample[activeDemoMode];
 
+  const modeTabs = [
+    { id: 'tapori', label: 'Tapori Mode' },
+    { id: 'developer', label: 'Developer' },
+    { id: 'academic', label: 'Academic' }
+  ];
+
+  const modelTabs = [
+    { id: 'chhotu', label: 'Chhotu (3B)' },
+    { id: 'bhai', label: 'Bhai (7B)' },
+    { id: 'ustad', label: 'Ustad (14B)' },
+    { id: 'don', label: 'Don (32B)' }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0e1014] text-[#d4d6db] font-sans antialiased selection:bg-[#cc8e25] selection:text-black">
+    <div className="min-h-screen bg-[#0e1014] text-[#d4d6db] font-mono text-xs antialiased selection:bg-[#cc8e25] selection:text-black">
       {/* 1. TOP UTILITY BAR */}
-      <header className="border-b border-[#20232b] bg-[#12141a] px-6 py-3.5 sticky top-0 z-50">
+      <header className="border-b border-[#20232b] bg-[#12141a] px-6 py-3 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="font-mono text-xs font-bold text-[#cc8e25] tracking-wider uppercase">
               BANTAI // CORE 1.0
             </span>
-            <span className="text-[#3a3f4d] font-mono text-xs">|</span>
-            <span className="font-mono text-xs text-[#8c919e]">
+            <span className="text-[#3a3f4d]">|</span>
+            <span className="text-[#8c919e] uppercase">
               SOVEREIGN SILICON RUNTIME
             </span>
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-2 font-mono text-xs text-[#8c919e]">
+            <div className="hidden md:flex items-center gap-2 text-[11px] text-[#8c919e]">
               <span className="w-1.5 h-1.5 bg-[#10b981] inline-block" />
               <span>DAEMON: LOCALHOST:4000</span>
             </div>
             {user ? (
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => setActiveView('chat')}
-                className="px-4 py-1.5 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
               >
-                Enter Console [-&gt;]
-              </button>
+                ENTER CONSOLE [-&gt;]
+              </Button>
             ) : (
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={onOpenAuth}
-                className="px-4 py-1.5 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
               >
-                Access Console
-              </button>
+                ACCESS CONSOLE
+              </Button>
             )}
           </div>
         </div>
       </header>
 
-      {/* 2. HERO: ARCHITECTURAL BLUEPRINT */}
-      <section className="border-b border-[#20232b] px-6 pt-20 pb-16">
-        <div className="max-w-7xl mx-auto">
-          <div className="max-w-3xl">
-            <div className="font-mono text-xs text-[#cc8e25] uppercase tracking-widest mb-4">
-              [SPECIFICATION: LOCAL AGENTIC PLATFORM]
-            </div>
+      {/* 2. HERO: ARCHITECTURAL BLUEPRINT + THREE.JS 3D SILICON LATTICE */}
+      <section className="border-b border-[#20232b] px-6 pt-16 pb-16">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          {/* Left Column: Blueprint Specification */}
+          <motion.div
+            className="lg:col-span-7 space-y-6"
+            initial="initial"
+            animate="animate"
+            variants={STAGGER_CONTAINER}
+          >
+            <motion.div variants={FADE_IN_UP}>
+              <Badge variant="warning" pulse>
+                SPECIFICATION: SOVEREIGN AGENTIC SILICON
+              </Badge>
+            </motion.div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#f0f2f5] leading-[1.08] mb-6">
+            <motion.h1
+              variants={FADE_IN_UP}
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#f0f2f5] leading-[1.15]"
+            >
               Sovereign artificial intelligence executed entirely on local silicon.
-            </h1>
+            </motion.h1>
 
-            <p className="text-lg text-[#9da2af] leading-relaxed mb-8">
+            <motion.p
+              variants={FADE_IN_UP}
+              className="text-sm text-[#9da2af] leading-relaxed max-w-2xl font-sans"
+            >
               Zero external API dependencies. Strict dual-database isolation between user identity and conversation telemetry. Native model execution across 3B, 7B, 14B, and 32B open weights with authentic Mumbai Tapori and technical reasoning engines.
-            </p>
+            </motion.p>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <motion.div variants={FADE_IN_UP} className="flex flex-wrap items-center gap-4 pt-2">
               {user ? (
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
                   onClick={() => setActiveView('chat')}
-                  className="px-6 py-3 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
                 >
-                  Enter Operational Console [-&gt;]
-                </button>
+                  ENTER OPERATIONAL CONSOLE [-&gt;]
+                </Button>
               ) : (
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
                   onClick={onOpenAuth}
-                  className="px-6 py-3 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-mono text-xs font-bold uppercase tracking-wider transition-colors"
                 >
-                  Initialize Instance
-                </button>
+                  INITIALIZE INSTANCE
+                </Button>
               )}
 
               <a
                 href="https://github.com/ivengexnce/bantai"
                 target="_blank"
                 rel="noreferrer"
-                className="px-6 py-3 border border-[#2b303c] hover:border-[#404656] text-[#d4d6db] font-mono text-xs font-medium uppercase tracking-wider transition-colors"
               >
-                Inspect Repository Source
+                <Button variant="outline" size="lg">
+                  INSPECT REPOSITORY SOURCE
+                </Button>
               </a>
+            </motion.div>
+          </motion.div>
+
+          {/* Right Column: Interactive Three.js Silicon Lattice */}
+          <div className="lg:col-span-5 relative">
+            <div className="border border-[#20232b] bg-[#090b0e] p-2 relative">
+              <BorderBeam size={180} duration={12} color="#cc8e25" />
+              <div className="px-3 py-2 border-b border-[#20232b] bg-[#12141a] flex items-center justify-between text-[10px] text-[#8c919e]">
+                <span className="text-[#cc8e25] font-bold">[3D SILICON MESH]</span>
+                <span className="text-[#10b981]">144 NEURAL COMPUTE NODES</span>
+              </div>
+              <div className="h-[340px] w-full">
+                <SiliconMeshCanvas />
+              </div>
+              <div className="px-3 py-1.5 border-t border-[#20232b] bg-[#12141a] flex items-center justify-between text-[9px] text-[#5a6070]">
+                <span>HARDWARE ACCELERATED · WEBGL</span>
+                <span>MOUSE REACTIVE · 60 FPS</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Quick Metrics Matrix */}
-          <div className="mt-16 pt-8 border-t border-[#1d2028] grid grid-cols-2 md:grid-cols-4 gap-6 font-mono">
-            <div>
-              <div className="text-[11px] text-[#6b7280] uppercase tracking-wider mb-1">DATA EGRESS</div>
-              <div className="text-xl font-bold text-[#10b981]">0 BYTES</div>
-              <div className="text-[11px] text-[#8c919e] mt-0.5">Air-gapped operation</div>
+        {/* Quick Metrics Matrix with Spring Number Ticker */}
+        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-[#1d2028] grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="border-l-2 border-[#10b981] pl-4">
+            <div className="text-[10px] text-[#6b7280] uppercase tracking-wider mb-1">DATA EGRESS</div>
+            <div className="text-2xl font-bold text-[#10b981] flex items-baseline gap-1">
+              <NumberTicker value={0} />
+              <span className="text-xs">BYTES</span>
             </div>
-            <div>
-              <div className="text-[11px] text-[#6b7280] uppercase tracking-wider mb-1">LOCAL INFERENCE</div>
-              <div className="text-xl font-bold text-[#f0f2f5]">QWEN 2.5 BASE</div>
-              <div className="text-[11px] text-[#8c919e] mt-0.5">Apache 2.0 open-weight</div>
+            <div className="text-[10px] text-[#8c919e] mt-1">Air-gapped operation</div>
+          </div>
+
+          <div className="border-l-2 border-[#cc8e25] pl-4">
+            <div className="text-[10px] text-[#6b7280] uppercase tracking-wider mb-1">LOCAL CONTEXT WINDOW</div>
+            <div className="text-2xl font-bold text-[#cc8e25] flex items-baseline gap-1">
+              <NumberTicker value={32768} />
+              <span className="text-xs">TOKENS</span>
             </div>
-            <div>
-              <div className="text-[11px] text-[#6b7280] uppercase tracking-wider mb-1">SANDBOXED TOOLS</div>
-              <div className="text-xl font-bold text-[#cc8e25]">10 AGENT TOOLS</div>
-              <div className="text-[11px] text-[#8c919e] mt-0.5">Human approval gates</div>
+            <div className="text-[10px] text-[#8c919e] mt-1">Qwen 2.5 full context</div>
+          </div>
+
+          <div className="border-l-2 border-[#3a4050] pl-4">
+            <div className="text-[10px] text-[#6b7280] uppercase tracking-wider mb-1">SANDBOXED AGENT TOOLS</div>
+            <div className="text-2xl font-bold text-[#f0f2f5] flex items-baseline gap-1">
+              <NumberTicker value={10} />
+              <span className="text-xs">ACTIVE</span>
             </div>
-            <div>
-              <div className="text-[11px] text-[#6b7280] uppercase tracking-wider mb-1">DATA TOPOLOGY</div>
-              <div className="text-xl font-bold text-[#f0f2f5]">MONGO + FIRESTORE</div>
-              <div className="text-[11px] text-[#8c919e] mt-0.5">Cryptographic boundary</div>
+            <div className="text-[10px] text-[#8c919e] mt-1">Human approval gates</div>
+          </div>
+
+          <div className="border-l-2 border-[#3a4050] pl-4">
+            <div className="text-[10px] text-[#6b7280] uppercase tracking-wider mb-1">MODEL FAMILY TIERS</div>
+            <div className="text-2xl font-bold text-[#f0f2f5] flex items-baseline gap-1">
+              <NumberTicker value={4} />
+              <span className="text-xs">MODELS</span>
             </div>
+            <div className="text-[10px] text-[#8c919e] mt-1">3B, 7B, 14B, 32B weights</div>
           </div>
         </div>
       </section>
 
-      {/* 3. REAL INTERACTIVE PRODUCT DEMONSTRATION (NO SKELETONS, NO FAKE TERMINALS) */}
-      <section className="border-b border-[#20232b] px-6 py-20 bg-[#0b0d10]">
+      {/* 3. REAL INTERACTIVE PRODUCT DEMONSTRATION WITH BORDERBEAM & TABS */}
+      <section className="border-b border-[#20232b] px-6 py-16 bg-[#0b0d10]">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-10">
-            <span className="font-mono text-xs text-[#cc8e25] uppercase tracking-wider">
+          <div className="mb-8">
+            <span className="text-[10px] text-[#cc8e25] uppercase tracking-wider">
               [LIVE EVALUATION ENVIRONMENT]
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#f0f2f5] mt-2 mb-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#f0f2f5] mt-1 mb-2">
               Interactive local dialogue demonstration
             </h2>
-            <p className="text-sm text-[#8c919e] max-w-2xl">
+            <p className="text-xs text-[#8c919e] max-w-2xl font-sans">
               Test actual runtime queries below to observe the dual-engine dialogue generator. Select an operational personality mode to switch between authentic Mumbai Tapori, Developer, and Academic outputs.
             </p>
           </div>
 
-          <div className="border border-[#232733] bg-[#12151d]">
-            {/* Console Control Bar */}
+          <div className="border border-[#232733] bg-[#12151d] relative">
+            <BorderBeam size={250} duration={14} color="#cc8e25" />
+
+            {/* Console Control Bar with Sliding Animated Tabs */}
             <div className="border-b border-[#232733] p-4 flex flex-wrap items-center justify-between gap-4 bg-[#151821]">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-[#8c919e] uppercase mr-2">Model:</span>
-                {[
-                  { id: 'chhotu', label: 'Chhotu (3B)' },
-                  { id: 'bhai', label: 'Bhai (7B)' },
-                  { id: 'ustad', label: 'Ustad (14B)' },
-                  { id: 'don', label: 'Don (32B)' }
-                ].map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setSelectedDemoModel(m.id)}
-                    className={`font-mono text-xs px-2.5 py-1 border transition-colors ${
-                      selectedDemoModel === m.id
-                        ? 'border-[#cc8e25] bg-[#cc8e25]/10 text-[#cc8e25] font-bold'
-                        : 'border-[#272b38] text-[#8c919e] hover:text-[#d4d6db]'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-[#8c919e] uppercase">[MODEL]:</span>
+                <Tabs
+                  tabs={modelTabs}
+                  activeTab={selectedDemoModel}
+                  onChange={setSelectedDemoModel}
+                  layoutId="landing-model-tab"
+                />
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-[#8c919e] uppercase mr-2">Mode:</span>
-                {(['tapori', 'developer', 'academic'] as const).map(mode => (
-                  <button
-                    key={mode}
-                    onClick={() => setActiveDemoMode(mode)}
-                    className={`font-mono text-xs px-3 py-1 border transition-colors capitalize ${
-                      activeDemoMode === mode
-                        ? 'border-[#cc8e25] bg-[#cc8e25] text-black font-bold'
-                        : 'border-[#272b38] text-[#8c919e] hover:text-[#d4d6db]'
-                    }`}
-                  >
-                    {mode}
-                  </button>
-                ))}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-[#8c919e] uppercase">[MODE]:</span>
+                <Tabs
+                  tabs={modeTabs}
+                  activeTab={activeDemoMode}
+                  onChange={id => setActiveDemoMode(id as 'tapori' | 'developer' | 'academic')}
+                  layoutId="landing-mode-tab"
+                />
               </div>
             </div>
 
-            {/* Query Selector Tabs */}
+            {/* Query Selector Bar */}
             <div className="border-b border-[#232733] px-4 py-2 flex flex-wrap gap-2 bg-[#10131a]">
               {sampleQueries.map((item, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveQueryIndex(idx)}
-                  className={`font-mono text-xs px-3 py-1.5 transition-colors ${
+                  className={`text-[11px] px-3 py-1.5 transition-colors uppercase ${
                     activeQueryIndex === idx
-                      ? 'bg-[#1e222d] text-[#f0f2f5] border-b-2 border-[#cc8e25]'
+                      ? 'bg-[#1e222d] text-[#f0f2f5] border-b-2 border-[#cc8e25] font-bold'
                       : 'text-[#6b7280] hover:text-[#9da2af]'
                   }`}
                 >
-                  Query [{idx + 1}]: &quot;{item.q.substring(0, 28)}...&quot;
+                  QUERY [{idx + 1}]: &quot;{item.q.substring(0, 28)}...&quot;
                 </button>
               ))}
             </div>
@@ -221,21 +277,21 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
             <div className="p-6 space-y-6">
               {/* User Query Block */}
               <div className="border-l-2 border-[#cc8e25] pl-4 py-1">
-                <div className="font-mono text-[11px] text-[#cc8e25] uppercase tracking-wider mb-1">
+                <div className="text-[10px] text-[#cc8e25] uppercase tracking-wider mb-1">
                   OPERATOR QUERY:
                 </div>
-                <div className="text-base text-[#f0f2f5] font-mono">
+                <div className="text-sm text-[#f0f2f5]">
                   &quot;{currentSample.q}&quot;
                 </div>
               </div>
 
               {/* Engine Response Block */}
               <div className="border-l-2 border-[#363c4e] pl-4 py-1">
-                <div className="font-mono text-[11px] text-[#8c919e] uppercase tracking-wider mb-2 flex items-center justify-between">
+                <div className="text-[10px] text-[#8c919e] uppercase tracking-wider mb-2 flex items-center justify-between">
                   <span>BANTAI RESPONSE // MODE: {activeDemoMode.toUpperCase()}</span>
-                  <span className="text-[#10b981]">STATUS: 200 OK (LOCAL)</span>
+                  <span className="text-[#10b981]">[STATUS: 200 OK LOCAL]</span>
                 </div>
-                <div className="text-sm text-[#d4d6db] leading-relaxed whitespace-pre-wrap font-mono bg-[#0c0e12] p-4 border border-[#1e222d]">
+                <div className="text-xs text-[#d4d6db] leading-relaxed whitespace-pre-wrap bg-[#0c0e12] p-4 border border-[#1e222d]">
                   {activeResponse}
                 </div>
               </div>
@@ -244,23 +300,23 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
         </div>
       </section>
 
-      {/* 4. MODEL FAMILY SPECIFICATION MATRIX (NO 3 PRICING TIERS, NO 3 CARDS IN A ROW) */}
-      <section className="border-b border-[#20232b] px-6 py-20">
+      {/* 4. MODEL FAMILY SPECIFICATION MATRIX */}
+      <section className="border-b border-[#20232b] px-6 py-16">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-10">
-            <span className="font-mono text-xs text-[#cc8e25] uppercase tracking-wider">
+          <div className="mb-8">
+            <span className="text-[10px] text-[#cc8e25] uppercase tracking-wider">
               [COMPUTE ARCHITECTURE]
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#f0f2f5] mt-2 mb-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#f0f2f5] mt-1 mb-2">
               The BANTAI Model Family specification matrix
             </h2>
-            <p className="text-sm text-[#8c919e] max-w-2xl">
+            <p className="text-xs text-[#8c919e] max-w-2xl font-sans">
               Each model is calibrated for sovereign execution across distinct physical compute envelopes. Zero third-party license restrictions.
             </p>
           </div>
 
-          <div className="border border-[#232733] overflow-x-auto bg-[#12151d]">
-            <table className="w-full text-left font-mono text-xs">
+          <div className="border border-[#232733] overflow-x-auto bg-[#12151d] relative">
+            <table className="w-full text-left text-xs">
               <thead className="bg-[#151821] border-b border-[#232733] text-[#8c919e]">
                 <tr>
                   <th className="p-4 uppercase">Identifier</th>
@@ -280,7 +336,7 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
                   <td className="p-4 text-[#10b981]">~65 tok/s</td>
                   <td className="p-4 text-[#9da2af]">Edge nodes, rapid classification, low-overhead reminder dispatch</td>
                 </tr>
-                <tr className="bg-[#cc8e25]/5">
+                <tr className="bg-[#cc8e25]/5 border-l-2 border-[#cc8e25]">
                   <td className="p-4 font-bold text-[#cc8e25]">BANTAI Bhai (Default)</td>
                   <td className="p-4 text-[#cc8e25] font-bold">7 Billion</td>
                   <td className="p-4">Q4_K_M</td>
@@ -311,27 +367,27 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* 5. DATA SEPARATION & SECURITY ARCHITECTURE */}
-      <section className="border-b border-[#20232b] px-6 py-20 bg-[#0b0d10]">
+      <section className="border-b border-[#20232b] px-6 py-16 bg-[#0b0d10]">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-10">
-            <span className="font-mono text-xs text-[#10b981] uppercase tracking-wider">
+          <div className="mb-8">
+            <span className="text-[10px] text-[#10b981] uppercase tracking-wider">
               [SECURITY SPECIFICATION]
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#f0f2f5] mt-2 mb-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#f0f2f5] mt-1 mb-2">
               Strict dual-database air-gap architecture
             </h2>
-            <p className="text-sm text-[#8c919e] max-w-2xl">
+            <p className="text-xs text-[#8c919e] max-w-2xl font-sans">
               User identity and prompt contents are decoupled at the database driver boundary. Compromising the conversation store reveals zero authentication hashes.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-mono">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* MongoDB Partition */}
-            <div className="border border-[#232733] p-6 bg-[#12151d]">
-              <div className="text-xs font-bold text-[#10b981] uppercase mb-1">
+            <div className="border border-[#232733] p-6 bg-[#12151d] relative">
+              <div className="text-[10px] font-bold text-[#10b981] uppercase mb-1">
                 STORAGE LAYER 01 // MONGODB
               </div>
-              <h3 className="text-base font-bold text-[#f0f2f5] mb-4">
+              <h3 className="text-sm font-bold text-[#f0f2f5] mb-4">
                 User Identity & Credential Isolation
               </h3>
               <ul className="space-y-3 text-xs text-[#9da2af]">
@@ -351,11 +407,11 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
             </div>
 
             {/* Firestore Partition */}
-            <div className="border border-[#232733] p-6 bg-[#12151d]">
-              <div className="text-xs font-bold text-[#cc8e25] uppercase mb-1">
+            <div className="border border-[#232733] p-6 bg-[#12151d] relative">
+              <div className="text-[10px] font-bold text-[#cc8e25] uppercase mb-1">
                 STORAGE LAYER 02 // FIREBASE FIRESTORE
               </div>
-              <h3 className="text-base font-bold text-[#f0f2f5] mb-4">
+              <h3 className="text-sm font-bold text-[#f0f2f5] mb-4">
                 Stateful Telemetry & Vector Memory
               </h3>
               <ul className="space-y-3 text-xs text-[#9da2af]">
@@ -378,22 +434,22 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* 6. AUTONOMOUS 10-TOOL AGENT SANDBOX */}
-      <section className="border-b border-[#20232b] px-6 py-20">
+      <section className="border-b border-[#20232b] px-6 py-16">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-10">
-            <span className="font-mono text-xs text-[#cc8e25] uppercase tracking-wider">
+          <div className="mb-8">
+            <span className="text-[10px] text-[#cc8e25] uppercase tracking-wider">
               [EXECUTION RUNTIME]
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#f0f2f5] mt-2 mb-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#f0f2f5] mt-1 mb-2">
               The 10-Tool Sandboxed Agent Registry
             </h2>
-            <p className="text-sm text-[#8c919e] max-w-2xl">
+            <p className="text-xs text-[#8c919e] max-w-2xl font-sans">
               BANTAI agents decompose high-level directives into discrete execution plans. Sensitive filesystem and execution primitives enforce mandatory human authorization.
             </p>
           </div>
 
           <div className="border border-[#232733] bg-[#12151d] p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 font-mono text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
               {[
                 { name: "calculator", desc: "Deterministic mathematical evaluation" },
                 { name: "sandbox_code_executor", desc: "Isolated JS/TS runner with human gate" },
@@ -413,13 +469,13 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
               ))}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-[#1e222d] flex items-center justify-between text-xs font-mono text-[#8c919e]">
+            <div className="mt-6 pt-4 border-t border-[#1e222d] flex items-center justify-between text-xs text-[#8c919e]">
               <span>SECURITY PROTOCOL: Human-in-the-loop authorization enforced on shell commands.</span>
               <button
                 onClick={onOpenAuth}
                 className="text-[#cc8e25] hover:underline uppercase font-bold"
               >
-                Launch Planner Console &gt;
+                LAUNCH PLANNER CONSOLE [-&gt;]
               </button>
             </div>
           </div>
@@ -427,7 +483,7 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* 7. FOOTER */}
-      <footer className="px-6 py-12 bg-[#090a0d] font-mono text-xs border-t border-[#1a1d24]">
+      <footer className="px-6 py-10 bg-[#090a0d] text-xs border-t border-[#1a1d24]">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="text-[#f0f2f5] font-bold">
@@ -439,19 +495,19 @@ export function LandingPage({ onOpenAuth }: { onOpenAuth: () => void }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-6 text-[#8c919e]">
-            <button onClick={onOpenAuth} className="hover:text-[#f0f2f5] transition-colors">
-              Access Console
+            <button onClick={onOpenAuth} className="hover:text-[#f0f2f5] transition-colors uppercase">
+              ACCESS CONSOLE
             </button>
             <a
               href="https://github.com/ivengexnce/bantai"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-[#f0f2f5] transition-colors"
+              className="hover:text-[#f0f2f5] transition-colors uppercase"
             >
-              GitHub Source
+              GITHUB SOURCE
             </a>
             <span className="text-[#3a3f4d]">|</span>
-            <span className="text-[#cc8e25]">
+            <span className="text-[#cc8e25] uppercase">
               Architected by Meet Maru (ivengexnce)
             </span>
           </div>

@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import { FirestoreTask, TaskPriority } from '@bantai/shared';
-import { CheckSquare, Plus, Trash2, CheckCircle2, Circle } from 'lucide-react';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { Tabs } from '../ui/Tabs';
 
 export function TasksView() {
   const [tasks, setTasks] = useState<FirestoreTask[]>([]);
@@ -56,68 +58,75 @@ export function TasksView() {
     return true;
   });
 
+  const filterTabs = [
+    { id: 'all', label: 'All Tasks' },
+    { id: 'pending', label: 'Pending' },
+    { id: 'completed', label: 'Completed' }
+  ];
+
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-bantai-dark">
+    <div className="flex-1 overflow-y-auto p-6 bg-[#0e1014] text-[#d4d6db] font-mono text-xs select-none">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Header Specification */}
+        <div className="flex items-center justify-between border-b border-[#20232b] pb-4 flex-wrap gap-4">
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 text-bantai-400" /> Personal Task Manager
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="warning">[04] TASK REGISTRY</Badge>
+              <Badge variant="success">LOCAL DISPATCHER</Badge>
+            </div>
+            <h1 className="text-xl font-bold text-[#f0f2f5] uppercase tracking-wider">
+              Personal Task Registry
             </h1>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Natural language and structured task execution.
+            <p className="text-xs text-[#8c919e] mt-1">
+              Natural language task orchestration and deterministic status tracking.
             </p>
           </div>
 
-          <div className="flex gap-1 bg-black/40 border border-bantai-darkBorder rounded-xl p-1 text-xs">
-            {(['all', 'pending', 'completed'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setFilter(tab)}
-                className={`px-3 py-1 rounded-lg capitalize transition ${
-                  filter === tab ? 'bg-bantai-500 text-black font-semibold' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          <div className="flex items-center">
+            <Tabs
+              tabs={filterTabs}
+              activeTab={filter}
+              onChange={id => setFilter(id as 'all' | 'pending' | 'completed')}
+              layoutId="tasks-filter-tab"
+            />
           </div>
         </div>
 
         {/* Task Creation Bar */}
-        <form onSubmit={handleCreate} className="p-4 bg-bantai-darkCard border border-bantai-darkBorder rounded-2xl flex gap-3">
+        <form onSubmit={handleCreate} className="p-4 bg-[#12141a] border border-[#20232b] flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            placeholder="What needs to be done, bantai?..."
-            className="flex-1 px-4 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-bantai-500"
+            placeholder="[ENTER ACTIONABLE TASK DIRECTIVE]..."
+            className="flex-1 px-3 py-2 bg-[#090b0e] border border-[#20232b] text-xs text-[#f0f2f5] placeholder-[#5a6070] focus:outline-none focus:border-[#cc8e25]"
           />
 
           <select
             value={priority}
             onChange={e => setPriority(e.target.value as TaskPriority)}
-            className="px-3 py-2 bg-black/40 border border-bantai-darkBorder rounded-xl text-xs text-white focus:outline-none focus:border-bantai-500"
+            className="px-3 py-2 bg-[#090b0e] border border-[#20232b] text-xs text-[#f0f2f5] focus:outline-none focus:border-[#cc8e25] font-mono uppercase"
           >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
+            <option value="low">PRIORITY: LOW</option>
+            <option value="medium">PRIORITY: MEDIUM</option>
+            <option value="high">PRIORITY: HIGH</option>
+            <option value="urgent">PRIORITY: URGENT</option>
           </select>
 
-          <button
+          <Button
             type="submit"
-            className="px-4 py-2 bg-bantai-500 hover:bg-bantai-600 text-black font-semibold text-xs rounded-xl flex items-center gap-1.5 transition"
+            variant="primary"
+            size="sm"
           >
-            <Plus className="w-4 h-4" /> Add Task
-          </button>
+            [+] REGISTER TASK
+          </Button>
         </form>
 
         {/* Tasks List */}
         <div className="space-y-2">
           {filteredTasks.length === 0 ? (
-            <div className="p-12 text-center text-xs text-gray-500 bg-bantai-darkCard/40 border border-bantai-darkBorder rounded-2xl">
-              No tasks found in this view.
+            <div className="p-12 text-center text-xs text-[#8c919e] bg-[#12141a] border border-[#20232b] uppercase tracking-wider">
+              NO TASKS MATCH THE CURRENT FILTER.
             </div>
           ) : (
             filteredTasks.map(t => {
@@ -125,39 +134,40 @@ export function TasksView() {
               return (
                 <div
                   key={t.id}
-                  className={`p-3.5 bg-bantai-darkCard border rounded-xl flex items-center justify-between transition ${
-                    isDone ? 'border-bantai-darkBorder/40 opacity-60' : 'border-bantai-darkBorder'
+                  className={`p-3 bg-[#12141a] border flex items-center justify-between transition-colors ${
+                    isDone ? 'border-[#20232b] opacity-60' : 'border-[#20232b]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => handleToggleStatus(t)}
-                      className="text-gray-400 hover:text-bantai-400 transition"
+                      className="px-2 py-0.5 border border-[#2b303c] bg-[#181b22] text-[10px] font-bold uppercase transition-colors hover:border-[#cc8e25]"
                     >
                       {isDone ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span className="text-[#10b981]">[DONE]</span>
                       ) : (
-                        <Circle className="w-4 h-4" />
+                        <span className="text-[#8c919e]">[OPEN]</span>
                       )}
                     </button>
-                    <span className={`text-xs ${isDone ? 'line-through text-gray-400' : 'text-gray-200'}`}>
+                    <span className={`text-xs ${isDone ? 'line-through text-[#5a6070]' : 'text-[#f0f2f5]'}`}>
                       {t.title}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                    <span className={`px-2 py-0.5 border text-[10px] font-bold uppercase ${
                       t.priority === 'urgent' || t.priority === 'high'
-                        ? 'bg-red-500/20 text-red-400'
-                        : 'bg-amber-500/20 text-amber-400'
+                        ? 'border-red-500/50 bg-red-950/20 text-red-400'
+                        : 'border-[#20232b] bg-[#181b22] text-[#cc8e25]'
                     }`}>
-                      {t.priority}
+                      [{t.priority}]
                     </span>
                     <button
                       onClick={() => handleDelete(t.id)}
-                      className="text-gray-500 hover:text-red-400 transition"
+                      className="text-[#8c919e] hover:text-red-400 font-bold uppercase text-[10px] transition-colors"
+                      title="Purge task"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      [PURGE]
                     </button>
                   </div>
                 </div>

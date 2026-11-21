@@ -25,6 +25,16 @@ module.exports = {
           darkCard: '#1a1d27',
           darkBorder: '#282d3d'
         }
+      },
+      animation: {
+        'border-beam': 'border-beam calc(var(--duration)*1s) infinite linear',
+      },
+      keyframes: {
+        'border-beam': {
+          '100%': {
+            offsetDistance: '100%',
+          },
+        },
       }
     }
   },

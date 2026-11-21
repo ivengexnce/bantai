@@ -5,6 +5,10 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
 import { FirestoreTask, FirestoreReminder } from '@bantai/shared';
 import { resolveModel } from '../../lib/models';
+import { NumberTicker } from '../ui/NumberTicker';
+import { BorderBeam } from '../ui/BorderBeam';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
 
 export function DashboardView() {
   const { user, setActiveView, selectedModel } = useApp();
@@ -41,13 +45,14 @@ export function DashboardView() {
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-[#0e1014] text-[#d4d6db] font-mono text-xs select-none">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* 1. System Telemetry Header */}
-        <div className="border border-[#2b303c] bg-[#12141a] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* 1. System Telemetry Header with BorderBeam */}
+        <div className="border border-[#2b303c] bg-[#12141a] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 relative">
+          <BorderBeam size={200} duration={12} color="#cc8e25" />
           <div>
             <div className="flex items-center gap-2 text-[10px] text-[#cc8e25] font-bold uppercase tracking-widest mb-1">
               <span>[OPERATIONAL DASHBOARD]</span>
               <span>·</span>
-              <span className="text-[#10b981]">STATUS: ONLINE</span>
+              <Badge variant="success" pulse>STATUS: ONLINE</Badge>
             </div>
             <h1 className="text-xl font-bold text-[#f0f2f5] tracking-tight uppercase">
               OPERATOR: {user?.name || 'BANTAI EXPLORER'}
@@ -58,22 +63,24 @@ export function DashboardView() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setActiveView('agent')}
-              className="px-4 py-2 bg-[#181b22] hover:bg-[#20242f] text-[#f0f2f5] border border-[#2b303c] text-xs font-bold uppercase transition-colors"
             >
               [AGENT PLANNER]
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setActiveView('chat')}
-              className="px-4 py-2 bg-[#cc8e25] hover:bg-[#b06f1d] text-black text-xs font-bold uppercase transition-colors"
             >
               [OPEN CONSOLE]
-            </button>
+            </Button>
           </div>
         </div>
 
-        {/* 2. Key Operational Metrics Matrix */}
+        {/* 2. Key Operational Metrics Matrix with Spring Number Tickers */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div
             onClick={() => setActiveView('tasks')}
@@ -83,7 +90,9 @@ export function DashboardView() {
               <span className="text-[10px] uppercase font-bold">[PENDING TASKS]</span>
               <span className="text-[#cc8e25]">&gt;</span>
             </div>
-            <div className="text-2xl font-bold text-[#f0f2f5]">{pendingTasks.length}</div>
+            <div className="text-2xl font-bold text-[#f0f2f5]">
+              <NumberTicker value={pendingTasks.length} />
+            </div>
           </div>
 
           <div
@@ -94,7 +103,9 @@ export function DashboardView() {
               <span className="text-[10px] uppercase font-bold">[REMINDERS]</span>
               <span className="text-[#10b981]">&gt;</span>
             </div>
-            <div className="text-2xl font-bold text-[#f0f2f5]">{reminders.length}</div>
+            <div className="text-2xl font-bold text-[#f0f2f5]">
+              <NumberTicker value={reminders.length} />
+            </div>
           </div>
 
           <div
@@ -105,7 +116,9 @@ export function DashboardView() {
               <span className="text-[10px] uppercase font-bold">[CALENDAR]</span>
               <span className="text-[#8c919e]">&gt;</span>
             </div>
-            <div className="text-2xl font-bold text-[#f0f2f5]">{events.length}</div>
+            <div className="text-2xl font-bold text-[#f0f2f5]">
+              <NumberTicker value={events.length} />
+            </div>
           </div>
 
           <div
@@ -144,12 +157,13 @@ export function DashboardView() {
                 placeholder="[REGISTER NEW TASK...]"
                 className="flex-1 px-3 py-1.5 bg-[#090b0e] border border-[#20232b] text-xs text-[#f0f2f5] placeholder-[#5a6070] focus:outline-none focus:border-[#cc8e25]"
               />
-              <button
+              <Button
                 type="submit"
-                className="px-3 py-1.5 bg-[#cc8e25] hover:bg-[#b06f1d] text-black font-bold text-xs uppercase"
+                variant="primary"
+                size="sm"
               >
                 [ADD]
-              </button>
+              </Button>
             </form>
 
             <div className="space-y-1.5 pt-1">

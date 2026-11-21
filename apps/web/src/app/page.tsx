@@ -14,6 +14,7 @@ import { CalendarView } from '../components/assistant/CalendarView';
 import { KnowledgeView } from '../components/assistant/KnowledgeView';
 import { MemoryView } from '../components/assistant/MemoryView';
 import { SettingsView } from '../components/assistant/SettingsView';
+import { Dialog } from '../components/ui/Dialog';
 
 export default function HomePage() {
   const { user, isLoadingUser, activeView } = useApp();
@@ -38,25 +39,19 @@ export default function HomePage() {
     return (
       <>
         <LandingPage onOpenAuth={() => setShowAuth(true)} />
-        {showAuth && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <div className="relative w-full max-w-md">
-              <button
-                onClick={() => setShowAuth(false)}
-                className="absolute -top-10 right-0 text-[#8c919e] hover:text-white font-mono text-xs uppercase"
-              >
-                [ CLOSE X ]
-              </button>
-              <AuthModal />
-            </div>
-          </div>
-        )}
+        <Dialog
+          isOpen={showAuth}
+          onClose={() => setShowAuth(false)}
+          title="SECURITY AUTHENTICATION GATEWAY"
+        >
+          <AuthModal />
+        </Dialog>
       </>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bantai-dark">
+    <div className="flex h-screen overflow-hidden bg-[#0e1014]">
       <Sidebar />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">

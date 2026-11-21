@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
 import {
@@ -9,6 +10,11 @@ import {
   PERSONALITY_PROMPTS
 } from '@bantai/shared';
 import { resolveModel, APP_MODELS } from '../../lib/models';
+import { Tabs } from '../ui/Tabs';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { BorderBeam } from '../ui/BorderBeam';
+import { FADE_IN_UP } from '../../lib/utils';
 
 function FormattedContent({ content }: { content: string }) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -257,34 +263,29 @@ export function ChatView() {
     recognition.start();
   };
 
-  const availableModes: PersonalityMode[] = ['tapori', 'balanced', 'professional', 'developer', 'academic'];
+  const modeTabs = [
+    { id: 'tapori', label: 'Tapori' },
+    { id: 'balanced', label: 'Balanced' },
+    { id: 'professional', label: 'Professional' },
+    { id: 'developer', label: 'Developer' },
+    { id: 'academic', label: 'Academic' }
+  ];
 
   return (
     <div className="flex-1 flex flex-col h-screen bg-[#0e1014] text-[#d4d6db] font-mono text-xs select-none">
       {/* 1. TOP STRUCTURAL CONTROL BAR */}
       <header className="border-b border-[#20232b] bg-[#12141a] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2">
-        {/* Personality Mode Selector */}
-        <div className="flex items-center gap-1 overflow-x-auto">
-          <span className="text-[10px] uppercase tracking-widest text-[#5a6070] mr-2">
+        {/* Personality Mode Selector with Framer Motion Sliding Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <span className="text-[10px] uppercase tracking-widest text-[#5a6070] mr-1">
             [MODE]:
           </span>
-          {availableModes.map(mode => {
-            const isSelected = personalityMode === mode;
-            return (
-              <button
-                key={mode}
-                onClick={() => setPersonalityMode(mode)}
-                className={`px-2.5 py-1 text-[11px] uppercase transition-colors border ${
-                  isSelected
-                    ? 'bg-[#cc8e25] text-black font-bold border-[#cc8e25]'
-                    : 'bg-[#181b22] text-[#8c919e] hover:text-[#f0f2f5] border-[#20232b]'
-                }`}
-                title={PERSONALITY_PROMPTS[mode].description}
-              >
-                [{mode}]
-              </button>
-            );
-          })}
+          <Tabs
+            tabs={modeTabs}
+            activeTab={personalityMode}
+            onChange={id => setPersonalityMode(id as PersonalityMode)}
+            layoutId="chat-personality-tab"
+          />
         </div>
 
         {/* Model Spec Selector & Status Indicator */}
@@ -299,11 +300,11 @@ export function ChatView() {
             <select
               value={selectedModel}
               onChange={e => handleModelChange(e.target.value)}
-              className="bg-[#181b22] border border-[#2b303c] px-2 py-1 text-[11px] text-[#cc8e25] font-bold uppercase focus:outline-none focus:border-[#cc8e25] cursor-pointer"
+              className="bg-[#181b22] border border-[#20232b] px-2.5 py-1 text-[11px] text-[#f0f2f5] focus:outline-none focus:border-[#cc8e25] font-mono uppercase"
             >
               {APP_MODELS.map(m => (
                 <option key={m.id} value={m.id} className="bg-[#12141a] text-[#f0f2f5]">
-                  [{m.parameters}] {m.name.toUpperCase()} ({m.baseModel})
+                  {m.name.toUpperCase()} ({m.parameters})
                 </option>
               ))}
             </select>
@@ -311,131 +312,139 @@ export function ChatView() {
         </div>
       </header>
 
-      {/* Switch Notification Banner */}
-      {switchToast && (
-        <div className="bg-[#181b22] border-b border-[#cc8e25] px-4 py-2 text-[11px] text-[#cc8e25] font-mono flex items-center justify-between">
-          <span>&gt; {switchToast}</span>
-          <span className="text-[10px] text-[#8c919e]">[ACTIVE]</span>
-        </div>
-      )}
+      {/* Switch Toast Notification Banner */}
+      <AnimatePresence>
+        {switchToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="px-4 py-1.5 bg-[#181b22] border-b border-[#cc8e25] text-[11px] text-[#cc8e25] flex items-center justify-between"
+          >
+            <span>&gt; {switchToast}</span>
+            <button onClick={() => setSwitchToast(null)} className="text-[#8c919e] hover:text-[#f0f2f5]">[x]</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {infoToast && (
-        <div className="bg-[#181b22] border-b border-red-500/50 px-4 py-2 text-[11px] text-red-400 font-mono flex items-center justify-between">
-          <span>&gt; {infoToast}</span>
-          <button onClick={() => setInfoToast(null)} className="text-xs">[X]</button>
-        </div>
-      )}
+      {/* Info Toast */}
+      <AnimatePresence>
+        {infoToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="px-4 py-1.5 bg-[#181b22] border-b border-red-500 text-[11px] text-red-400 flex items-center justify-between"
+          >
+            <span>! {infoToast}</span>
+            <button onClick={() => setInfoToast(null)} className="text-[#8c919e] hover:text-[#f0f2f5]">[x]</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* 2. CONVERSATION VIEWPORT */}
+      {/* 2. CHAT STREAM VIEW AREA */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !streamingContent ? (
           <div className="max-w-2xl mx-auto py-12 border border-[#20232b] bg-[#12141a] p-6 text-center space-y-4">
-            <div className="font-mono text-xs uppercase tracking-widest text-[#cc8e25]">
-              [INITIALIZED: {currentModel.name.toUpperCase()} // {currentModel.parameters}]
+            <div className="inline-block px-3 py-1 bg-[#181b22] border border-[#2b303c] text-[10px] text-[#cc8e25] uppercase tracking-widest font-bold">
+              [ACTIVE ENGINE: {currentModel.name.toUpperCase()} · {currentModel.parameters}]
             </div>
-            <h2 className="text-xl font-bold text-[#f0f2f5] tracking-tight">
-              BANTAI Sovereign Intelligence Console
+
+            <h2 className="text-sm font-bold text-[#f0f2f5] uppercase tracking-wider">
+              BANTAI // {PERSONALITY_PROMPTS[personalityMode].name}
             </h2>
+
             <p className="text-xs text-[#8c919e] max-w-lg mx-auto leading-relaxed">
-              Self-hosted model execution on local hardware. Zero external API calls. Strict isolation between user credentials and conversation telemetry.
+              {PERSONALITY_PROMPTS[personalityMode].tagline}
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-4 text-left">
+            <div className="pt-2 flex flex-wrap gap-2 justify-center">
               {[
-                "mera naam bta aur identity verify kar",
-                "quicksort partitioning algorithm samjhao",
-                "docker container vs virtual machine architecture",
-                "ek solid project schedule aur roadmap banao"
-              ].map((suggestion, sIdx) => (
+                'mera naam bta',
+                'mein sirf ek ladka hu',
+                'quicksort algorithm samjhao',
+                'dockerfile template for node'
+              ].map((query, idx) => (
                 <button
-                  key={sIdx}
-                  onClick={() => handleSend(suggestion)}
-                  className="p-3 border border-[#20232b] hover:border-[#cc8e25] bg-[#161922] text-[#8c919e] hover:text-[#f0f2f5] text-[11px] text-left transition-colors font-mono"
+                  key={idx}
+                  onClick={() => handleSend(query)}
+                  className="px-3 py-1.5 border border-[#20232b] bg-[#0e1014] hover:border-[#cc8e25] hover:text-[#cc8e25] text-[10px] text-[#8c919e] uppercase transition-colors"
                 >
-                  <span className="text-[#cc8e25] mr-1.5">&gt;</span>
-                  <span>{suggestion}</span>
+                  &gt; {query}
                 </button>
               ))}
             </div>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, index) => {
             const isUser = msg.role === 'user';
-            let timestamp = '';
-            try {
-              timestamp = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-            } catch {
-              timestamp = '';
-            }
-
             return (
-              <div
-                key={msg.id}
-                className={`max-w-3xl mx-auto border transition-colors ${
+              <motion.div
+                key={msg.id || index}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                className={`max-w-3xl mx-auto border ${
                   isUser
-                    ? 'border-[#2b303c] bg-[#181b22]'
-                    : 'border-[#20232b] bg-[#12141a]'
+                    ? 'border-[#2b303c] bg-[#12141a]'
+                    : 'border-[#20232b] bg-[#0c0e12]'
                 }`}
               >
                 {/* Message Header Strip */}
-                <div className="px-3 py-1.5 border-b border-[#20232b] bg-[#0e1014] flex items-center justify-between text-[10px] font-mono text-[#8c919e]">
+                <div className="flex items-center justify-between px-3 py-1 bg-[#151820] border-b border-[#20232b] text-[10px] text-[#8c919e]">
                   <div className="flex items-center gap-2">
-                    <span className={isUser ? 'text-[#f0f2f5] font-bold' : 'text-[#cc8e25] font-bold'}>
-                      {isUser ? `[OPERATOR // ${user?.name || 'USER'}]` : `[BANTAI // ${currentModel.name.toUpperCase()} // ${msg.personalityMode?.toUpperCase() || 'TAPORI'}]`}
+                    <span className={isUser ? 'text-[#cc8e25] font-bold' : 'text-[#10b981] font-bold'}>
+                      {isUser ? '[OPERATOR]' : `[BANTAI // ${(msg.personalityMode || personalityMode).toUpperCase()}]`}
+                    </span>
+                    <span className="text-[#3a3f4d]">|</span>
+                    <span className="text-[#5a6070]">
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
                   </div>
-                  <span suppressHydrationWarning>{timestamp}</span>
-                </div>
 
-                {/* Message Content Body */}
-                <div className="p-4 text-xs text-[#d4d6db] leading-relaxed">
-                  <FormattedContent content={msg.content} />
-                </div>
-
-                {/* Message Footer Utilities */}
-                {!isUser && (
-                  <div className="px-3 py-1.5 border-t border-[#20232b] bg-[#0e1014] flex items-center justify-between text-[10px] text-[#5a6070]">
+                  {!isUser && (
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleCopy(msg.id, msg.content)}
-                        className="hover:text-[#f0f2f5] transition-colors"
-                      >
-                        {copiedId === msg.id ? '[COPIED]' : '[COPY]'}
-                      </button>
-                      <span>|</span>
                       <button
                         onClick={() => handleSpeak(msg.content)}
                         className="hover:text-[#f0f2f5] transition-colors"
+                        title="Text-to-Speech"
                       >
-                        [AUDIO READOUT]
+                        [AUDIO]
+                      </button>
+                      <button
+                        onClick={() => handleCopy(msg.id, msg.content)}
+                        className="hover:text-[#f0f2f5] transition-colors"
+                        title="Copy message"
+                      >
+                        {copiedId === msg.id ? '[COPIED]' : '[COPY]'}
                       </button>
                     </div>
-                    <span className="text-[#3a3f4d]">100% LOCAL SILICON</span>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+
+                {/* Message Body Content */}
+                <div className="p-3.5">
+                  <FormattedContent content={msg.content} />
+                </div>
+              </motion.div>
             );
           })
         )}
 
-        {/* Real-time Streaming Response Card */}
+        {/* Live Streaming Token Output Block */}
         {isStreaming && (
-          <div className="max-w-3xl mx-auto border border-[#cc8e25] bg-[#12141a]">
-            <div className="px-3 py-1.5 border-b border-[#20232b] bg-[#0e1014] flex items-center justify-between text-[10px] font-mono text-[#cc8e25]">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-[#cc8e25] animate-pulse inline-block" />
-                <span>[BANTAI // STREAMING RUNNER ACTIVE]</span>
-              </div>
-              <span className="text-[#8c919e]">TOKENS YIELDING</span>
+          <div className="max-w-3xl mx-auto border border-[#cc8e25] bg-[#0c0e12]">
+            <div className="flex items-center justify-between px-3 py-1 bg-[#151820] border-b border-[#cc8e25]/40 text-[10px] text-[#cc8e25]">
+              <span className="font-bold flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-[#cc8e25] inline-block animate-ping" />
+                [BANTAI STREAMING TOKENS // {currentModel.name.toUpperCase()}]
+              </span>
+              <span className="text-[#10b981]">STATUS: 200 ACTIVE</span>
             </div>
-            <div className="p-4 text-xs text-[#d4d6db] leading-relaxed">
-              {streamingContent ? (
-                <FormattedContent content={streamingContent} />
-              ) : (
-                <div className="text-[#8c919e] font-mono animate-pulse">
-                  &gt; Model weights calculating in-memory logits...
-                </div>
-              )}
+
+            <div className="p-3.5">
+              <FormattedContent content={streamingContent || 'Processing deterministic model weights...'} />
+              <span className="inline-block w-2 h-3.5 bg-[#cc8e25] animate-pulse ml-0.5 align-middle" />
             </div>
           </div>
         )}
@@ -443,10 +452,12 @@ export function ChatView() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 3. DOCKED ARCHITECTURAL COMPOSER */}
-      <div className="border-t border-[#20232b] bg-[#12141a] p-4">
-        <div className="max-w-3xl mx-auto border border-[#2b303c] bg-[#0e1014]">
-          {/* Top Context Bar */}
+      {/* 3. FLOATING TECHNICAL COMPOSER CARD WITH BORDERBEAM */}
+      <div className="border-t border-[#20232b] bg-[#0e1014] p-3 sm:p-4">
+        <div className="max-w-3xl mx-auto border border-[#2b303c] bg-[#12141a] relative">
+          <BorderBeam size={180} duration={12} color="#cc8e25" />
+
+          {/* Model Specification & Planner Link */}
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#20232b] bg-[#161922] text-[10px] text-[#8c919e]">
             <div className="flex items-center gap-2">
               <span className="text-[#cc8e25] font-bold">[{currentModel.name.toUpperCase()}]</span>
@@ -462,7 +473,7 @@ export function ChatView() {
 
             <button
               onClick={() => setActiveView('agent')}
-              className="text-[#8c919e] hover:text-[#cc8e25] transition-colors uppercase"
+              className="text-[#8c919e] hover:text-[#cc8e25] transition-colors uppercase font-bold"
             >
               [LAUNCH AGENT PLANNER -&gt;]
             </button>
@@ -488,45 +499,36 @@ export function ChatView() {
           {/* Bottom Action Strip */}
           <div className="flex items-center justify-between px-3 py-2 border-t border-[#20232b] bg-[#12141a]">
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
+                variant={isListening ? 'danger' : 'outline'}
+                size="sm"
                 onClick={toggleVoiceInput}
-                className={`px-2.5 py-1 text-[10px] uppercase border transition-colors ${
-                  isListening
-                    ? 'bg-red-500/20 text-red-400 border-red-500'
-                    : 'border-[#20232b] text-[#8c919e] hover:text-[#f0f2f5] hover:border-[#3a4050]'
-                }`}
-                title="Voice Dictation"
               >
                 {isListening ? '[STOP MIC]' : '[VOICE DICTATION]'}
-              </button>
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
-                  const nextIdx = (availableModes.indexOf(personalityMode) + 1) % availableModes.length;
-                  setPersonalityMode(availableModes[nextIdx]);
+                  const modes: PersonalityMode[] = ['tapori', 'balanced', 'professional', 'developer', 'academic'];
+                  const nextIdx = (modes.indexOf(personalityMode) + 1) % modes.length;
+                  setPersonalityMode(modes[nextIdx]);
                 }}
-                className="px-2.5 py-1 text-[10px] uppercase border border-[#20232b] text-[#8c919e] hover:text-[#f0f2f5] hover:border-[#3a4050] transition-colors"
               >
                 [CYCLE MODE]
-              </button>
+              </Button>
             </div>
 
             <div>
-              <button
-                onClick={() => handleSend()}
+              <Button
+                variant={isStreaming ? 'danger' : 'primary'}
+                size="sm"
                 disabled={!input.trim() && !isStreaming}
-                className={`px-4 py-1.5 text-xs font-bold uppercase transition-colors ${
-                  isStreaming
-                    ? 'bg-red-600 hover:bg-red-700 text-white'
-                    : input.trim()
-                    ? 'bg-[#cc8e25] hover:bg-[#b06f1d] text-black'
-                    : 'bg-[#20232b] text-[#5a6070] cursor-not-allowed'
-                }`}
+                onClick={() => handleSend()}
               >
                 {isStreaming ? '[ABORT]' : '[EXECUTE // ENTER]'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
