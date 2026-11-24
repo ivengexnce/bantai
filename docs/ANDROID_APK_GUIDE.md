@@ -1,50 +1,62 @@
 # BANTAI — Android APK Build and Deployment Guide
 
 ## 1. Overview
-The BANTAI mobile client is built using React Native and Expo (`apps/mobile`). It produces a standalone, installable `.apk` file that connects to the self-hosted backend, supporting chat, voice, tasks, and memory synchronization.
+The BANTAI mobile client (`apps/mobile`, package `ai.bantai.app`) is built with React Native (`0.74.1`) and Expo (`~51.0.8`). It communicates with the self-hosted `@bantai/backend` API on port `4000` and builds to a standalone Android `.apk`.
 
 ---
 
-## 2. Prerequisites
-- **Node.js**: v18+ or v20+
-- **Expo CLI**: `npm install -g eas-cli`
-- **Android Studio** (for local emulator testing): Android SDK 33+, command-line tools.
+## 2. Current Mobile Client Screens (`apps/mobile/App.tsx`)
+- **Authentication Screen:** Sign In & Create Account forms wired to `/api/auth/login` and `/api/auth/signup`, persisting JWT in `AsyncStorage` (`bantai_token`).
+- **Top Header Bar:** Displays `BANTAI` wordmark and tap-to-cycle model selector (`⚡ Chhotu` / `🤝 Bhai`) alongside the active personality indicator (`tapori`).
+- **Bottom Navigation Bar (`CHAT`, `TASKS`, `SETTINGS`):**
+  - `CHAT`: Scrollable user/assistant bubbles with composer bar.
+  - `TASKS`: Personal Assistant Tasks list and task creator input.
+  - `SETTINGS`: Memory isolation status, strict opt-in training status, and Sign Out button.
 
 ---
 
-## 3. Configuration & Connectivity
-In `apps/mobile/src/services/api.ts`:
-- **Android Emulator**: Uses `http://10.0.2.2:4000/api` (automatically routes to host `localhost:4000`).
-- **Physical Device**: Set your machine's local Wi-Fi IP address (e.g. `http://192.168.1.150:4000/api`) so the phone can reach the backend over local Wi-Fi.
+## 3. Prerequisites & Android Manifest Config (`app.json`)
+- **Node.js:** v18+ or v20+
+- **EAS CLI:** `npm install -g eas-cli` (`cli.version >= 9.0.0` per `apps/mobile/eas.json`)
+- **Configured Permissions (`app.json`):** `INTERNET`, `RECORD_AUDIO`, `VIBRATE`, `RECEIVE_BOOT_COMPLETED`.
+
+### Backend Connectivity (`apps/mobile/src/services/api.ts`)
+- **Android Emulator:** Uses `http://10.0.2.2:4000/api` (host machine loopback alias).
+- **Other Platforms / Web:** Uses `http://localhost:4000/api`.
+- **Physical Device on LAN:** Update `API_BASE` in `apps/mobile/src/services/api.ts` to your host machine's LAN IP (e.g., `http://192.168.1.x:4000/api`) and ensure `CLIENT_URLS` on the backend permits it if needed.
 
 ---
 
-## 4. Building the Installable Standalone APK
+## 4. Building & Running
 
-### Option A: Local APK Build using EAS (Recommended)
+### Development Server
+```bash
+npm --workspace=@bantai/mobile run start
+# Or from apps/mobile:
+npx expo start
+```
+
+### Building Standalone `.apk` (`eas.json`)
+`apps/mobile/eas.json` defines `development` (internal dev client), `preview` (`buildType: apk`, internal distribution), and `production` (`buildType: apk`).
+
 ```bash
 cd apps/mobile
-
-# 1. Login to Expo (free account)
 eas login
 
-# 2. Build installable standalone APK locally
-eas build --platform android --profile preview --local
-```
-This generates `bantai.apk` in your build directory.
+# Option A: Local APK build (via package script)
+npm run build:apk
+# Executes: eas build --platform android --profile preview --local
 
-### Option B: Cloud Build via EAS
-```bash
+# Option B: EAS Cloud APK build
 eas build --platform android --profile preview
 ```
-Download the resulting `.apk` link directly onto your Android device.
 
 ---
 
-## 5. Installing the APK on Android
-1. Connect your Android device via USB with **USB Debugging** enabled.
+## 5. Installing on Android Device
+1. Enable **USB Debugging** on your Android device and connect via USB.
 2. Install via ADB:
    ```bash
    adb install -r bantai.apk
    ```
-3. Or transfer `bantai.apk` to phone storage and tap to install (enable "Install unknown apps" when prompted).
+   Or copy `bantai.apk` onto device storage and open it directly.

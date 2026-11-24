@@ -1,4 +1,4 @@
-﻿import {
+import {
   FirestoreConversation,
   FirestoreMessage,
   FirestoreTask,
@@ -513,7 +513,7 @@ export class FirebaseFirestoreService {
       try {
         const snap = await this.firestore.collection('memories').where('userId', '==', userId).get();
         const batch = this.firestore.batch();
-        snap.docs.forEach((doc: import("firebase-admin/firestore").QueryDocumentSnapshot) => batch.delete(doc.ref));
+        snap.docs.forEach((doc: QueryDocumentSnapshot) => batch.delete(doc.ref));
         await batch.commit();
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
@@ -610,7 +610,7 @@ export class FirebaseFirestoreService {
         for (const col of collections) {
           const snap = await this.firestore.collection(col).where('userId', '==', userId).get();
           const batch = this.firestore.batch();
-          snap.docs.forEach((doc: import("firebase-admin/firestore").QueryDocumentSnapshot) => batch.delete(doc.ref));
+          snap.docs.forEach((doc: QueryDocumentSnapshot) => batch.delete(doc.ref));
           await batch.commit();
         }
       } catch (e) {

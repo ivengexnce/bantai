@@ -2,11 +2,22 @@ import { learningService } from '../services/learning/learning.service';
 import { mongoUserService } from '../services/database/mongo.service';
 import { personalMemoryService } from '../services/memory/memory.service';
 import { MongoUser } from '@bantai/shared';
+import fs from 'fs';
+import path from 'path';
 
 describe('Consent Management, PII Scrubbing & Fine-Tuning Pipeline', () => {
   const ts = Date.now();
   const userIdOptIn = `user_opt_in_${ts}`;
   const userIdOptOut = `user_opt_out_${ts}`;
+  const createdSplitDirs: string[] = [];
+
+  afterAll(() => {
+    for (const dir of createdSplitDirs) {
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  });
 
   beforeAll(async () => {
     // User who opted in
@@ -134,6 +145,7 @@ describe('Consent Management, PII Scrubbing & Fine-Tuning Pipeline', () => {
 
   test('Exporting dataset generates train/val/test splits and manifest', async () => {
     const manifest = await learningService.exportDatasetSplits(`test_split_${Date.now()}`);
+    createdSplitDirs.push(path.dirname(manifest.trainFile));
     expect(manifest.totalExamples).toBeGreaterThan(0);
     expect(manifest.trainCount).toBeGreaterThanOrEqual(0);
     expect(manifest.valCount).toBeGreaterThanOrEqual(0);

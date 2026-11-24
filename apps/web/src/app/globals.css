@@ -116,27 +116,6 @@ body {
   border-radius: var(--radius-card);
 }
 
-/* Buttons */
-.btn-primary {
-  background-color: var(--bantai-indigo);
-  color: #ffffff;
-  border-radius: var(--radius-button);
-  padding: 0.5rem 1rem;
-  font-weight: 500;
-  font-size: 0.8125rem;
-  transition: all var(--duration-fast) ease;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.btn-primary:hover:not(:disabled) {
-  opacity: 0.95;
-  box-shadow: var(--glow-indigo);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
 /* Monospace Telemetry Badges */
 .telemetry-chip {
   font-family: var(--font-mono);
@@ -193,26 +172,6 @@ body {
   vertical-align: -2px;
   box-shadow: 0 0 10px var(--bantai-cyan);
   animation: cursor-blink 1s steps(1) infinite;
-}
-
-/* Shimmer Loader */
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.animate-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.animate-shimmer::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.12), transparent);
-  animation: shimmer 1.8s infinite;
 }
 
 /* Headline Gradient */

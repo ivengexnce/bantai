@@ -1,4 +1,4 @@
-import { FirestoreMessage, SafeUserProfile } from '@bantai/shared';
+import { SafeUserProfile } from '@bantai/shared';
 import { mongoUserService } from '../database/mongo.service';
 import fs from 'fs';
 import path from 'path';

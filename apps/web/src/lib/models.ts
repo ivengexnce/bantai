@@ -10,12 +10,6 @@ export interface ModelInfo {
   ramRequirement: string;
   vramRequirement: string;
   hardware?: string;
-  speedRating?: number;
-  speedLabel?: string;
-  powerRating?: number;
-  powerLabel?: string;
-  isDefault?: boolean;
-  switchMessage: string;
 }
 
 export const APP_MODELS: ModelInfo[] = [
@@ -30,13 +24,7 @@ export const APP_MODELS: ModelInfo[] = [
     description: 'Ultra-fast edge inference, low memory footprint. Runs on basic CPU.',
     ramRequirement: '4 GB',
     vramRequirement: 'None',
-    hardware: 'CPU only',
-    speedRating: 12,
-    speedLabel: 'Ultra',
-    powerRating: 6,
-    powerLabel: 'Edge',
-    isDefault: false,
-    switchMessage: 'Active model switched to BANTAI Chhotu (3B). Low latency mode ready.'
+    hardware: 'CPU only'
   },
   {
     id: 'bhai',
@@ -49,13 +37,7 @@ export const APP_MODELS: ModelInfo[] = [
     description: 'Daily sovereign driver. Excellent coding, reasoning, and Hinglish dialogue.',
     ramRequirement: '8 GB',
     vramRequirement: '6 GB',
-    hardware: 'Consumer GPU / CPU',
-    speedRating: 9,
-    speedLabel: 'Fast',
-    powerRating: 9,
-    powerLabel: 'Balanced',
-    isDefault: true,
-    switchMessage: 'Active model switched to BANTAI Bhai (7B). General intelligence ready.'
+    hardware: 'Consumer GPU / CPU'
   }
 ];
 

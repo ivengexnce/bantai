@@ -9,10 +9,7 @@ import {
   Search,
   Trash2,
   Plus,
-  Tag,
-  Clock,
-  Layers,
-  Sparkles
+  Clock
 } from 'lucide-react';
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {

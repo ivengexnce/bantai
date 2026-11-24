@@ -11,10 +11,8 @@ import {
   Volume2,
   Shield,
   Brain,
-  HardDrive,
   Check,
-  Save,
-  CheckCircle2
+  Save
 } from 'lucide-react';
 
 function ToggleSwitch({

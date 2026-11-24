@@ -1,55 +1,62 @@
 # BANTAI — Self-Hosted AI Models & Inference Specification
 
 ## 1. Architectural Mandate
-BANTAI strictly prohibits external third-party inference APIs (no OpenAI, no Anthropic, no Gemini, no Groq, no OpenRouter). All core intelligence runs locally or on user-controlled infrastructure.
+BANTAI prohibits third-party cloud LLM inference APIs (no OpenAI, Anthropic, Gemini, Groq, or OpenRouter). All LLM inference runs locally on user-controlled hardware via Ollama, llama.cpp, vLLM, or BANTAI's built-in deterministic offline dialogue engine. *(Optional ElevenLabs integration is restricted strictly to voice TTS audio synthesis.)*
 
 ---
 
-## 2. Supported Foundation Models
+## 2. Active Sovereign Model Lineup
 
-| Model ID | Family | Parameters | Context Window | VRAM Required | Primary Strengths |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `qwen2.5:7b` | Qwen | 7.6B | 32,768 | ~5.1 GB (Q4_K_M) | **Top Choice**: Exceptional Hindi/Hinglish understanding, coding, reasoning, and tool calling. |
-| `llama3.1:8b` | Llama | 8.0B | 131,072 | ~5.8 GB (Q4_K_M) | Massive 128k context, strong structured output formatting. |
-| `gemma2:9b` | Gemma | 9.2B | 8,192 | ~6.5 GB (Q4_K_M) | High factual grounding, sliding-window attention architecture. |
-| `qwen2.5-coder:7b` | Qwen | 7.6B | 32,768 | ~5.1 GB (Q4_K_M) | Specialized for AST manipulation, unit test synthesis, Developer Mode. |
+In the active web console (`apps/web/src/lib/models.ts`), mobile app (`apps/mobile/App.tsx`), and backend inference mapper (`packages/backend/src/services/ai/inference.service.ts`), BANTAI exposes two streamlined local models calibrated via custom Ollama `Modelfile` definitions:
+
+| Display Name | Model ID | Ollama Model Tag | Base Architecture | Parameters | RAM / VRAM Floor | Primary Strengths |
+| :--- | :--- | :--- | :--- | :---: | :--- | :--- |
+| **BANTAI Chhotu** | `chhotu` | `bantai-chhotu` | `qwen2.5:3b` | 3B | 4 GB RAM / CPU-ready (~1.9 GB weights) | Ultra-low-latency replies, edge devices, low-memory hardware. *Tagline: "Chhota packet, bada kaam."* |
+| **BANTAI Bhai** *(Default)* | `bhai` | `bantai-bhai` | `qwen2.5:7b` | 7B | 8 GB RAM / 6 GB VRAM (~4.7 GB weights) | Daily sovereign driver for coding, system design, and natural Hinglish dialogue. *Tagline: "Har kaam ke liye, har waqt ready."* |
+
+> **Note:** Both active local routing (`InferenceService`, web/mobile UIs) and `@bantai/shared` `SUPPORTED_MODELS` are cleanly pruned to **`chhotu` (3B)** and **`bhai` (7B)** (`ustad` 14B and `don` 32B were removed).
+
+### Inference Routing Map (`InferenceService`)
+`MODEL_BASE_MAP` resolves incoming client IDs to active local Ollama models:
+- `'chhotu'`, `'qwen2.5:3b'`, `'bantai-chhotu'` -> `bantai-chhotu`
+- `'bhai'`, `'qwen2.5:7b'`, `'bantai-bhai'` -> `bantai-bhai`
 
 ---
 
-## 3. Local Inference Setup via Ollama
-To run the primary model locally:
+## 3. Local Setup via Ollama & Custom Modelfiles
+
+BANTAI ships calibrated `Modelfile` (`bantai-bhai`) and `Modelfile.chhotu` (`bantai-chhotu`) at the repository root with `temperature 0.6`, `top_p 0.85`, `repeat_penalty 1.15`, Qwen stop tokens (`<|im_start|>`, `<|im_end|>`), and zero-profanity Hinglish system instructions.
 
 ```bash
-# 1. Install Ollama (https://ollama.ai)
-# Windows: Download from ollama.com/download/windows
-# Linux: curl -fsSL https://ollama.com/install.sh | sh
+# 1. Install Ollama (https://ollama.com) and start the daemon on port 11434
 
-# 2. Pull Qwen 2.5 7B Instruct
+# 2. Pull upstream Apache 2.0 open-weight base models
+ollama pull qwen2.5:3b
 ollama pull qwen2.5:7b
 
-# 3. Verify it is running
+# 3. Build branded BANTAI sovereign Ollama models from root Modelfiles
+ollama create bantai-chhotu -f Modelfile.chhotu
+ollama create bantai-bhai -f Modelfile
+
+# 4. Verify active models
+ollama list
 curl http://localhost:11434/api/tags
 ```
 
 ---
 
-## 4. Alternative: llama.cpp GGUF Execution
-For systems optimizing every megabyte of CPU/GPU memory:
+## 4. Fallback & Execution Order (`InferenceService`)
 
-```bash
-# Run quantized GGUF directly with llama-server
-./llama-server \
-  --model ./models/qwen2.5-7b-instruct-q4_k_m.gguf \
-  --port 8080 \
-  --ctx-size 8192 \
-  --n-gpu-layers 33
-```
+1. **`ollama` (Primary):** Streams NDJSON token chunks from `${OLLAMA_BASE_URL}/api/chat` with a 60s request timeout (`temperature: 0.7`, `top_p: 0.9`).
+2. **`llamacpp` (Optional Provider):** When `INFERENCE_PROVIDER=llamacpp`, connects to `${LLAMACPP_BASE_URL}/v1/chat/completions` for direct GGUF execution.
+3. **`local_engine` (Deterministic Offline Fallback):** Automatically activates if Ollama or llama.cpp is unreachable or errors out, answering identity queries, personality dialogue, DSA (QuickSort, Binary Search), React/TypeScript/Python/Docker topics, arithmetic, RAG concepts, and structured guidance across all 5 personality modes without third-party APIs.
 
 ---
 
 ## 5. Local Vector Embeddings (RAG)
-BANTAI utilizes local sentence transformers:
-- **Model**: `BAAI/bge-small-en-v1.5` (or local 384-dimensional cosine embeddings)
-- **Dimensions**: 384
-- **Sequence Length**: 512 tokens
-- **Inference**: 100% offline, executed in-process or via ONNX Runtime without external network calls.
+
+Implemented in `packages/backend/src/services/rag/rag.service.ts`:
+- **Descriptor (`LOCAL_EMBEDDING_MODEL`):** `BAAI/bge-small-en-v1.5` (384 dimensions, 512 max sequence tokens).
+- **Runtime Implementation:** Computes deterministic 384-dimensional L2-normalized vector embeddings locally from character n-gram hashing + trigonometric projection and scores matches via cosine similarity.
+- **Chunking Strategy:** 400 words per chunk with 80-word sliding overlap (`chunkText`).
+- **Persistence:** Stored per `userId` in `./data/vector_chunks_store.json`.

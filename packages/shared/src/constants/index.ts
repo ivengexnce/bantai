@@ -4,7 +4,7 @@ export const APP_NAME = 'BANTAI';
 export const APP_TAGLINE = 'Apna Model. Apna Dimaag. Apna AI.';
 export const APP_VERSION = '1.0.0';
 
-// Official BANTAI Model Family Lineup (Nov 21, 2026 Branding Spec)
+// Official BANTAI Local Model Lineup
 export const SUPPORTED_MODELS: AIModelDescriptor[] = [
   {
     id: 'chhotu',
@@ -63,66 +63,6 @@ export const SUPPORTED_MODELS: AIModelDescriptor[] = [
     isLoaded: true,
     vramRequiredMB: 5120,
     isDefault: true,
-    license: 'Apache 2.0',
-    family: 'qwen'
-  },
-  {
-    id: 'ustad',
-    name: 'BANTAI Ustad',
-    shortName: 'Ustad',
-    displayName: 'BANTAI Ustad 🎯',
-    baseModel: 'qwen2.5:14b',
-    icon: '🎯',
-    color: '#F59E0B',
-    tagline: 'Jab kaam serious ho, Ustad ko bulao.',
-    description: 'Deep reasoning, complex code, long documents and agentic tasks. When Bhai is not enough, Ustad steps in and handles it properly.',
-    useCase: 'Complex reasoning, coding, agents',
-    hardware: 'Dedicated GPU setup',
-    ramRequirement: '16 GB',
-    vramRequirement: '10 GB',
-    speedRating: 6,
-    powerRating: 10,
-    speedLabel: 'Moderate',
-    powerLabel: 'Powerful',
-    switchMessage: "Switched to BANTAI Ustad 🎯 Serious mode on. Let's work.",
-    backend: 'ollama',
-    parameters: '14B',
-    contextLength: 32768,
-    quantization: 'Q4_K_M',
-    isDownloaded: false,
-    isLoaded: false,
-    vramRequiredMB: 9800,
-    isDefault: false,
-    license: 'Apache 2.0',
-    family: 'qwen'
-  },
-  {
-    id: 'don',
-    name: 'BANTAI Don',
-    shortName: 'Don',
-    displayName: 'BANTAI Don 👑',
-    baseModel: 'qwen2.5:32b',
-    icon: '👑',
-    color: '#DC2626',
-    tagline: 'Seedha Don level. No explanation needed.',
-    description: 'Maximum intelligence. No shortcuts. No compromises. Reserved for the tasks that actually matter. When nothing else will do.',
-    useCase: 'Maximum power, heavy tasks',
-    hardware: 'High-end GPU, server',
-    ramRequirement: '32 GB',
-    vramRequirement: '20 GB',
-    speedRating: 4,
-    powerRating: 12,
-    speedLabel: 'Patient',
-    powerLabel: 'Absolute',
-    switchMessage: 'Switched to BANTAI Don 👑 Don has entered. Choose your words wisely.',
-    backend: 'ollama',
-    parameters: '32B',
-    contextLength: 32768,
-    quantization: 'Q4_K_M',
-    isDownloaded: false,
-    isLoaded: false,
-    vramRequiredMB: 20480,
-    isDefault: false,
     license: 'Apache 2.0',
     family: 'qwen'
   }

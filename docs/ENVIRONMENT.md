@@ -1,13 +1,12 @@
 # BANTAI — Environment Configuration Guide
 
-This guide details all environment variables supported by the **BANTAI** platform across the backend, web frontend, databases, and inference runtime.
+This guide documents all environment variables read by `packages/backend/src/config/env.ts`, `apps/web/next.config.mjs`, `.env.example`, and `docker/docker-compose.yml`.
 
 ---
 
 ## 1. Quick Setup
 
 ```bash
-# Copy template to active .env
 cp .env.example .env
 ```
 
@@ -15,58 +14,52 @@ cp .env.example .env
 
 ## 2. Backend Environment Variables (`packages/backend`)
 
+| Variable | Type | Default (`env.ts`) | Description |
+| :--- | :--- | :--- | :--- |
+| `PORT` | Number | `4000` | HTTP port for Express REST and SSE server. |
+| `NODE_ENV` | String | `development` | Runtime mode (`development`, `production`, or `test`). |
+| `JWT_SECRET` | String | *(Dev fallback in code; required in Docker/Prod)* | HMAC `HS256` secret key for signing/verifying user JWTs. |
+| `JWT_EXPIRES_IN` | String | `7d` | Token expiry duration passed to `jsonwebtoken`. |
+| `MONGODB_URI` | URI | `mongodb://localhost:27017/bantai_users` | MongoDB connection string (Docker Compose & production driver target; user partition only). |
+| `INFERENCE_PROVIDER` | String | `ollama` | Local AI engine: `ollama`, `llamacpp`, `vllm`, or `local_engine`. |
+| `OLLAMA_BASE_URL` | URL | `http://localhost:11434` | Local Ollama daemon URL. |
+| `LLAMACPP_BASE_URL` | URL | `http://localhost:8080` | Local llama.cpp server URL. |
+| `VLLM_BASE_URL` | URL | `http://localhost:8000` | Local vLLM server URL. |
+| `DEFAULT_MODEL` | String | `qwen2.5:7b` | Fallback model name when unmapped. *(Note: `.env.example` also lists `BANTAI_DEFAULT_MODEL=bhai` for reference.)* |
+| `CLIENT_URLS` | CSV URLs | `http://localhost:3000,http://localhost:3001,http://localhost:8081,http://10.0.2.2:4000` | Allowed CORS origins in addition to built-in localhost/emulator origins. |
+| `ELEVENLABS_API_KEY` | String | `""` *(Optional)* | Server-side ElevenLabs key for `/api/voice/elevenlabs/tts`. |
+| `UPLOAD_DIR` | String | `uploads` | Directory for local uploads (max 50 MB). |
+| `GOOGLE_CLIENT_ID` | String | Unset *(Optional)* | Required outside `production` to enable `/api/auth/google`; otherwise returns `501`. |
+
+---
+
+## 3. Firebase Cloud Firestore Variables
+
+Firebase Admin SDK checks, in order: `packages/backend/serviceAccountKey.json` (or `process.cwd()/serviceAccountKey.json`), `GOOGLE_APPLICATION_CREDENTIALS`, or the environment variables below. When none are present, BANTAI uses local JSON persistence in `packages/backend/data/firestore_store/`.
+
+| Variable | Default / Project | Description |
+| :--- | :--- | :--- |
+| `FIREBASE_PROJECT_ID` | `bantai-production` (`.firebaserc` default: `bantai-369`) | Google Cloud / Firebase project ID. |
+| `FIREBASE_CLIENT_EMAIL` | `""` | Firebase Service Account client email. |
+| `FIREBASE_PRIVATE_KEY` | `""` | PEM private key (escaped `\n` sequences automatically unescaped). |
+| `FIREBASE_STORAGE_BUCKET` | `bantai-production.appspot.com` | Firebase Storage bucket name. |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Unset *(Optional)* | Filesystem path to service account JSON key. |
+
+---
+
+## 4. Web Frontend Variables (`apps/web/.env.local`)
+
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `PORT` | Number | `4000` | HTTP port for the Express REST and SSE server. |
-| `NODE_ENV` | String | `development` | Environment mode (`development` or `production`). |
-| `JWT_SECRET` | String | `bantai-...` | Secret key used for signing and verifying user access JWTs. |
-| `MONGODB_URI` | URI | `mongodb://localhost:27017/bantai_users` | MongoDB connection string. **Enforces User-Only data separation rule**. |
-| `INFERENCE_PROVIDER` | String | `ollama` | Selected local inference backend: `ollama`, `llamacpp`, `vllm`, or `local`. |
-| `OLLAMA_BASE_URL` | URL | `http://localhost:11434` | Base URL for the local Ollama daemon. |
-| `LLAMACPP_BASE_URL` | URL | `http://localhost:8080` | Base URL for llama.cpp server instance. |
-| `BANTAI_DEFAULT_MODEL` | String | `bhai` | Default active model tier (`chhotu`, `bhai`, `ustad`, `don`). |
+| `NEXT_PUBLIC_API_URL` | URL | `http://localhost:4000/api` | Base URL for backend REST and SSE calls (`apps/web/next.config.mjs`). |
+| `PORT` | Number | `3001` | Port used by Next.js `dev` and `start` scripts (`package.json`). |
+| `NEXT_PUBLIC_ELEVENLABS_API_KEY` | String | Optional | Optional client key passed as `x-elevenlabs-key` if browser voice chooses ElevenLabs; never commit real keys to git. |
 
 ---
 
-## 3. Firebase & Storage Variables
+## 5. Active Local Model Mapping (`InferenceService`)
 
-If Firebase is not configured or in offline mode, BANTAI gracefully persists user data to isolated JSON files in `data/firestore_store/`.
-
-| Variable | Type | Description |
-| :--- | :--- | :--- |
-| `FIREBASE_PROJECT_ID` | String | Google Cloud / Firebase project identifier. |
-| `FIREBASE_CLIENT_EMAIL` | String | Firebase Service Account email. |
-| `FIREBASE_PRIVATE_KEY` | PEM String | Firebase Service Account private key (`\n` escaped). |
-| `FIREBASE_STORAGE_BUCKET`| String | Bucket name for uploaded documents and attachments. |
-
----
-
-## 4. Web Application Frontend (`apps/web`)
-
-Configured via `apps/web/.env.local` or environment injection in Vercel:
-
-| Variable | Type | Default | Description |
+| Display Name | Internal Key | Target Ollama Model | Base Open Weight |
 | :--- | :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | URL | `http://localhost:4000/api` | Base URL pointing to the BANTAI backend API. |
-
----
-
-## 5. Model Family Mapping
-
-The backend routes branded BANTAI models to open-weight model tags via `AI_MODELS` configuration:
-
-| Display Name | Internal Key | Default Ollama Tag |
-| :--- | :--- | :--- |
-| **BANTAI Chhotu** | `chhotu` | `qwen2.5:3b` |
-| **BANTAI Bhai** | `bhai` | `qwen2.5:7b` *(Default)* |
-| **BANTAI Ustad** | `ustad` | `qwen2.5:14b` |
-| **BANTAI Don** | `don` | `qwen2.5:32b` |
-
----
-
-## 6. Optional Services
-
-| Variable | Purpose |
-| :--- | :--- |
-| `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | Mood-based music playback recommendation tool. |
-| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Google Sign-In authentication. |
+| **BANTAI Chhotu** | `chhotu` | `bantai-chhotu` | `qwen2.5:3b` |
+| **BANTAI Bhai** *(Default)* | `bhai` | `bantai-bhai` | `qwen2.5:7b` |

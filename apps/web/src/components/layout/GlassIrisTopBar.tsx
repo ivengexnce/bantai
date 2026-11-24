@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { resolveModel, APP_MODELS } from '../../lib/models';
 import { PersonalityMode } from '@bantai/shared';
-import { Cpu, HardDrive, ShieldCheck, ChevronDown, Check } from 'lucide-react';
+import { Cpu, HardDrive, ChevronDown, Check } from 'lucide-react';
 
 const PERSONALITIES: Array<{ id: PersonalityMode; label: string }> = [
   { id: 'tapori', label: 'Tapori' },

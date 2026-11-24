@@ -36,17 +36,12 @@ module.exports = {
         'glow-red': '0 0 24px -4px rgba(239, 68, 68, 0.45)'
       },
       animation: {
-        'cursor-blink': 'cursor-blink 1s steps(1) infinite',
-        'shimmer': 'shimmer 1.8s infinite'
+        'cursor-blink': 'cursor-blink 1s steps(1) infinite'
       },
       keyframes: {
         'cursor-blink': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0' }
-        },
-        'shimmer': {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(100%)' }
         }
       }
     }

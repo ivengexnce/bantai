@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../lib/api';
 import {
   PersonalityMode,
   FirestoreMessage
 } from '@bantai/shared';
-import { resolveModel, APP_MODELS } from '../../lib/models';
+import { APP_MODELS } from '../../lib/models';
 import { speakText, stopSpeaking, createSpeechRecognizer } from '../../lib/voiceEngine';
 import {
   Zap,
@@ -22,19 +22,10 @@ import {
   Check,
   Volume2,
   VolumeX,
-  ShieldAlert,
   Code2,
-  Terminal,
   Clock,
   Sparkles
 } from 'lucide-react';
-
-interface ToolInvocation {
-  tool: string;
-  input: string;
-  result: string;
-  requiresAuth?: boolean;
-}
 
 function renderFormattedLine(text: string) {
   const segments = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
@@ -153,7 +144,6 @@ function FormattedContent({ content }: { content: string }) {
 export function ChatView() {
   const {
     user,
-    conversations,
     setConversations,
     activeConversationId,
     setActiveConversationId,
@@ -173,23 +163,11 @@ export function ChatView() {
   const [isMonoComposer, setIsMonoComposer] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
 
-  // Authorization Gate State
-  const [authGate, setAuthGate] = useState<{
-    isOpen: boolean;
-    toolName: string;
-    actionDescription: string;
-    parameters: string;
-    onAuthorize: () => void;
-    onReject: () => void;
-  } | null>(null);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeSpeakerRef = useRef<{ stop: () => void } | null>(null);
   const recognitionRef = useRef<any>(null);
-
-  const currentModel = resolveModel(selectedModel);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -677,73 +655,6 @@ export function ChatView() {
           </div>
         </div>
       </div>
-
-      {/* ============================================================== */}
-      /* AUTHORIZATION GATE MODAL (WHEN TOOL REQUIRES HUMAN APPROVAL)    */
-      /* ============================================================== */
-      <AnimatePresence>
-        {authGate?.isOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="w-full max-w-lg surface-floating border border-amber-500/40 p-6 space-y-5 shadow-[0_0_35px_-5px_rgba(245,158,11,0.35)]"
-            >
-              <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                  <ShieldAlert size={22} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white tracking-tight">Security Authorization Gate</h3>
-                  <p className="text-xs text-[#94a3b8]">Human-in-the-loop permission required</p>
-                </div>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="font-mono text-[#64748b] uppercase tracking-wider text-[10px]">Tool Name:</span>
-                  <div className="text-white font-mono font-semibold text-sm mt-0.5">{authGate.toolName}</div>
-                </div>
-
-                <div>
-                  <span className="font-mono text-[#64748b] uppercase tracking-wider text-[10px]">Action Description:</span>
-                  <div className="text-[#e2e8f0] mt-0.5">{authGate.actionDescription}</div>
-                </div>
-
-                <div>
-                  <span className="font-mono text-[#64748b] uppercase tracking-wider text-[10px]">Exact Parameters:</span>
-                  <pre className="p-3 mt-1 rounded-lg bg-[#07070f] border border-white/5 text-[#22d3ee] font-mono text-[11px] overflow-x-auto">
-                    {authGate.parameters}
-                  </pre>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
-                <button
-                  onClick={() => {
-                    authGate.onReject();
-                    setAuthGate(null);
-                  }}
-                  className="px-4 py-2 rounded-button bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 font-medium text-xs border border-rose-500/30 transition-colors"
-                >
-                  Reject & Abort
-                </button>
-                <button
-                  onClick={() => {
-                    authGate.onAuthorize();
-                    setAuthGate(null);
-                  }}
-                  className="px-4 py-2 rounded-button bg-[#6366f1] hover:bg-[#6366f1]/90 text-white font-medium text-xs shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-all"
-                >
-                  Authorize Execution
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -1,42 +1,36 @@
-# BANTAI — Production Vercel Deployment Guide
+# BANTAI — Production Deployment & Docker Guide
 
-## 1. Overview
-The BANTAI web application (`apps/web`) is built with Next.js 14 App Router and is fully optimized for continuous deployment on Vercel.
-
----
-
-## 2. Infrastructure Architecture for Vercel
-**Crucial Architectural Note (Section 13):**
-Vercel serverless functions are stateless and cannot host a persistent GPU-based LLM (e.g. 7B parameter models) or long-running training jobs.
-Therefore:
-- **Vercel** hosts: Next.js Frontend (`apps/web`) & Edge UI assets.
-- **Persistent Self-Hosted Server** (e.g. AWS EC2 GPU instance / RunPod / Dedicated Linux machine / Docker) hosts:
-  - Node.js Backend (`packages/backend`) on port 4000.
-  - Self-hosted Ollama / llama.cpp on port 11434 / 8080.
-  - MongoDB database.
+## 1. Architecture Split: Vercel Frontend + Self-Hosted Backend
+The Next.js 14 App Router frontend (`apps/web`, using `@bantai/shared` transpiled in `next.config.mjs`) deploys cleanly to Vercel Edge/Node runtimes. However, persistent Ollama/llama.cpp GPU inference, local JSON/Mongo stores, and PyTorch QLoRA scripts must run on a persistent host (local Linux/Windows workstation, GPU VM, or Docker host).
 
 ---
 
-## 3. Step-by-Step Vercel Deployment
-
-### Step 1: Connect GitHub Repository to Vercel
-1. Go to [vercel.com](https://vercel.com) and click **"Add New Project"**.
-2. Select your `bantai` repository.
-
-### Step 2: Configure Project Settings
-- **Framework Preset**: `Next.js`
-- **Root Directory**: `apps/web`
-- **Build Command**: `npm run build`
-- **Output Directory**: `.next`
-
-### Step 3: Configure Environment Variables
-In the Vercel Project Settings > Environment Variables, add:
+## 2. Vercel Deployment (`apps/web`)
+1. Connect the `bantai` repository in Vercel and click **Add New Project**.
+2. Set **Framework Preset** to `Next.js` and **Root Directory** to `apps/web`.
+3. Build settings:
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `.next`
+4. Set **Environment Variables** in Vercel:
 
 | Variable | Value | Description |
 | :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | `https://api.your-domain.com/api` | Public URL of your self-hosted backend API |
-| `NODE_ENV` | `production` | Production environment flag |
+| `NEXT_PUBLIC_API_URL` | `https://your-backend-domain.com/api` | HTTPS endpoint pointing to your self-hosted `@bantai/backend` instance. |
+| `NODE_ENV` | `production` | Production build flag. |
 
-### Step 4: Deploy
-Click **Deploy**. Vercel will build and assign your production domain:
-`https://bantai.vercel.app`
+5. On your self-hosted backend `.env`, add your deployed Vercel URL to `CLIENT_URLS` (e.g., `CLIENT_URLS=https://your-app.vercel.app`) so CORS in `packages/backend/src/index.ts` accepts requests cleanly.
+
+---
+
+## 3. Full-Stack Docker Compose (`docker/docker-compose.yml`)
+BANTAI includes multi-stage Alpine Dockerfiles (`docker/Dockerfile.backend`, `docker/Dockerfile.web`) orchestrated by `docker/docker-compose.yml` defining four containers:
+- `bantai-mongodb` (`mongo:7.0`, port `27017`)
+- `bantai-ollama` (`ollama/ollama:latest`, port `11434`, optional NVIDIA GPU reservation block)
+- `bantai-backend` (port `4000`, requires `JWT_SECRET` in environment)
+- `bantai-web` (port `3000` inside compose, pointing `NEXT_PUBLIC_API_URL` to `http://localhost:4000/api`)
+
+```bash
+# Generate a strong JWT secret and export it before launching Compose
+export JWT_SECRET=$(openssl rand -hex 64)
+docker compose -f docker/docker-compose.yml up --build -d
+```

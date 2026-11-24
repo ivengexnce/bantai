@@ -1,19 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   Cpu,
   Play,
-  CheckCircle2,
   Terminal,
-  Database,
-  Layers,
-  ShieldCheck,
-  Flame,
   ToggleLeft,
-  ToggleRight,
-  HardDrive
+  ToggleRight
 } from 'lucide-react';
 
 interface ModelRegistryEntry {

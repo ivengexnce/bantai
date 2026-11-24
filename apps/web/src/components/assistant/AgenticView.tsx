@@ -4,15 +4,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
-  Play,
   CheckCircle,
   AlertTriangle,
   XCircle,
   ShieldAlert,
-  Code2,
-  FileCode,
   Terminal,
-  Clock,
   Plus
 } from 'lucide-react';
 
