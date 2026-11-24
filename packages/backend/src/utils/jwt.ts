@@ -14,5 +14,6 @@ export function signToken(payload: JwtPayload): string {
 }
 
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, config.jwtSecret) as JwtPayload;
+  // SEC-005: Explicit algorithm allowlist prevents algorithm-confusion attacks
+  return jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] }) as JwtPayload;
 }

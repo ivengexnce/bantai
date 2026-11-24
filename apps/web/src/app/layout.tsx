@@ -3,8 +3,8 @@ import './globals.css';
 import { AppProvider } from '../context/AppContext';
 
 export const metadata: Metadata = {
-  title: 'BANTAI - Apna Model. Apna Dimaag. Apna AI.',
-  description: 'Production Self-Hosted Agentic AI Platform with authentic Mumbai personality and zero third-party AI APIs.'
+  title: 'BANTAI — Apna Model. Apna Dimaag. Apna AI.',
+  description: 'Local-first, hardware-aware, agentic AI runtime with a street-smart Mumbai Tapori soul.'
 };
 
 export default function RootLayout({
@@ -14,7 +14,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="bg-bantai-dark text-white min-h-screen antialiased selection:bg-bantai-500 selection:text-black">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="bg-[#07070f] text-white min-h-screen antialiased selection:bg-[#6366f1] selection:text-white font-sans">
         <AppProvider>
           {children}
         </AppProvider>

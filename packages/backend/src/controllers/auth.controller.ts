@@ -104,9 +104,26 @@ export class AuthController {
         return res.status(400).json({ success: false, error: parsed.error.issues[0].message });
       }
 
-      // Simulated verified Google OAuth token payload for local/development
-      // In production with credentials, verify with google-auth-library
-      const mockEmail = `user_${Date.now()}@gmail.com`;
+      // SEC-006 FIX: Google OAuth simulation is intentionally disabled in production.
+      // This endpoint previously accepted any idToken and created an account with a random email,
+      // effectively allowing unauthenticated account creation.
+      //
+      // PRODUCTION REQUIREMENT: Install 'google-auth-library' and verify the idToken:
+      //   const { OAuth2Client } = require('google-auth-library');
+      //   const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      //   const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
+      //   const payload = ticket.getPayload(); // payload.email, payload.sub, etc.
+      //
+      // Until Google OAuth credentials are properly configured, this endpoint returns 501.
+      if (process.env.NODE_ENV === 'production' || !process.env.GOOGLE_CLIENT_ID) {
+        return res.status(501).json({
+          success: false,
+          error: 'Google OAuth is not configured. Please use email/password login or contact the administrator.'
+        });
+      }
+
+      // Development-only: simulated Google OAuth (DO NOT USE IN PRODUCTION)
+      const mockEmail = `google_dev_${Date.now()}@bantai.local`;
       let user = await mongoUserService.findByEmail(mockEmail);
 
       if (!user) {
@@ -115,7 +132,7 @@ export class AuthController {
         const newUser: MongoUser = {
           userId,
           email: mockEmail,
-          name: 'Google User',
+          name: 'Google User (Dev)',
           username: `guser_${Math.random().toString(36).substring(2, 6)}`,
           role: 'user',
           status: 'active',
@@ -128,7 +145,7 @@ export class AuthController {
           oauthProvider: 'google',
           oauthId: parsed.data.idToken.substring(0, 20)
         };
-        const safeProfile = await mongoUserService.createUser(newUser);
+        await mongoUserService.createUser(newUser);
         user = newUser;
       }
 

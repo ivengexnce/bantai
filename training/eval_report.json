@@ -1,7 +1,7 @@
 {
   "model_path": "models/adapters/bantai_v1",
   "baseline_path": "baseline",
-  "evaluated_at": "2026-11-21T12:27:19.456011+00:00",
+  "evaluated_at": "2026-11-21T19:50:45.335161+00:00",
   "metrics": {
     "Technical Accuracy": 94.2,
     "Multi-step Reasoning": 91.8,

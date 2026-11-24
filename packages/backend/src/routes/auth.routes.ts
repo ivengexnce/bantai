@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { authController } from '../controllers/auth.controller';
 import { requireAuth } from '../middleware/auth.middleware';
+import { authRateLimiter } from '../middleware/rate-limit.middleware';
 
 const router = Router();
 
-router.post('/signup', (req, res) => authController.signup(req, res));
-router.post('/login', (req, res) => authController.login(req, res));
-router.post('/google', (req, res) => authController.googleAuth(req, res));
+// Apply strict rate limiting to all auth mutation endpoints
+router.post('/signup', authRateLimiter, (req, res) => authController.signup(req, res));
+router.post('/login', authRateLimiter, (req, res) => authController.login(req, res));
+router.post('/google', authRateLimiter, (req, res) => authController.googleAuth(req, res));
 router.post('/logout', (req, res) => authController.logout(req, res));
 
 // Protected Auth Routes

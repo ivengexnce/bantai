@@ -33,17 +33,15 @@ export default function App() {
   ]);
   const [inputMsg, setInputMsg] = useState('');
   const [mode, setMode] = useState('tapori');
-  const [selectedModel, setSelectedModel] = useState<'chhotu' | 'bhai' | 'ustad' | 'don'>('bhai');
+  const [selectedModel, setSelectedModel] = useState<'chhotu' | 'bhai'>('bhai');
 
   const modelLabels = {
     chhotu: '⚡ Chhotu',
-    bhai: '🤝 Bhai',
-    ustad: '🎯 Ustad',
-    don: '👑 Don'
+    bhai: '🤝 Bhai'
   };
 
   const cycleModel = () => {
-    const list: Array<'chhotu' | 'bhai' | 'ustad' | 'don'> = ['chhotu', 'bhai', 'ustad', 'don'];
+    const list: Array<'chhotu' | 'bhai'> = ['chhotu', 'bhai'];
     const nextIdx = (list.indexOf(selectedModel) + 1) % list.length;
     setSelectedModel(list[nextIdx]);
   };

@@ -111,11 +111,12 @@ export class InferenceService {
 
     // Map friendly model IDs to base model names
     const MODEL_BASE_MAP: Record<string, string> = {
-      chhotu: 'qwen2.5:3b',
-      bhai: 'qwen2.5:7b',
-      ustad: 'qwen2.5:14b',
-      don: 'qwen2.5:32b',
-      'qwen2.5:7b': 'qwen2.5:7b'
+      chhotu: 'bantai-chhotu',
+      bhai: 'bantai-bhai',
+      'qwen2.5:7b': 'bantai-bhai',
+      'qwen2.5:3b': 'bantai-chhotu',
+      'bantai-bhai': 'bantai-bhai',
+      'bantai-chhotu': 'bantai-chhotu'
     };
     const targetModel = MODEL_BASE_MAP[params.modelId] || params.modelId || config.defaultModel;
 
@@ -147,7 +148,7 @@ export class InferenceService {
     onChunk: (chunk: ChatStreamChunk) => void
   ): Promise<string> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 1200);
+    const timer = setTimeout(() => controller.abort(), 60000); // 60s timeout for local LLM loading and inference
 
     let res: globalThis.Response;
     try {
@@ -176,16 +177,20 @@ export class InferenceService {
     let fullText = '';
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
+    let lineBuffer = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const chunkStr = decoder.decode(value, { stream: true });
-      const lines = chunkStr.split('\n').filter(Boolean);
+      lineBuffer += decoder.decode(value, { stream: true });
+      const lines = lineBuffer.split('\n');
+      lineBuffer = lines.pop() || '';
 
       for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
         try {
-          const parsed = JSON.parse(line);
+          const parsed = JSON.parse(trimmed);
           const token = parsed.message?.content || '';
           if (token) {
             fullText += token;
@@ -195,6 +200,23 @@ export class InferenceService {
           // ignore partial JSON chunks
         }
       }
+    }
+
+    if (lineBuffer.trim()) {
+      try {
+        const parsed = JSON.parse(lineBuffer.trim());
+        const token = parsed.message?.content || '';
+        if (token) {
+          fullText += token;
+          onChunk({ type: 'token', content: token });
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!fullText.trim()) {
+      throw new Error('Ollama returned empty response stream');
     }
 
     onChunk({ type: 'done', finishReason: 'stop' });
@@ -296,9 +318,7 @@ export class InferenceService {
     const qLower = query.toLowerCase().trim();
 
     // Model branding badge
-    const modelBadge = modelId === 'chhotu' ? '⚡ BANTAI Chhotu' :
-      modelId === 'ustad' ? '🎯 BANTAI Ustad' :
-      modelId === 'don' ? '👑 BANTAI Don' : '🤝 BANTAI Bhai';
+    const modelBadge = modelId === 'chhotu' ? '⚡ BANTAI Chhotu' : '🤝 BANTAI Bhai';
 
     // Extract userName if present in context or parameters
     let userName = passedUserName;
@@ -425,18 +445,15 @@ Bol mere bhai, aaj kya bawaal task solve karne ka hai?`;
       qLower.includes('model family') ||
       qLower.includes('models') ||
       qLower.includes('chhotu') ||
-      qLower.includes('ustad') ||
-      qLower.includes('don')
+      qLower.includes('bhai')
     ) {
       if (mode === 'tapori') {
-        return `BANTAI ki 4-star model family ka poora hisaab-kitaab ye raha bhidu:
+        return `BANTAI ki sovereign local model family ka poora hisaab-kitaab ye raha bhidu:
 
-1. **⚡ BANTAI Chhotu (3B)**: Ekdum bullet speed! 4GB RAM pe bhi daudta hai. Quick chats aur daily reminders ke liye ekdum mast.
-2. **🤝 BANTAI Bhai (7B - Default)**: All-rounder Mumbai bhai! 8GB RAM / 6GB VRAM. Coding, planning aur daily intelligence ka baap.
-3. **🎯 BANTAI Ustad (14B)**: Serious developer mode! Deep reasoning, architectural reviews aur heavy debugging ke liye 16GB RAM / 10GB VRAM mangta hai.
-4. **👑 BANTAI Don (32B)**: Seedha Don level! Maximum sovereign IQ, complex math aur research ke liye 32GB RAM / 20GB VRAM.
+1. **⚡ BANTAI Chhotu (3B)**: Ekdum bullet speed! 4GB RAM pe bhi daudta hai. Low-latency chats aur edge inference ke liye ekdum mast.
+2. **🤝 BANTAI Bhai (7B - Default)**: All-rounder Mumbai bhai! 8GB RAM / 6GB VRAM. Coding, planning, Hinglish reasoning aur daily sovereign intelligence ka baap.
 
-Har model Apache 2.0 open-weight base pe calibrated hai!`;
+Dono model 100% offline local Ollama pe run hote hain, Apache 2.0 open-weight base pe calibrated!`;
       }
       return `### BANTAI Sovereign Model Family Architecture
 
@@ -444,8 +461,6 @@ Har model Apache 2.0 open-weight base pe calibrated hai!`;
 | :--- | :--- | :--- | :--- | :--- |
 | **⚡ BANTAI Chhotu** | 3B | Qwen 2.5 3B | 4GB / 2GB | Low latency, edge inference, rapid task routing |
 | **🤝 BANTAI Bhai** | 7B | Qwen 2.5 7B | 8GB / 6GB | Daily sovereign driver, coding, general intelligence |
-| **🎯 BANTAI Ustad** | 14B | Qwen 2.5 14B | 16GB / 10GB | Advanced reasoning, full-stack architecture, refactoring |
-| **👑 BANTAI Don** | 32B | Qwen 2.5 32B | 32GB / 20GB | Maximum analytical power, sovereign academic research |
 
 All models run 100% locally with zero external API leakage.`;
     }

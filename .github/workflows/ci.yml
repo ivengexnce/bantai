@@ -1,4 +1,4 @@
-name: BANTAI CI Pipeline
+name: BANTAI CI & Security Pipeline
 
 on:
   push:
@@ -7,9 +7,37 @@ on:
     branches: [main, master]
 
 jobs:
-  build-and-test:
+  security-and-audit:
+    name: Security Scans & Dependency Audits
     runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true # Flag warnings in CI
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Dependency Security Audit
+        run: npm audit --audit-level=critical
+        continue-on-error: true
+
+  build-and-test:
+    name: Build & Test Suite
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -26,7 +54,10 @@ jobs:
       - name: Build shared package
         run: npm --workspace=@bantai/shared run build
 
-      - name: Run backend unit and integration tests
+      - name: Backend Type Check & Build
+        run: npm --workspace=@bantai/backend run build
+
+      - name: Run Backend & Security Tests
         run: npm --workspace=@bantai/backend run test
 
       - name: Setup Python for Fine-Tuning Pipeline

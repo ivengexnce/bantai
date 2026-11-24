@@ -1,94 +1,63 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { GlassIrisNavRail } from '../components/layout/GlassIrisNavRail';
 import { GlassIrisTopBar } from '../components/layout/GlassIrisTopBar';
 import { ChatView } from '../components/chat/ChatView';
 import { AgenticView } from '../components/assistant/AgenticView';
-import { DashboardView } from '../components/assistant/DashboardView';
-import { TasksView } from '../components/assistant/TasksView';
-import { RemindersView } from '../components/assistant/RemindersView';
-import { CalendarView } from '../components/assistant/CalendarView';
-import { KnowledgeView } from '../components/assistant/KnowledgeView';
 import { MemoryView } from '../components/assistant/MemoryView';
+import { FineTuneView } from '../components/assistant/FineTuneView';
 import { SettingsView } from '../components/assistant/SettingsView';
-import { LandingPage } from '../components/landing/LandingPage';
-import { AuthModal } from '../components/auth/AuthModal';
-import { Dialog } from '../components/ui/Dialog';
 
 export default function HomePage() {
   const { user, isLoadingUser, activeView } = useApp();
-  const [showAuth, setShowAuth] = useState(false);
 
   // Clean atmospheric loading state while session initializes
   if (isLoadingUser && !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0E0E0E] text-white">
+      <div className="flex items-center justify-center min-h-screen bg-[#07070f] text-white font-mono">
         <div className="text-center space-y-4">
-          <div className="w-10 h-10 border-2 border-[#2F6BFF] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-medium text-[#8C8C8C] tracking-widest uppercase">
-            Initializing Glass Iris AI Runtime...
+          <div className="w-8 h-8 border-2 border-[#6366f1] border-t-transparent rounded-full animate-spin mx-auto shadow-[0_0_12px_#6366f1]" />
+          <p className="text-xs text-[#94a3b8] tracking-widest uppercase">
+            Initializing BANTAI Silicon Runtime...
           </p>
         </div>
       </div>
     );
   }
 
-  // If user explicitly chooses to view the technical landing page
-  if (activeView === 'landing') {
-    return (
-      <>
-        <LandingPage onOpenAuth={() => setShowAuth(true)} />
-        <Dialog
-          isOpen={showAuth}
-          onClose={() => setShowAuth(false)}
-          title="SECURITY AUTHENTICATION GATEWAY"
-        >
-          <AuthModal />
-        </Dialog>
-      </>
-    );
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0A0B0E] text-white selection:bg-[#2F6BFF] selection:text-white font-sans relative">
-      {/* Cinematic Atmospheric Noise Overlay */}
-      <div className="fixed inset-0 bg-noise pointer-events-none z-50 opacity-40" />
-
-      {/* Atmospheric Volumetric Overhead Light Cone */}
-      <div className="fixed inset-0 volumetric-light-cone pointer-events-none z-0" />
-
-      {/* 3.A Left Navigation Rail (Compact 56px reference width) */}
+    <div className="flex h-screen overflow-hidden bg-[#07070f] text-white selection:bg-[#6366f1] selection:text-white font-sans relative min-w-[1280px]">
+      {/* 64px Fixed Left Navigation Rail */}
       <GlassIrisNavRail />
 
       {/* Main App Column */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
-        {/* 3.B Top Navigation Bar */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10 bg-[#07070f]">
+        {/* 48px Top Navigation Bar */}
         <GlassIrisTopBar />
 
-        {/* 3.C Main Content Area */}
+        {/* Main Content Area (Framer Motion View Transitions: fade + y: 8 to 0) */}
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          {activeView === 'chat' && <ChatView />}
-          {activeView === 'agent' && <AgenticView />}
-          {activeView === 'dashboard' && <DashboardView />}
-          {activeView === 'tasks' && <TasksView />}
-          {activeView === 'reminders' && <RemindersView />}
-          {activeView === 'calendar' && <CalendarView />}
-          {activeView === 'knowledge' && <KnowledgeView />}
-          {activeView === 'memory' && <MemoryView />}
-          {activeView === 'settings' && <SettingsView />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeView}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="flex-1 flex flex-col h-full overflow-hidden"
+            >
+              {activeView === 'chat' && <ChatView />}
+              {activeView === 'agent' && <AgenticView />}
+              {activeView === 'memory' && <MemoryView />}
+              {activeView === 'finetune' && <FineTuneView />}
+              {activeView === 'settings' && <SettingsView />}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
-
-      {/* Auth Modal (if user wants to log in or create another account) */}
-      <Dialog
-        isOpen={showAuth}
-        onClose={() => setShowAuth(false)}
-        title="SECURITY AUTHENTICATION GATEWAY"
-      >
-        <AuthModal />
-      </Dialog>
     </div>
   );
 }

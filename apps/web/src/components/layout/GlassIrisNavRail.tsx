@@ -1,8 +1,35 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp, AppView } from '../../context/AppContext';
 import { api } from '../../lib/api';
+import {
+  MessageSquare,
+  Bot,
+  Brain,
+  Cpu,
+  Settings,
+  Terminal,
+  LogOut,
+  User,
+  LucideIcon
+} from 'lucide-react';
+
+interface NavItem {
+  id: AppView;
+  label: string;
+  icon: LucideIcon;
+  isAction?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'chat', label: 'Chat Runtime', icon: MessageSquare },
+  { id: 'agent', label: 'Multi-Agent Runner', icon: Bot },
+  { id: 'memory', label: 'Memory Store', icon: Brain },
+  { id: 'finetune', label: 'Fine-Tune LoRA', icon: Cpu },
+  { id: 'settings', label: 'System Settings', icon: Settings }
+];
 
 export function GlassIrisNavRail() {
   const {
@@ -16,169 +43,136 @@ export function GlassIrisNavRail() {
     logout
   } = useApp();
 
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  const handleNewChat = async () => {
+  const handleLogoClick = async () => {
     try {
-      const newConv = await api.createConversation('New Chat', personalityMode, selectedModel);
+      const newConv = await api.createConversation('New Session', personalityMode, selectedModel);
       setConversations(prev => [newConv, ...prev]);
       setActiveConversationId(newConv.id);
       setActiveView('chat');
-    } catch (err) {
-      console.error('Failed to create new conversation:', err);
+    } catch {
+      setActiveView('chat');
     }
   };
 
-  const navItems: Array<{
-    id: AppView;
-    label: string;
-    icon: React.ReactNode;
-    action?: () => void;
-  }> = [
-    {
-      id: 'chat',
-      label: 'New Chat',
-      action: handleNewChat,
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-      )
-    },
-    {
-      id: 'chat',
-      label: 'Chat History',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    {
-      id: 'agent',
-      label: 'Explore / AI Features',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-        </svg>
-      )
-    },
-    {
-      id: 'memory',
-      label: 'Saved & Memory',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-        </svg>
-      )
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      )
-    }
-  ];
-
   return (
-    <nav className="w-14 sm:w-16 bg-[#0E1015]/85 backdrop-blur-2xl border-r border-white/[0.08] flex flex-col items-center py-4 justify-between select-none z-40 shrink-0 shadow-2xl">
-      {/* Top: BANTAI Glass Iris Emblem */}
+    <nav
+      aria-label="Sidebar Navigation"
+      className="w-16 h-screen bg-[#07070f] border-r border-white/5 flex flex-col items-center justify-between py-4 select-none z-40 shrink-0"
+    >
+      {/* Top: Wordmark Emblem */}
       <div className="flex flex-col items-center gap-6">
         <button
-          onClick={() => setActiveView('chat')}
-          className="relative group p-2 rounded-xl transition-all duration-200"
-          title="BANTAI Iris Home"
+          onClick={handleLogoClick}
+          aria-label="BANTAI Home"
+          className="relative group p-2 rounded-xl transition-all"
         >
-          {/* Glowing Iris Orb Icon */}
-          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#2453DB] via-[#2F6BFF] to-[#7C48F0] p-[1.5px] shadow-lg shadow-[#2F6BFF]/35">
-            <div className="w-full h-full rounded-full bg-[#0A0B0E] flex items-center justify-center relative overflow-hidden">
-              <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#2F6BFF] to-[#5A4CF5] animate-pulse" />
-              <div className="absolute top-1 left-2 w-1.5 h-1 rounded-full bg-white/70 blur-[0.5px]" />
-            </div>
+          <div className="w-9 h-9 rounded-xl bg-[#0f0f1a] border border-[#6366f1]/30 flex items-center justify-center text-[#6366f1] group-hover:border-[#6366f1] group-hover:shadow-[0_0_16px_rgba(99,102,241,0.45)] transition-all">
+            <Terminal size={18} />
           </div>
         </button>
 
-        {/* Navigation Items */}
+        {/* 5 Navigation Buttons */}
         <div className="flex flex-col items-center gap-2">
-          {navItems.map((item, index) => {
+          {NAV_ITEMS.map(item => {
             const isActive = activeView === item.id;
+            const Icon = item.icon;
+
             return (
-              <div key={index} className="relative group">
+              <div
+                key={item.id}
+                className="relative"
+                onMouseEnter={() => setHoveredItem(item.id)}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
                 <button
-                  onClick={() => {
-                    if (item.action) {
-                      item.action();
-                    } else {
-                      setActiveView(item.id);
-                    }
-                  }}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 relative ${
+                  onClick={() => setActiveView(item.id)}
+                  aria-label={item.label}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative ${
                     isActive
-                      ? 'bg-white/[0.08] text-[#2F6BFF] border border-[#2F6BFF]/30 shadow-[0_0_15px_-3px_rgba(47,107,255,0.3)]'
-                      : 'text-[#94A3B8] hover:text-[#FFFFFF] hover:bg-white/[0.05]'
+                      ? 'bg-[#16162a] text-[#6366f1] border border-[#6366f1]/40 shadow-[0_0_16px_-2px_rgba(99,102,241,0.4)]'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/[0.04]'
                   }`}
-                  title={item.label}
                 >
-                  {/* Active Indicator Left Pill */}
+                  {/* Active Indicator Left Glow Strip */}
                   {isActive && (
-                    <span className="absolute -left-2 sm:-left-3 top-2 bottom-2 w-1 bg-[#2F6BFF] rounded-r-full shadow-[0_0_10px_#2F6BFF]" />
+                    <motion.span
+                      layoutId="navRailActiveStrip"
+                      className="absolute -left-3 top-2 bottom-2 w-1 bg-[#6366f1] rounded-r-full shadow-[0_0_10px_#6366f1]"
+                    />
                   )}
-                  {item.icon}
+                  <Icon size={18} />
                 </button>
 
-                {/* Tooltip on Hover */}
-                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-[#12141A] text-[#FFFFFF] text-[11px] font-medium border border-white/10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 whitespace-nowrap shadow-2xl z-50">
-                  {item.label}
-                </div>
+                {/* Framer Motion Tooltip */}
+                <AnimatePresence>
+                  {hoveredItem === item.id && (
+                    <motion.div
+                      role="tooltip"
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -4 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
+                      className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-[#16162a] text-white text-xs font-medium border border-white/10 pointer-events-none whitespace-nowrap shadow-xl z-50"
+                    >
+                      {item.label}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Bottom: User Profile Avatar */}
+      {/* Bottom: User Profile Menu */}
       <div className="relative">
         <button
           onClick={() => setShowProfileMenu(prev => !prev)}
-          className="w-9 h-9 rounded-full bg-[#1D1D1D] border border-white/10 flex items-center justify-center text-xs font-semibold text-white hover:border-[#2F6BFF]/60 transition-colors relative"
-          title={user?.name || 'User Profile'}
+          aria-label="User Profile"
+          className="w-9 h-9 rounded-xl bg-[#0f0f1a] border border-white/10 flex items-center justify-center text-xs font-mono font-semibold text-[#94a3b8] hover:text-white hover:border-[#6366f1]/50 transition-all"
         >
-          <span>{(user?.name || 'Meet').charAt(0).toUpperCase()}</span>
-          {/* Online status indicator */}
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#2F6BFF] border-2 border-[#111111]" />
+          <User size={18} />
         </button>
 
-        {/* Profile Popover Menu */}
-        {showProfileMenu && (
-          <div className="absolute left-full ml-3 bottom-0 w-52 rounded-xl bg-[#1D1D1D] border border-white/10 p-2 shadow-2xl z-50 text-xs">
-            <div className="px-3 py-2 border-b border-white/5 mb-1">
-              <div className="font-semibold text-white truncate">{user?.name || 'Meet Maru'}</div>
-              <div className="text-[11px] text-[#8C8C8C] truncate">{user?.email || 'meet@bantai.ai'}</div>
-            </div>
-            <button
-              onClick={() => {
-                setActiveView('settings');
-                setShowProfileMenu(false);
-              }}
-              className="w-full text-left px-3 py-2 rounded-lg text-[#8C8C8C] hover:text-white hover:bg-[#252525] transition-colors"
+        <AnimatePresence>
+          {showProfileMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-full ml-3 bottom-0 w-52 p-2 rounded-xl surface-floating z-50 text-xs font-sans space-y-1"
             >
-              Settings &amp; Preferences
-            </button>
-            <button
-              onClick={() => {
-                logout();
-                setShowProfileMenu(false);
-              }}
-              className="w-full text-left px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
-        )}
+              <div className="px-3 py-2 border-b border-white/5">
+                <div className="font-semibold text-white truncate">{user?.name || 'Local Developer'}</div>
+                <div className="text-[10px] font-mono text-[#64748b] truncate">{user?.email || 'sovereign@localhost'}</div>
+              </div>
+              <button
+                onClick={() => {
+                  setActiveView('settings');
+                  setShowProfileMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[#94a3b8] hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <Settings size={18} />
+                <span>Preferences</span>
+              </button>
+              <button
+                onClick={() => {
+                  logout();
+                  setShowProfileMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition-colors"
+              >
+                <LogOut size={18} />
+                <span>Reset Session</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </nav>
   );

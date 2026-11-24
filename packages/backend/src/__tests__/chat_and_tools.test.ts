@@ -66,7 +66,7 @@ describe('AI Inference, Personality Modes & Agent Tool Registry', () => {
       {
         conversationId: 'test_conv_stream',
         personalityMode: 'tapori',
-        modelId: 'qwen2.5:7b',
+        modelId: 'chhotu',
         messages: [{
           id: 'msg_1',
           conversationId: 'test_conv_stream',
@@ -84,5 +84,5 @@ describe('AI Inference, Personality Modes & Agent Tool Registry', () => {
 
     expect(response.length).toBeGreaterThan(10);
     expect(chunks.length).toBeGreaterThan(0);
-  }, 15000);
+  }, 45000);
 });

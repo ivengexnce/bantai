@@ -1,4 +1,4 @@
-import {
+﻿import {
   FirestoreConversation,
   FirestoreMessage,
   FirestoreTask,
@@ -10,11 +10,13 @@ import {
 } from '@bantai/shared';
 import fs from 'fs';
 import path from 'path';
-import * as admin from 'firebase-admin';
+// firebase-admin v14+ requires importing sub-packages explicitly
+import { initializeApp, getApps, App, cert, ServiceAccount } from 'firebase-admin/app';
+import { getFirestore, Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { config } from '../../config/env';
 
 /**
- * Firebase Firestore Service — Conversations, Messages, Tasks, Reminders,
+ * Firebase Firestore Service â€” Conversations, Messages, Tasks, Reminders,
  * Memories, Calendar Events, Email Drafts, and Knowledge Documents.
  * 
  * Strict User-Level Data Isolation: Every query requires the authenticated userId.
@@ -24,7 +26,7 @@ import { config } from '../../config/env';
  */
 export class FirebaseFirestoreService {
   private storageDir: string;
-  private firestore: admin.firestore.Firestore | null = null;
+  private firestore: Firestore | null = null;
   private isLiveFirestore: boolean = false;
 
   // Local fallback storage
@@ -52,16 +54,16 @@ export class FirebaseFirestoreService {
       const backendKeyPath = path.resolve(__dirname, '../../../serviceAccountKey.json');
       const customKeyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || '';
 
-      let credential: admin.credential.Credential | null = null;
+      let credential: ReturnType<typeof cert> | null = null;
 
       if (fs.existsSync(rootKeyPath)) {
-        credential = admin.credential.cert(rootKeyPath);
+        credential = cert(rootKeyPath as unknown as ServiceAccount);
       } else if (fs.existsSync(backendKeyPath)) {
-        credential = admin.credential.cert(backendKeyPath);
+        credential = cert(backendKeyPath as unknown as ServiceAccount);
       } else if (customKeyPath && fs.existsSync(customKeyPath)) {
-        credential = admin.credential.cert(customKeyPath);
+        credential = cert(customKeyPath as unknown as ServiceAccount);
       } else if (config.firebaseClientEmail && config.firebasePrivateKey) {
-        credential = admin.credential.cert({
+        credential = cert({
           projectId: config.firebaseProjectId || 'bantai-369',
           clientEmail: config.firebaseClientEmail,
           privateKey: config.firebasePrivateKey
@@ -69,14 +71,17 @@ export class FirebaseFirestoreService {
       }
 
       if (credential) {
-        if (!admin.apps.length) {
-          admin.initializeApp({
+        let app: App;
+        if (!getApps().length) {
+          app = initializeApp({
             credential,
             projectId: config.firebaseProjectId || 'bantai-369',
             storageBucket: config.firebaseStorageBucket
           });
+        } else {
+          app = getApps()[0];
         }
-        this.firestore = admin.firestore();
+        this.firestore = getFirestore(app);
         this.isLiveFirestore = true;
         console.log(`[FirebaseService] CONNECTED to Live Cloud Firestore (Project: ${config.firebaseProjectId || 'bantai-369'})`);
       } else {
@@ -168,7 +173,7 @@ export class FirebaseFirestoreService {
           .where('userId', '==', userId)
           .where('isArchived', '==', false)
           .get();
-        const list = snap.docs.map(d => d.data() as FirestoreConversation);
+        const list = snap.docs.map((d) => d.data() as FirestoreConversation);
         return list.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
@@ -271,7 +276,7 @@ export class FirebaseFirestoreService {
           .where('conversationId', '==', conversationId)
           .where('userId', '==', userId)
           .get();
-        const list = snap.docs.map(d => d.data() as FirestoreMessage);
+        const list = snap.docs.map((d) => d.data() as FirestoreMessage);
         return list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
@@ -322,7 +327,7 @@ export class FirebaseFirestoreService {
         const snap = await this.firestore.collection('tasks')
           .where('userId', '==', userId)
           .get();
-        const list = snap.docs.map(d => d.data() as FirestoreTask);
+        const list = snap.docs.map((d) => d.data() as FirestoreTask);
         return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
@@ -392,7 +397,7 @@ export class FirebaseFirestoreService {
         const snap = await this.firestore.collection('reminders')
           .where('userId', '==', userId)
           .get();
-        const list = snap.docs.map(d => d.data() as FirestoreReminder);
+        const list = snap.docs.map((d) => d.data() as FirestoreReminder);
         return list.sort((a, b) => new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime());
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
@@ -457,7 +462,7 @@ export class FirebaseFirestoreService {
         const snap = await this.firestore.collection('memories')
           .where('userId', '==', userId)
           .get();
-        const list = snap.docs.map(d => d.data() as FirestoreMemory);
+        const list = snap.docs.map((d) => d.data() as FirestoreMemory);
         return list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
@@ -508,7 +513,7 @@ export class FirebaseFirestoreService {
       try {
         const snap = await this.firestore.collection('memories').where('userId', '==', userId).get();
         const batch = this.firestore.batch();
-        snap.docs.forEach(doc => batch.delete(doc.ref));
+        snap.docs.forEach((doc: import("firebase-admin/firestore").QueryDocumentSnapshot) => batch.delete(doc.ref));
         await batch.commit();
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
@@ -529,7 +534,7 @@ export class FirebaseFirestoreService {
     if (this.isLiveFirestore && this.firestore) {
       try {
         const snap = await this.firestore.collection('calendar').where('userId', '==', userId).get();
-        return snap.docs.map(d => d.data() as FirestoreCalendarEvent);
+        return snap.docs.map((d) => d.data() as FirestoreCalendarEvent);
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
       }
@@ -576,7 +581,7 @@ export class FirebaseFirestoreService {
     if (this.isLiveFirestore && this.firestore) {
       try {
         const snap = await this.firestore.collection('knowledge').where('userId', '==', userId).get();
-        return snap.docs.map(d => d.data() as FirestoreKnowledgeDoc);
+        return snap.docs.map((d) => d.data() as FirestoreKnowledgeDoc);
       } catch (e) {
         console.error('[FirebaseService] Live Firestore error:', e);
       }
@@ -605,7 +610,7 @@ export class FirebaseFirestoreService {
         for (const col of collections) {
           const snap = await this.firestore.collection(col).where('userId', '==', userId).get();
           const batch = this.firestore.batch();
-          snap.docs.forEach(doc => batch.delete(doc.ref));
+          snap.docs.forEach((doc: import("firebase-admin/firestore").QueryDocumentSnapshot) => batch.delete(doc.ref));
           await batch.commit();
         }
       } catch (e) {

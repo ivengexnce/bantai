@@ -43,7 +43,9 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/bantai_users
       INFERENCE_PROVIDER: ollama
       OLLAMA_BASE_URL: http://ollama-inference:11434
-      JWT_SECRET: bantai-super-secret-production-jwt-key-2026
+      # SEC-002 FIX: JWT_SECRET must be injected via Docker secret or external env — do NOT hardcode here.
+      # Generate a strong secret: openssl rand -hex 64
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env or Docker secrets}
     depends_on:
       - mongodb
       - ollama-inference

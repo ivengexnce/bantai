@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { config } from './config/env';
+import { authRateLimiter, voiceRateLimiter, generalRateLimiter } from './middleware/rate-limit.middleware';
 import authRoutes from './routes/auth.routes';
 import chatRoutes from './routes/chat.routes';
 import assistantRoutes from './routes/assistant.routes';
@@ -10,21 +12,57 @@ import { inferenceService } from './services/ai/inference.service';
 
 export const app = express();
 
-// Security and middleware
+// --- Security Headers (Helmet) ---
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled to avoid blocking SSE / WebSocket; configure per-route if needed
+  crossOriginEmbedderPolicy: false
+}));
+
+// --- CORS: strict allowlist ---
+const ALLOWED_ORIGINS: string[] = [
+  ...(config.clientUrls || []),
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+  'http://10.0.2.2:3000', // Android emulator
+];
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow local development, mobile emulator (10.0.2.2), and configured origins
-    if (!origin || config.clientUrls.some(u => origin.startsWith(u)) || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    // Allow server-to-server requests (no Origin header) only in non-production
+    if (!origin) {
+      if (config.nodeEnv !== 'production') return callback(null, true);
+      return callback(new Error('CORS: null origin rejected in production'), false);
+    }
+    const isAllowed = ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed));
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(null, true); // Dev-permissive, restricted in strict prod
+      callback(new Error(`CORS: origin '${origin}' is not allowed`), false);
     }
   },
   credentials: true
 }));
 
+// --- Global Rate Limiting ---
+app.use('/api', generalRateLimiter);
+
+// Export individual limiters for route-level use
+export { authRateLimiter, voiceRateLimiter };
+
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+
+// Root landing
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'online',
+    message: 'BANTAI Backend API is running smoothly. For Web UI, open http://localhost:3001 in your browser.',
+    webUI: 'http://localhost:3001',
+    health: 'http://localhost:4000/api/health'
+  });
+});
 
 // Health Check
 app.get('/api/health', async (_req, res) => {

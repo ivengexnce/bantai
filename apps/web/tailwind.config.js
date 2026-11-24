@@ -9,44 +9,45 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        iris: {
-          bg: '#0E0E0E',
-          surface: '#151515',
-          elevated: '#1D1D1D',
-          blue: '#2F6BFF',
-          deepBlue: '#2453DB',
-          violet: '#5A4CF5',
-          purple: '#7C48F0',
-          text: '#FFFFFF',
-          textSec: '#8C8C8C',
-          muted: '#6E6E6E'
-        },
         bantai: {
-          50: '#fbf8ed',
-          100: '#f5edd2',
-          200: '#eddba4',
-          300: '#e3c26f',
-          400: '#daa742',
-          500: '#2F6BFF', // Electric Blue (Glass Iris Primary)
-          600: '#2453DB',
-          700: '#5A4CF5',
-          800: '#7C48F0',
-          900: '#1D1D1D',
-          950: '#0E0E0E',
-          dark: '#0E0E0E',
-          darkCard: '#151515',
-          darkBorder: '#232323'
+          base: '#07070f',
+          raised: '#0f0f1a',
+          float: '#16162a',
+          indigo: '#6366f1',
+          cyan: '#22d3ee',
+          amber: '#f59e0b',
+          red: '#ef4444',
+          emerald: '#10b981'
         }
       },
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+      },
+      borderRadius: {
+        card: '16px',
+        button: '8px',
+        bubble: '24px'
+      },
+      boxShadow: {
+        'glow-indigo': '0 0 24px -4px rgba(99, 102, 241, 0.45)',
+        'glow-cyan': '0 0 24px -4px rgba(34, 211, 238, 0.45)',
+        'glow-amber': '0 0 24px -4px rgba(245, 158, 11, 0.45)',
+        'glow-red': '0 0 24px -4px rgba(239, 68, 68, 0.45)'
+      },
       animation: {
-        'border-beam': 'border-beam calc(var(--duration)*1s) infinite linear',
+        'cursor-blink': 'cursor-blink 1s steps(1) infinite',
+        'shimmer': 'shimmer 1.8s infinite'
       },
       keyframes: {
-        'border-beam': {
-          '100%': {
-            offsetDistance: '100%',
-          },
+        'cursor-blink': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0' }
         },
+        'shimmer': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' }
+        }
       }
     }
   },

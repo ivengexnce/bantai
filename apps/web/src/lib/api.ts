@@ -334,6 +334,10 @@ class ApiClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     };
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
     if (apiKey) headers['x-elevenlabs-key'] = apiKey;
 
     const res = await fetch(`${API_BASE}/voice/elevenlabs/tts`, {

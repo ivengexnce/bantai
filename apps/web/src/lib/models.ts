@@ -56,50 +56,12 @@ export const APP_MODELS: ModelInfo[] = [
     powerLabel: 'Balanced',
     isDefault: true,
     switchMessage: 'Active model switched to BANTAI Bhai (7B). General intelligence ready.'
-  },
-  {
-    id: 'ustad',
-    name: 'BANTAI Ustad',
-    shortName: 'Ustad',
-    displayName: 'BANTAI Ustad (14B)',
-    baseModel: 'qwen2.5:14b',
-    parameters: '14B',
-    tagline: 'Master of deep reasoning.',
-    description: 'Advanced architecture reviews, full-stack debugging, multi-file refactoring.',
-    ramRequirement: '16 GB',
-    vramRequirement: '10 GB',
-    hardware: 'Dedicated GPU',
-    speedRating: 6,
-    speedLabel: 'Steady',
-    powerRating: 11,
-    powerLabel: 'Deep',
-    isDefault: false,
-    switchMessage: 'Active model switched to BANTAI Ustad (14B). Deep reasoning mode ready.'
-  },
-  {
-    id: 'don',
-    name: 'BANTAI Don',
-    shortName: 'Don',
-    displayName: 'BANTAI Don (32B)',
-    baseModel: 'qwen2.5:32b',
-    parameters: '32B',
-    tagline: 'Hukum ka ikka — Maximum sovereign IQ.',
-    description: 'Heavyweight intelligence for formal proofs, mathematical modeling, and enterprise research.',
-    ramRequirement: '32 GB',
-    vramRequirement: '20 GB',
-    hardware: 'Pro GPU / Multi-VRAM',
-    speedRating: 4,
-    speedLabel: 'Deep Thought',
-    powerRating: 12,
-    powerLabel: 'Maximum',
-    isDefault: false,
-    switchMessage: 'Active model switched to BANTAI Don (32B). Maximum analytical power ready.'
   }
 ];
 
 export function resolveModel(modelId?: string): ModelInfo {
   if (!modelId || typeof modelId !== 'string') {
-    return APP_MODELS[1]; // Bhai
+    return APP_MODELS[1] || APP_MODELS[0]; // Bhai
   }
 
   const normalized = modelId.toLowerCase().trim();
@@ -113,10 +75,8 @@ export function resolveModel(modelId?: string): ModelInfo {
   if (shortMatch) return shortMatch;
 
   // 3. Fallback matching baseModel substring
-  if (normalized.includes('3b')) return APP_MODELS[0];
-  if (normalized.includes('14b')) return APP_MODELS[2];
-  if (normalized.includes('32b')) return APP_MODELS[3];
+  if (normalized.includes('3b') || normalized.includes('chhotu')) return APP_MODELS[0];
 
   // Default to Bhai (7B)
-  return APP_MODELS[1];
+  return APP_MODELS[1] || APP_MODELS[0];
 }
