@@ -1,14 +1,15 @@
-version: '3.8'
-
 services:
   mongodb:
     image: mongo:7.0
     container_name: bantai-mongodb
     restart: unless-stopped
+    # Bind strictly to loopback; internal containers reach mongodb:27017 on bridge network
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     environment:
       MONGO_INITDB_DATABASE: bantai_users
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - mongo_data:/data/db
 
@@ -17,17 +18,11 @@ services:
     container_name: bantai-ollama
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ollama_models:/root/.ollama
-    # Uncomment if NVIDIA GPU is present:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
 
   backend:
     build:
@@ -40,31 +35,50 @@ services:
     environment:
       PORT: 4000
       NODE_ENV: production
+      DATA_DIR: /app/data
+      TRUST_PROXY: "1"
+      CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000,http://localhost:3001}
       MONGODB_URI: mongodb://mongodb:27017/bantai_users
       INFERENCE_PROVIDER: ollama
       OLLAMA_BASE_URL: http://ollama-inference:11434
-      # SEC-002 FIX: JWT_SECRET must be injected via Docker secret or external env — do NOT hardcode here.
-      # Generate a strong secret: openssl rand -hex 64
+      # SEC-002: Strong random JWT_SECRET required in production (`openssl rand -hex 64`)
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env or Docker secrets}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       - mongodb
       - ollama-inference
     volumes:
       - backend_data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   web:
     build:
       context: ..
       dockerfile: docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
     container_name: bantai-web
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   mongo_data:

@@ -2,455 +2,381 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '../../lib/api';
+import { useApp } from '../../context/AppContext';
+import { AgentExecutionPlan, AgentPlanStep } from '@bantai/shared';
 import {
   Bot,
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
+  Play,
   ShieldAlert,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Sparkles,
+  Clock,
+  Wrench,
   Terminal,
-  Plus
+  AlertCircle
 } from 'lucide-react';
 
-interface AgentTask {
-  id: string;
-  name: string;
-  goal: string;
-  status: 'running' | 'done' | 'failed' | 'awaiting_auth';
-  startedAt: string;
-  steps: Array<{
-    id: string;
-    stepNumber: number;
-    tool: string;
-    input: string;
-    status: 'running' | 'done' | 'failed' | 'awaiting_auth';
-    output?: string;
-    requiresAuth?: boolean;
-  }>;
-}
-
-const INITIAL_AGENTS: AgentTask[] = [
-  {
-    id: 'agent-101',
-    name: 'Sovereign Dual-DB Auditor',
-    goal: 'Audit Chroma vector embeddings against SQLite chat transactions for zero-cloud air-gap integrity.',
-    status: 'running',
-    startedAt: '11:42:10 AM',
-    steps: [
-      {
-        id: 's1',
-        stepNumber: 1,
-        tool: 'db_vector_scanner',
-        input: 'target="./data/chroma", minConfidence=0.92',
-        status: 'done',
-        output: 'Discovered 1,420 vector records across 4 memory categories.'
-      },
-      {
-        id: 's2',
-        stepNumber: 2,
-        tool: 'sandbox_code_executor',
-        input: 'node -e "require(\'./scripts/verify_integrity.js\')"',
-        status: 'awaiting_auth',
-        requiresAuth: true
-      },
-      {
-        id: 's3',
-        stepNumber: 3,
-        tool: 'file_writer',
-        input: 'path="./reports/airgap_audit.json", format="pretty"',
-        status: 'running'
-      }
-    ]
-  },
-  {
-    id: 'agent-102',
-    name: 'QLoRA Dataset Curate & Tokenize',
-    goal: 'Filter Tapori dialect instructions and generate token length distribution chart.',
-    status: 'done',
-    startedAt: '10:30:15 AM',
-    steps: [
-      {
-        id: 's1',
-        stepNumber: 1,
-        tool: 'jsonl_validator',
-        input: 'path="./training/datasets/tapori_dataset.jsonl"',
-        status: 'done',
-        output: 'Verified 45 clean instruction pairs with strict zero-profanity constraints.'
-      },
-      {
-        id: 's2',
-        stepNumber: 2,
-        tool: 'tokenizer_profiler',
-        input: 'model="Qwen/Qwen2.5-3B-Instruct", max_seq_length=512',
-        status: 'done',
-        output: 'Tokenized successfully. Median length: 84 tokens, peak: 320 tokens.'
-      }
-    ]
-  },
-  {
-    id: 'agent-103',
-    name: 'Node.js Heap Memory Profiler',
-    goal: 'Scan for EventEmitter leaks and unclosed stream readers.',
-    status: 'done',
-    startedAt: '09:15:00 AM',
-    steps: [
-      {
-        id: 's1',
-        stepNumber: 1,
-        tool: 'v8_heap_snapshot_inspector',
-        input: 'target="backend", duration="30s"',
-        status: 'done',
-        output: 'No uncollected listeners detected. LineBuffer cleanup confirmed.'
-      }
-    ]
-  }
+const PRESET_GOALS = [
+  'Create a task to review BANTAI quarterly security audit and schedule a reminder for tomorrow',
+  'Send an email status update to team@bantai.local summarizing local model benchmarks',
+  'Calculate SLA uptime for 43200 minutes minus 12 minutes downtime'
 ];
 
+function stepStatusBadge(status: AgentPlanStep['status']) {
+  switch (status) {
+    case 'completed':
+      return 'bg-[#10b981]/15 text-[#10b981] border-[#10b981]/30';
+    case 'in_progress':
+    case 'approved':
+      return 'bg-[#22d3ee]/15 text-[#22d3ee] border-[#22d3ee]/30';
+    case 'failed':
+      return 'bg-[#ef4444]/15 text-[#ef4444] border-[#ef4444]/30';
+    case 'skipped':
+      return 'bg-white/10 text-[#94a3b8] border-white/15';
+    default:
+      return 'bg-[#f59e0b]/15 text-[#f59e0b] border-[#f59e0b]/30';
+  }
+}
+
+function planStatusBadge(status: AgentExecutionPlan['status']) {
+  switch (status) {
+    case 'completed':
+      return 'bg-[#10b981]/15 text-[#10b981] border-[#10b981]/30';
+    case 'waiting_approval':
+      return 'bg-[#f59e0b]/15 text-[#f59e0b] border-[#f59e0b]/30';
+    case 'executing':
+      return 'bg-[#22d3ee]/15 text-[#22d3ee] border-[#22d3ee]/30';
+    case 'failed':
+      return 'bg-[#ef4444]/15 text-[#ef4444] border-[#ef4444]/30';
+    default:
+      return 'bg-[#6366f1]/15 text-[#818cf8] border-[#6366f1]/30';
+  }
+}
+
 export function AgenticView() {
-  const [agents, setAgents] = useState<AgentTask[]>(INITIAL_AGENTS);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('agent-101');
-  const [newGoalInput, setNewGoalInput] = useState('');
+  const { activeConversationId } = useApp();
+  const [goalInput, setGoalInput] = useState('');
+  const [plans, setPlans] = useState<AgentExecutionPlan[]>([]);
+  const [activePlanId, setActivePlanId] = useState<string | null>(null);
+  const [isPlanning, setIsPlanning] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Authorization Gate State
-  const [activeAuthStep, setActiveAuthStep] = useState<{
-    agentId: string;
-    stepId: string;
-    tool: string;
-    input: string;
-  } | null>(null);
+  const activePlan = plans.find(p => p.planId === activePlanId) || plans[0] || null;
 
-  const selectedAgent = agents.find(a => a.id === selectedAgentId) || agents[0];
-
-  const handleAuthorize = (agentId: string, stepId: string) => {
-    setAgents(prev =>
-      prev.map(a => {
-        if (a.id !== agentId) return a;
-        return {
-          ...a,
-          status: 'running',
-          steps: a.steps.map(s => {
-            if (s.id !== stepId) return s;
-            return {
-              ...s,
-              status: 'done',
-              output: 'Authorization granted by local developer. Process executed in isolated sandbox.'
-            };
-          })
-        };
-      })
-    );
-    setActiveAuthStep(null);
+  const upsertPlan = (updated: AgentExecutionPlan) => {
+    setPlans(prev => {
+      const exists = prev.some(p => p.planId === updated.planId);
+      if (exists) {
+        return prev.map(p => (p.planId === updated.planId ? updated : p));
+      }
+      return [updated, ...prev];
+    });
+    setActivePlanId(updated.planId);
   };
 
-  const handleReject = (agentId: string, stepId: string) => {
-    setAgents(prev =>
-      prev.map(a => {
-        if (a.id !== agentId) return a;
-        return {
-          ...a,
-          status: 'failed',
-          steps: a.steps.map(s => {
-            if (s.id !== stepId) return s;
-            return {
-              ...s,
-              status: 'failed',
-              output: 'Authorization rejected by developer. Sandbox execution aborted.'
-            };
-          })
-        };
-      })
-    );
-    setActiveAuthStep(null);
+  const handleCreateAndRun = async (e?: React.FormEvent, customGoal?: string) => {
+    e?.preventDefault();
+    const goal = (customGoal ?? goalInput).trim();
+    if (!goal || isPlanning || isExecuting) return;
+
+    setErrorMsg(null);
+    setIsPlanning(true);
+    try {
+      const created = await api.createAgentPlan(goal, activeConversationId || undefined);
+      upsertPlan(created);
+      if (!customGoal) setGoalInput('');
+
+      // Immediately run safe non-gated steps until completion or first approval gate
+      setIsPlanning(false);
+      setIsExecuting(true);
+      const progressed = await api.executeAgentPlan(created.planId);
+      upsertPlan(progressed);
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Failed to plan or execute agent workflow.');
+    } finally {
+      setIsPlanning(false);
+      setIsExecuting(false);
+    }
   };
 
-  const handleLaunchAgent = () => {
-    if (!newGoalInput.trim()) return;
-    const newAgent: AgentTask = {
-      id: `agent-${Date.now().toString().slice(-4)}`,
-      name: `Agent: ${newGoalInput.slice(0, 24)}...`,
-      goal: newGoalInput.trim(),
-      status: 'running',
-      startedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      steps: [
-        {
-          id: 's1',
-          stepNumber: 1,
-          tool: 'intent_decomposer',
-          input: `goal="${newGoalInput.trim()}"`,
-          status: 'done',
-          output: 'Decomposed goal into 3 deterministic sub-steps.'
-        },
-        {
-          id: 's2',
-          stepNumber: 2,
-          tool: 'local_silicon_executor',
-          input: 'model="bantai-bhai", temp=0.6',
-          status: 'running',
-          output: 'Synthesizing intermediate representations...'
-        }
-      ]
-    };
-    setAgents(prev => [newAgent, ...prev]);
-    setSelectedAgentId(newAgent.id);
-    setNewGoalInput('');
+  const handleExecutePending = async (planId: string) => {
+    setErrorMsg(null);
+    setIsExecuting(true);
+    try {
+      const updated = await api.executeAgentPlan(planId);
+      upsertPlan(updated);
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Failed to execute agent plan.');
+    } finally {
+      setIsExecuting(false);
+    }
   };
+
+  const handleApproveStep = async (planId: string, stepIndex: number, approved: boolean) => {
+    setErrorMsg(null);
+    setIsExecuting(true);
+    try {
+      const updated = await api.approveAgentStep(planId, stepIndex, approved);
+      upsertPlan(updated);
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Failed to submit step decision.');
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  const pendingApprovalStep =
+    activePlan?.steps.find(
+      s => s.requiresApproval && s.status === 'pending'
+    ) || null;
 
   return (
-    <div className="flex-1 flex h-full bg-[#07070f] text-white font-sans overflow-hidden">
-      {/* ============================================================== */}
-      /* LEFT PANEL (280PX FIXED WIDTH): ACTIVE, QUEUED, COMPLETED AGENTS */
-      /* ============================================================== */
-      <div className="w-[280px] bg-[#07070f] border-r border-white/5 flex flex-col shrink-0 select-none">
-        {/* Panel Header */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bot size={18} className="text-[#6366f1]" />
-            <span className="font-semibold text-xs tracking-tight text-white">Agent Runners</span>
-          </div>
-          <span className="telemetry-chip font-mono text-[10px]">{agents.length} Tasks</span>
-        </div>
-
-        {/* Create Agent Goal Input */}
-        <div className="p-3 border-b border-white/5">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={newGoalInput}
-              onChange={e => setNewGoalInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleLaunchAgent()}
-              placeholder="Assign new agent goal..."
-              className="w-full bg-[#0f0f1a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#64748b] focus:outline-none focus:border-[#6366f1]"
-            />
-            <button
-              onClick={handleLaunchAgent}
-              disabled={!newGoalInput.trim()}
-              className="p-1.5 rounded-lg bg-[#6366f1] text-white hover:bg-[#6366f1]/90 disabled:opacity-40 transition-all shrink-0"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* Agents List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-          {agents.map(agent => {
-            const isSelected = agent.id === selectedAgentId;
-            return (
-              <button
-                key={agent.id}
-                onClick={() => setSelectedAgentId(agent.id)}
-                className={`w-full text-left p-3 rounded-card transition-all flex flex-col gap-1.5 border ${
-                  isSelected
-                    ? 'bg-[#0f0f1a] border-[#6366f1]/40 shadow-[0_0_16px_-4px_rgba(99,102,241,0.35)]'
-                    : 'bg-transparent border-transparent hover:bg-white/[0.03] text-[#94a3b8]'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-xs text-white truncate max-w-[180px]">
-                    {agent.name}
-                  </span>
-                  {/* Status Indicator */}
-                  {agent.status === 'running' && (
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22d3ee] shadow-[0_0_8px_#22d3ee]" />
-                    </span>
-                  )}
-                  {agent.status === 'done' && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
-                  )}
-                  {agent.status === 'awaiting_auth' && (
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#f59e0b]" />
-                  )}
-                  {agent.status === 'failed' && (
-                    <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_6px_#ef4444]" />
-                  )}
-                </div>
-
-                <p className="text-[11px] text-[#64748b] line-clamp-2 leading-relaxed">
-                  {agent.goal}
-                </p>
-
-                <div className="flex items-center justify-between text-[10px] font-mono text-[#64748b] pt-1">
-                  <span>{agent.steps.length} steps</span>
-                  <span>{agent.startedAt}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ============================================================== */}
-      /* RIGHT PANEL: SELECTED AGENT'S EXECUTION LOG (BUILD LOG STYLE)   */
-      /* ============================================================== */
-      <div className="flex-1 flex flex-col h-full bg-[#07070f] overflow-hidden">
-        {/* Header Strip */}
-        <div className="h-14 px-6 border-b border-white/5 flex items-center justify-between shrink-0 bg-[#07070f]">
+    <div className="flex-1 flex flex-col h-full bg-[#07070f] text-white p-4 sm:p-6 overflow-y-auto">
+      <div className="max-w-5xl mx-auto w-full space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-5">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white">{selectedAgent.name}</span>
-              <span className="telemetry-chip font-mono text-[10px] uppercase">
-                Status: {selectedAgent.status.replace('_', ' ')}
-              </span>
+            <div className="flex items-center gap-2 mb-1">
+              <Bot size={18} className="text-[#6366f1]" />
+              <h2 className="text-base font-bold text-white tracking-tight">
+                Autonomous Agent Planner
+              </h2>
             </div>
-            <p className="text-xs text-[#64748b] truncate max-w-xl">{selectedAgent.goal}</p>
+            <p className="text-xs text-[#64748b]">
+              Live backend plan generation with human-in-the-loop approval gates for sensitive actions.
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-[#64748b]">Started: {selectedAgent.startedAt}</span>
-          </div>
-        </div>
-
-        {/* Execution Steps Log (Terminal / Build Log Style) */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div className="space-y-3">
-            {selectedAgent.steps.map((step, idx) => (
-              <motion.div
-                key={step.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.08, duration: 0.2 }}
-                className={`p-4 rounded-card border ${
-                  step.status === 'awaiting_auth'
-                    ? 'bg-[#16162a] border-amber-500/40 shadow-[0_0_20px_-4px_rgba(245,158,11,0.3)]'
-                    : 'surface-raised border-white/5'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-5 h-5 rounded-md bg-white/5 flex items-center justify-center font-mono text-[10px] font-semibold text-[#6366f1]">
-                      {step.stepNumber}
-                    </span>
-                    <span className="font-mono font-semibold text-xs text-white flex items-center gap-1.5">
-                      <Terminal size={14} className="text-[#22d3ee]" />
-                      {step.tool}
-                    </span>
-                  </div>
-
-                  {step.status === 'done' && (
-                    <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                      <CheckCircle size={12} />
-                      Completed
-                    </span>
-                  )}
-                  {step.status === 'running' && (
-                    <span className="text-[10px] font-mono text-[#22d3ee] flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee] animate-pulse" />
-                      Executing...
-                    </span>
-                  )}
-                  {step.status === 'awaiting_auth' && (
-                    <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
-                      <AlertTriangle size={12} />
-                      Authorization Required
-                    </span>
-                  )}
-                  {step.status === 'failed' && (
-                    <span className="text-[10px] font-mono text-rose-400 flex items-center gap-1">
-                      <XCircle size={12} />
-                      Aborted
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-1.5 font-mono text-xs">
-                  <div className="text-[#64748b] text-[11px]">
-                    <span className="text-[#94a3b8]">Input:</span> {step.input}
-                  </div>
-
-                  {step.output && (
-                    <div className="p-2.5 rounded-lg bg-[#07070f] border border-white/5 text-[#cbd5e1] text-[11px] leading-relaxed">
-                      <span className="text-emerald-400 font-semibold">[Output]:</span> {step.output}
-                    </div>
-                  )}
-
-                  {/* Auth Gate Inline Trigger */}
-                  {step.status === 'awaiting_auth' && (
-                    <div className="pt-2 flex items-center gap-3">
-                      <button
-                        onClick={() =>
-                          setActiveAuthStep({
-                            agentId: selectedAgent.id,
-                            stepId: step.id,
-                            tool: step.tool,
-                            input: step.input
-                          })
-                        }
-                        className="px-3 py-1.5 rounded-button bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold hover:bg-amber-500/30 transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
-                      >
-                        <ShieldAlert size={14} />
-                        <span>Review & Authorize Tool</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            ))}
+          <div className="telemetry-chip shrink-0">
+            <Wrench size={12} className="text-[#22d3ee]" />
+            <span>Runtime: Backend Tool Registry</span>
           </div>
         </div>
-      </div>
 
-      {/* ============================================================== */}
-      /* AUTHORIZATION GATE MODAL                                       */
-      /* ============================================================== */
-      <AnimatePresence>
-        {activeAuthStep && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="w-full max-w-lg surface-floating border border-amber-500/40 p-6 space-y-5 shadow-[0_0_35px_-5px_rgba(245,158,11,0.35)]"
-            >
-              <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                  <ShieldAlert size={22} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white tracking-tight">Security Authorization Gate</h3>
-                  <p className="text-xs text-[#94a3b8]">Step requires human-in-the-loop developer approval</p>
-                </div>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="font-mono text-[#64748b] uppercase tracking-wider text-[10px]">Tool:</span>
-                  <div className="text-white font-mono font-semibold text-sm mt-0.5">{activeAuthStep.tool}</div>
-                </div>
-
-                <div>
-                  <span className="font-mono text-[#64748b] uppercase tracking-wider text-[10px]">Scope:</span>
-                  <div className="text-[#e2e8f0] mt-0.5">Executes sandboxed instructions on the local filesystem.</div>
-                </div>
-
-                <div>
-                  <span className="font-mono text-[#64748b] uppercase tracking-wider text-[10px]">Exact Parameters:</span>
-                  <pre className="p-3 mt-1 rounded-lg bg-[#07070f] border border-white/5 text-[#22d3ee] font-mono text-[11px] overflow-x-auto">
-                    {activeAuthStep.input}
-                  </pre>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
-                <button
-                  onClick={() => handleReject(activeAuthStep.agentId, activeAuthStep.stepId)}
-                  className="px-4 py-2 rounded-button bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 font-medium text-xs border border-rose-500/30 transition-colors"
-                >
-                  Reject & Abort
-                </button>
-                <button
-                  onClick={() => handleAuthorize(activeAuthStep.agentId, activeAuthStep.stepId)}
-                  className="px-4 py-2 rounded-button bg-[#6366f1] hover:bg-[#6366f1]/90 text-white font-medium text-xs shadow-[0_0_16px_rgba(99,102,241,0.5)] transition-all"
-                >
-                  Authorize Execution
-                </button>
-              </div>
-            </motion.div>
+        {/* Error Alert */}
+        {errorMsg && (
+          <div className="p-3 rounded-xl bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#fca5a5] text-xs flex items-center gap-2">
+            <AlertCircle size={15} className="shrink-0" />
+            <span>{errorMsg}</span>
           </div>
         )}
-      </AnimatePresence>
+
+        {/* Goal Submission Form */}
+        <form onSubmit={handleCreateAndRun} className="surface-raised p-4 sm:p-5 space-y-3">
+          <label htmlFor="agent-goal-input" className="block text-xs font-semibold text-[#94a3b8]">
+            Define an Agent Objective
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <input
+              id="agent-goal-input"
+              type="text"
+              value={goalInput}
+              onChange={e => setGoalInput(e.target.value)}
+              placeholder="e.g., Create a checklist task for security review and calculate uptime SLA"
+              className="flex-1 bg-[#07070f] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-[#64748b] focus:outline-none focus:border-[#6366f1]"
+            />
+            <button
+              type="submit"
+              disabled={!goalInput.trim() || isPlanning || isExecuting}
+              className="px-4 py-2.5 rounded-xl bg-[#6366f1] hover:bg-[#5558e6] disabled:opacity-40 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors shrink-0"
+            >
+              {isPlanning || isExecuting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>{isPlanning ? 'Planning...' : 'Running...'}</span>
+                </>
+              ) : (
+                <>
+                  <Play size={14} />
+                  <span>Plan &amp; Execute</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Preset Prompts */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {PRESET_GOALS.map(preset => (
+              <button
+                key={preset}
+                type="button"
+                disabled={isPlanning || isExecuting}
+                onClick={() => handleCreateAndRun(undefined, preset)}
+                className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-[#94a3b8] hover:text-white transition-colors text-left"
+              >
+                <Sparkles size={10} className="inline mr-1 text-[#22d3ee]" />
+                {preset}
+              </button>
+            ))}
+          </div>
+        </form>
+
+        {/* Active Plan & Session Plan Selector */}
+        {plans.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="text-[11px] font-mono text-[#64748b] shrink-0">Session Plans:</span>
+            {plans.map(p => (
+              <button
+                key={p.planId}
+                type="button"
+                onClick={() => setActivePlanId(p.planId)}
+                className={`px-3 py-1 rounded-lg text-xs border transition-colors shrink-0 ${
+                  p.planId === activePlan?.planId
+                    ? 'bg-[#6366f1]/20 border-[#6366f1]/50 text-white'
+                    : 'bg-[#0f0f1a] border-white/10 text-[#94a3b8] hover:text-white'
+                }`}
+              >
+                {p.goal.slice(0, 32)}{p.goal.length > 32 ? '...' : ''}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <AnimatePresence mode="wait">
+          {activePlan ? (
+            <motion.div
+              key={activePlan.planId}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="space-y-4"
+            >
+              {/* Plan Summary Bar */}
+              <div className="surface-raised p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase border ${planStatusBadge(activePlan.status)}`}>
+                      {activePlan.status.replace('_', ' ')}
+                    </span>
+                    <span className="text-[11px] font-mono text-[#64748b]">
+                      ID: {activePlan.planId.slice(0, 8)}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-white break-words">{activePlan.goal}</p>
+                </div>
+
+                {(activePlan.status === 'planning' || activePlan.status === 'waiting_approval') && !pendingApprovalStep && (
+                  <button
+                    type="button"
+                    disabled={isExecuting}
+                    onClick={() => handleExecutePending(activePlan.planId)}
+                    className="px-3.5 py-2 rounded-lg bg-[#22d3ee]/15 hover:bg-[#22d3ee]/25 border border-[#22d3ee]/40 text-[#22d3ee] text-xs font-semibold flex items-center gap-1.5 shrink-0"
+                  >
+                    <Play size={13} />
+                    <span>Resume Execution</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Human-in-the-Loop Authorization Gate Banner */}
+              {pendingApprovalStep && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-[#f59e0b]/10 border border-[#f59e0b]/40 space-y-3 shadow-[0_0_24px_-6px_rgba(245,158,11,0.35)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 text-[#f59e0b]">
+                      <ShieldAlert size={18} />
+                      <h3 className="text-sm font-bold">Authorization Gate Required</h3>
+                    </div>
+                    <span className="text-[11px] font-mono text-[#fbbf24]">
+                      Step #{pendingApprovalStep.stepIndex + 1} · {pendingApprovalStep.toolName}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-[#fde68a]">
+                    {pendingApprovalStep.rationale}
+                  </p>
+
+                  <pre className="p-3 rounded-xl bg-[#07070f] border border-white/10 text-[11px] font-mono text-[#22d3ee] overflow-x-auto">
+                    {JSON.stringify(pendingApprovalStep.arguments, null, 2)}
+                  </pre>
+
+                  <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      disabled={isExecuting}
+                      onClick={() => handleApproveStep(activePlan.planId, pendingApprovalStep.stepIndex, true)}
+                      className="px-4 py-2 rounded-lg bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 size={14} />
+                      <span>Approve &amp; Execute Step</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isExecuting}
+                      onClick={() => handleApproveStep(activePlan.planId, pendingApprovalStep.stepIndex, false)}
+                      className="px-4 py-2 rounded-lg bg-[#ef4444]/20 hover:bg-[#ef4444]/30 border border-[#ef4444]/40 disabled:opacity-50 text-[#fca5a5] text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      <XCircle size={14} />
+                      <span>Reject / Skip</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Execution Step List */}
+              <div className="space-y-3">
+                {activePlan.steps.map(step => (
+                  <div
+                    key={step.stepIndex}
+                    className="surface-raised p-4 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-full bg-[#16162a] border border-white/10 text-[11px] font-mono flex items-center justify-center text-[#94a3b8]">
+                          {step.stepIndex + 1}
+                        </span>
+                        <span className="text-sm font-semibold text-white">{step.action}</span>
+                        <span className="telemetry-chip">
+                          <Terminal size={11} className="text-[#22d3ee]" />
+                          {step.toolName}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {step.requiresApproval && (
+                          <span className="text-[10px] font-mono text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/30 px-2 py-0.5 rounded-full">
+                            Approval Required
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full border ${stepStatusBadge(step.status)}`}>
+                          {step.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-[#94a3b8]">{step.rationale}</p>
+
+                    {step.result !== undefined && (
+                      <div className="p-2.5 rounded-lg bg-[#07070f] border border-white/5 text-[11px] font-mono text-[#10b981] overflow-x-auto">
+                        {typeof step.result === 'string'
+                          ? step.result
+                          : JSON.stringify(step.result, null, 2)}
+                      </div>
+                    )}
+
+                    {step.error && (
+                      <div className="p-2.5 rounded-lg bg-[#ef4444]/10 border border-[#ef4444]/30 text-[11px] font-mono text-[#fca5a5]">
+                        Error: {step.error}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <div className="surface-raised p-10 text-center space-y-2">
+              <Clock size={28} className="mx-auto text-[#64748b]" />
+              <p className="text-sm font-medium text-white">No agent execution plan active</p>
+              <p className="text-xs text-[#64748b] max-w-md mx-auto">
+                Enter an objective above or pick a preset workflow to inspect generated backend tool steps and approval gates.
+              </p>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

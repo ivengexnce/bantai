@@ -1,6 +1,6 @@
 import { Response } from 'express';
+import crypto from 'crypto';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { firebaseFirestoreService } from '../services/database/firebase.service';
 import { personalMemoryService } from '../services/memory/memory.service';
@@ -43,7 +43,7 @@ export class AssistantController {
 
       const now = new Date().toISOString();
       const task: FirestoreTask = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         userId: req.user!.userId,
         title: parsed.data.title,
         description: parsed.data.description,
@@ -112,7 +112,7 @@ export class AssistantController {
       }
 
       const reminder: FirestoreReminder = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         userId: req.user!.userId,
         title: parsed.data.title,
         scheduledTime: parsed.data.scheduledTime,
@@ -166,7 +166,7 @@ export class AssistantController {
 
       const now = new Date().toISOString();
       const event = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         userId: req.user!.userId,
         title,
         description,
@@ -273,7 +273,7 @@ export class AssistantController {
       const safeOriginalName = path.basename(parsed.data.filename).replace(/[^a-zA-Z0-9._-]/g, '_');
       const { rawText, mimeType } = parsed.data;
       const userId = req.user!.userId;
-      const docId = uuidv4();
+      const docId = crypto.randomUUID();
 
       const doc: FirestoreKnowledgeDoc = {
         id: docId,

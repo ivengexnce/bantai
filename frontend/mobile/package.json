@@ -5,6 +5,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
+    "typecheck": "tsc --noEmit",
     "build:apk": "eas build --platform android --profile preview --local"
   },
   "author": "Meet Maru (https://github.com/ivengexnce)",

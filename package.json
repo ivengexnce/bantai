@@ -14,6 +14,7 @@
     "dev:web": "npm --workspace=@bantai/web run dev",
     "test": "npm --workspace=@bantai/backend run test",
     "test:security": "npm --workspace=@bantai/backend run test:security",
+    "security:scan": "node tests/security_static_scan.mjs",
     "lint": "echo \"Linting all workspaces...\""
   },
   "overrides": {

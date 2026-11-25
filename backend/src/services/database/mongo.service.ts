@@ -155,7 +155,6 @@ export class MongoUserService {
     this.users.set(userId, user);
     this.persistToDisk();
 
-    revokeUserTokensBefore(userId);
     return user.tokenVersion;
   }
 
@@ -168,7 +167,6 @@ export class MongoUserService {
     this.users.set(userId, user);
     this.persistToDisk();
 
-    revokeUserTokensBefore(userId);
     return user.tokenVersion;
   }
 
@@ -190,14 +188,114 @@ export class MongoUserService {
     this.users.delete(userId);
     this.persistToDisk();
 
-    revokeUserTokensBefore(userId);
+    revokeUserTokensBefore(userId, Math.floor(Date.now() / 1000) + 1);
     return true;
+  }
+
+  async setPendingMfaSecret(userId: string, secret: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) throw new Error('User not found');
+    user.mfaPendingSecret = secret;
+    user.updatedAt = new Date().toISOString();
+    this.users.set(userId, user);
+    this.persistToDisk();
+  }
+
+  async enableMfa(userId: string, secret: string, recoveryCodeHashes: string[]): Promise<SafeUserProfile> {
+    const user = await this.findById(userId);
+    if (!user) throw new Error('User not found');
+    user.mfaEnabled = true;
+    user.mfaSecret = secret;
+    delete user.mfaPendingSecret;
+    delete user.mfaLastUsedStep;
+    user.mfaRecoveryCodeHashes = recoveryCodeHashes;
+    user.updatedAt = new Date().toISOString();
+    this.users.set(userId, user);
+    this.persistToDisk();
+    return this.toSafeProfile(user);
+  }
+
+  async recordTotpStepUsed(userId: string, step: number): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) return;
+    user.mfaLastUsedStep = step;
+    this.users.set(userId, user);
+    this.persistToDisk();
+  }
+
+  async consumeRecoveryCode(userId: string, codeHash: string): Promise<boolean> {
+    const user = await this.findById(userId);
+    if (!user || !user.mfaRecoveryCodeHashes) return false;
+    const idx = user.mfaRecoveryCodeHashes.indexOf(codeHash);
+    if (idx === -1) return false;
+    user.mfaRecoveryCodeHashes.splice(idx, 1);
+    user.updatedAt = new Date().toISOString();
+    this.users.set(userId, user);
+    this.persistToDisk();
+    return true;
+  }
+
+  async disableMfa(userId: string): Promise<SafeUserProfile> {
+    const user = await this.findById(userId);
+    if (!user) throw new Error('User not found');
+    user.mfaEnabled = false;
+    delete user.mfaSecret;
+    delete user.mfaPendingSecret;
+    delete user.mfaLastUsedStep;
+    delete user.mfaRecoveryCodeHashes;
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+    user.updatedAt = new Date().toISOString();
+    this.users.set(userId, user);
+    this.persistToDisk();
+    return this.toSafeProfile(user);
+  }
+
+  async setPasswordResetToken(userId: string, tokenHash: string, expiresAtIso: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) return;
+    user.passwordResetTokenHash = tokenHash;
+    user.passwordResetExpiresAt = expiresAtIso;
+    user.updatedAt = new Date().toISOString();
+    this.users.set(userId, user);
+    this.persistToDisk();
+  }
+
+  async findByValidPasswordResetToken(tokenHash: string): Promise<MongoUser | null> {
+    const now = Date.now();
+    for (const user of this.users.values()) {
+      if (
+        user.passwordResetTokenHash === tokenHash &&
+        user.passwordResetExpiresAt &&
+        new Date(user.passwordResetExpiresAt).getTime() > now
+      ) {
+        return user;
+      }
+    }
+    return null;
+  }
+
+  async completePasswordReset(userId: string, newPasswordHash: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) throw new Error('User not found');
+    user.passwordHash = newPasswordHash;
+    delete user.passwordResetTokenHash;
+    delete user.passwordResetExpiresAt;
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+    user.updatedAt = new Date().toISOString();
+    this.users.set(userId, user);
+    this.persistToDisk();
   }
 
   private toSafeProfile(user: MongoUser): SafeUserProfile {
     const safe = { ...user };
     delete safe.passwordHash;
     delete safe.tokenVersion;
+    delete safe.mfaSecret;
+    delete safe.mfaPendingSecret;
+    delete safe.mfaLastUsedStep;
+    delete safe.mfaRecoveryCodeHashes;
+    delete safe.passwordResetTokenHash;
+    delete safe.passwordResetExpiresAt;
     return safe;
   }
 }

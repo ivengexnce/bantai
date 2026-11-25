@@ -4,8 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { resolveModel, APP_MODELS } from '../../lib/models';
+import { api } from '../../lib/api';
+import { Cpu, ShieldCheck, ChevronDown, Check, MessageSquare } from 'lucide-react';
 import { PersonalityMode } from '@bantai/shared';
-import { Cpu, HardDrive, ChevronDown, Check } from 'lucide-react';
 
 const PERSONALITIES: Array<{ id: PersonalityMode; label: string }> = [
   { id: 'tapori', label: 'Tapori' },
@@ -17,17 +18,32 @@ const PERSONALITIES: Array<{ id: PersonalityMode; label: string }> = [
 
 export function GlassIrisTopBar() {
   const {
+    user,
     personalityMode,
     setPersonalityMode,
     selectedModel,
-    setSelectedModel
+    setSelectedModel,
+    conversations
   } = useApp();
 
   const [modelOpen, setModelOpen] = useState(false);
+  const [backendHealth, setBackendHealth] = useState<{
+    provider: string;
+    isAlive: boolean;
+    availableModels: string[];
+  }>({ provider: 'checking', isAlive: false, availableModels: [] });
+
   const modelRef = useRef<HTMLDivElement>(null);
   const currentModel = resolveModel(selectedModel);
 
-  // Close dropdown on outside click
+  useEffect(() => {
+    api.getHealth()
+      .then(res => {
+        if (res?.aiEngine) setBackendHealth(res.aiEngine);
+      })
+      .catch(() => setBackendHealth({ provider: 'offline', isAlive: false, availableModels: [] }));
+  }, []);
+
   useEffect(() => {
     if (!modelOpen) return;
     const handleClick = (e: MouseEvent) => {
@@ -39,24 +55,16 @@ export function GlassIrisTopBar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [modelOpen]);
 
-  // Model-specific throughput representation
-  const throughputMap: Record<string, string> = {
-    chhotu: '48 tok/s',
-    bhai: '28 tok/s'
-  };
-
   return (
-    <header className="h-12 px-5 flex items-center justify-between gap-4 z-30 select-none shrink-0 bg-[#07070f] border-b border-white/5 relative">
-      {/* Left: BANTAI Wordmark + Model Badge with tok/s */}
-      <div className="flex items-center gap-3 shrink-0">
-        <span className="font-bold tracking-tight text-white text-sm">
-          BANTAI
-        </span>
-        <span className="text-white/20">/</span>
+    <header className="h-12 px-3 sm:px-5 flex items-center justify-between gap-2 sm:gap-4 z-30 select-none shrink-0 bg-[#07070f] border-b border-white/5 relative">
+      {/* Left: BANTAI Wordmark + Model Badge */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+        <span className="font-bold tracking-tight text-white text-sm">BANTAI</span>
+        <span className="text-white/20 hidden sm:inline">/</span>
 
-        {/* Current Model Badge Dropdown */}
         <div ref={modelRef} className="relative">
           <button
+            type="button"
             onClick={() => setModelOpen(o => !o)}
             aria-haspopup="listbox"
             aria-expanded={modelOpen}
@@ -64,8 +72,8 @@ export function GlassIrisTopBar() {
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#6366f1] shadow-[0_0_8px_#6366f1]" />
             <span className="font-semibold text-white">{currentModel.name}</span>
-            <span className="font-mono text-[10px] text-[#22d3ee] bg-[#22d3ee]/10 px-1 py-0.5 rounded">
-              {throughputMap[selectedModel] || '32 tok/s'}
+            <span className="hidden sm:inline font-mono text-[10px] text-[#22d3ee] bg-[#22d3ee]/10 px-1 py-0.5 rounded">
+              {currentModel.parameters}
             </span>
             <ChevronDown size={14} className={`text-[#64748b] transition-transform ${modelOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -82,12 +90,15 @@ export function GlassIrisTopBar() {
               >
                 <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-[#64748b] border-b border-white/5 mb-1 flex justify-between">
                   <span>Local Models</span>
-                  <span className="text-[#10b981]">Ollama Live</span>
+                  <span className={backendHealth.isAlive ? 'text-[#10b981]' : 'text-amber-400'}>
+                    {backendHealth.isAlive ? `${backendHealth.provider} live` : 'fallback engine'}
+                  </span>
                 </div>
                 {APP_MODELS.map(m => {
                   const active = m.id === selectedModel;
                   return (
                     <button
+                      type="button"
                       key={m.id}
                       role="option"
                       aria-selected={active}
@@ -106,7 +117,7 @@ export function GlassIrisTopBar() {
                           <span>{m.name}</span>
                           <span className="font-mono text-[10px] text-[#64748b]">({m.parameters})</span>
                         </div>
-                        <div className="text-[10px] font-mono text-[#64748b]">{m.ramRequirement} RAM · {throughputMap[m.id] || '25 tok/s'}</div>
+                        <div className="text-[10px] font-mono text-[#64748b]">{m.ramRequirement} RAM · {m.vramRequirement} VRAM</div>
                       </div>
                       {active && <Check size={16} className="text-[#6366f1]" />}
                     </button>
@@ -118,25 +129,24 @@ export function GlassIrisTopBar() {
         </div>
       </div>
 
-      {/* Right: Air-Gap Beacon + Personality Pill Switcher + Telemetry Chips */}
-      <div className="flex items-center gap-4 shrink-0">
-        {/* Air-Gap Beacon */}
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#10b981]/10 border border-[#10b981]/25">
+      {/* Right: Runtime Status + Personality Switcher + Real Session Telemetry */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#10b981]/10 border border-[#10b981]/25">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10b981] shadow-[0_0_8px_#10b981]" />
           </span>
           <span className="text-[10px] font-mono font-semibold tracking-wider uppercase text-[#10b981]">
-            Air-Gap Active
+            {backendHealth.isAlive ? `${backendHealth.provider} Active` : 'Local Engine'}
           </span>
         </div>
 
-        {/* Personality Mode Horizontal Pill Tabs */}
         <div className="hidden lg:flex items-center bg-[#0f0f1a] p-1 rounded-full border border-white/5 relative">
           {PERSONALITIES.map(p => {
             const isActive = personalityMode === p.id;
             return (
               <button
+                type="button"
                 key={p.id}
                 onClick={() => setPersonalityMode(p.id)}
                 className={`relative px-3 py-1 rounded-full text-xs font-medium transition-colors z-10 ${
@@ -156,19 +166,18 @@ export function GlassIrisTopBar() {
           })}
         </div>
 
-        {/* Hardware Telemetry Chips (CPU%, RAM, VRAM in JetBrains Mono) */}
         <div className="hidden xl:flex items-center gap-2">
           <div className="telemetry-chip">
-            <Cpu size={12} className="text-[#64748b]" />
-            <span>28% CPU</span>
-          </div>
-          <div className="telemetry-chip">
-            <HardDrive size={12} className="text-[#64748b]" />
-            <span>4.1/16 GB RAM</span>
+            <MessageSquare size={12} className="text-[#64748b]" />
+            <span>{conversations.length} Chats</span>
           </div>
           <div className="telemetry-chip border-[#6366f1]/30 text-[#e2e8f0]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee] shadow-[0_0_6px_#22d3ee]" />
-            <span>3.8/4.0 GB VRAM (RTX A2000)</span>
+            <ShieldCheck size={12} className={user?.mfaEnabled ? 'text-[#10b981]' : 'text-[#22d3ee]'} />
+            <span>{user?.mfaEnabled ? 'MFA Protected' : 'HttpOnly Cookie'}</span>
+          </div>
+          <div className="telemetry-chip">
+            <Cpu size={12} className="text-[#64748b]" />
+            <span>{currentModel.baseModel}</span>
           </div>
         </div>
       </div>

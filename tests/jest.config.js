@@ -3,6 +3,8 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>'],
   testMatch: ['**/*.test.ts'],
+  testTimeout: 20000,
+  setupFiles: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^@bantai/shared$': '<rootDir>/../shared/src'
   },

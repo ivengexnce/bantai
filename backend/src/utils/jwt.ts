@@ -7,12 +7,12 @@ export interface JwtPayload {
   email: string;
   role: string;
   tokenVersion?: number;
+  purpose?: 'session' | 'mfa_challenge';
   jti?: string;
   iat?: number;
   exp?: number;
 }
 
-// In-memory token revocation store (jti -> exp epoch seconds) and user-wide revocation watermarks
 const revokedJtis = new Map<string, number>();
 const revokedUsersBefore = new Map<string, number>();
 
@@ -32,7 +32,8 @@ export function signToken(payload: JwtPayload): string {
       userId: payload.userId,
       email: payload.email,
       role: payload.role,
-      tokenVersion: payload.tokenVersion ?? 0
+      tokenVersion: payload.tokenVersion ?? 0,
+      purpose: 'session'
     },
     config.jwtSecret,
     {
@@ -45,13 +46,37 @@ export function signToken(payload: JwtPayload): string {
   );
 }
 
-export function verifyToken(token: string): JwtPayload {
-  // Enforce explicit HS256 algorithm, issuer, and audience claims
+export function signMfaChallengeToken(payload: { userId: string; email: string; role: string; tokenVersion?: number }): string {
+  return jwt.sign(
+    {
+      userId: payload.userId,
+      email: payload.email,
+      role: payload.role,
+      tokenVersion: payload.tokenVersion ?? 0,
+      purpose: 'mfa_challenge'
+    },
+    config.jwtSecret,
+    {
+      algorithm: 'HS256',
+      expiresIn: '5m',
+      issuer: config.jwtIssuer,
+      audience: config.jwtAudience,
+      jwtid: crypto.randomUUID()
+    }
+  );
+}
+
+export function verifyToken(token: string, expectedPurpose: 'session' | 'mfa_challenge' = 'session'): JwtPayload {
   const decoded = jwt.verify(token, config.jwtSecret, {
     algorithms: ['HS256'],
     issuer: config.jwtIssuer,
     audience: config.jwtAudience
   }) as JwtPayload;
+
+  const actualPurpose = decoded.purpose || 'session';
+  if (actualPurpose !== expectedPurpose) {
+    throw new Error('Invalid token purpose');
+  }
 
   if (decoded.jti && isTokenRevoked(decoded.jti)) {
     throw new Error('Token has been revoked');

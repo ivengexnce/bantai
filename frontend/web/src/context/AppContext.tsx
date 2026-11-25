@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { SafeUserProfile, FirestoreConversation, PersonalityMode } from '@bantai/shared';
 import { api } from '../lib/api';
 
@@ -21,21 +21,22 @@ interface AppContextType {
   selectedModel: string;
   setSelectedModel: (m: string) => void;
   refreshConversations: () => Promise<void>;
-  logout: () => void;
+  logout: (allSessions?: boolean) => Promise<void>;
+  wipeAccount: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SafeUserProfile | null>(null);
-  const [isLoadingUser, setIsLoadingUser] = useState(false);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [activeView, setActiveView] = useState<AppView>('chat');
   const [conversations, setConversations] = useState<FirestoreConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [personalityMode, setPersonalityMode] = useState<PersonalityMode>('tapori');
   const [selectedModel, setSelectedModel] = useState<string>('bhai');
 
-  const refreshConversations = async () => {
+  const refreshConversations = useCallback(async () => {
     try {
       const list = await api.getConversations();
       if (list.length === 0) {
@@ -44,66 +45,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setActiveConversationId(initial.id);
       } else {
         setConversations(list);
-        if (!activeConversationId) {
-          setActiveConversationId(list[0].id);
-        }
+        setActiveConversationId(prev => (prev && list.some(c => c.id === prev) ? prev : list[0].id));
       }
     } catch (err) {
       console.warn('Failed to load conversations:', err);
     }
-  };
+  }, [personalityMode, selectedModel]);
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = api.getToken();
-      if (!token) {
-        try {
-          setIsLoadingUser(true);
-          const autoEmail = `meet_session_${Date.now()}@bantai.ai`;
-          const res = await api.signup({
-            email: autoEmail,
-            password: 'BantaiPassword2026!',
-            name: 'Meet Maru',
-            username: `meet_${Date.now()}`
-          });
-          setUser(res.user);
-        } catch (err) {
-          console.warn('Auto session initialization error:', err);
-        } finally {
-          setIsLoadingUser(false);
-        }
-        return;
-      }
-
       setIsLoadingUser(true);
       try {
-        const profile = await api.getMe();
-        setUser(profile);
-        if (profile.preferences?.defaultPersonalityMode) {
-          setPersonalityMode(profile.preferences.defaultPersonalityMode);
+        const session = await api.getSession();
+        if (session.authenticated && session.user) {
+          setUser(session.user);
+          if (session.user.preferences?.defaultPersonalityMode) {
+            setPersonalityMode(session.user.preferences.defaultPersonalityMode);
+          }
+        } else {
+          setUser(null);
         }
-      } catch (err) {
-        console.warn('Session expired or invalid:', err);
-        api.logout();
+      } catch {
         setUser(null);
       } finally {
         setIsLoadingUser(false);
       }
     };
     initAuth();
+
+    const handleUnauthorized = () => {
+      setUser(null);
+      setConversations([]);
+      setActiveConversationId(null);
+    };
+    window.addEventListener('bantai:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('bantai:unauthorized', handleUnauthorized);
   }, []);
 
   useEffect(() => {
     if (user) {
       refreshConversations();
     }
-  }, [user]);
+  }, [user, refreshConversations]);
 
-  const logout = () => {
-    api.logout();
+  const logout = async (allSessions: boolean = false) => {
+    await api.logout(allSessions);
     setUser(null);
     setConversations([]);
     setActiveConversationId(null);
+    setActiveView('chat');
+  };
+
+  const wipeAccount = async () => {
+    await api.wipeUserData();
+    setUser(null);
+    setConversations([]);
+    setActiveConversationId(null);
+    setActiveView('chat');
   };
 
   return (
@@ -123,7 +121,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         selectedModel,
         setSelectedModel,
         refreshConversations,
-        logout
+        logout,
+        wipeAccount
       }}
     >
       {children}

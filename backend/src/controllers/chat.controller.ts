@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { firebaseFirestoreService } from '../services/database/firebase.service';
 import { mongoUserService } from '../services/database/mongo.service';
@@ -26,7 +26,7 @@ export class ChatController {
 
       const userId = req.user!.userId;
       const now = new Date().toISOString();
-      const conversationId = uuidv4();
+      const conversationId = crypto.randomUUID();
 
       const conv: FirestoreConversation = {
         id: conversationId,
@@ -129,7 +129,7 @@ export class ChatController {
       const now = new Date().toISOString();
 
       // 1. Save User Message in Firestore
-      const userMessageId = uuidv4();
+      const userMessageId = crypto.randomUUID();
       const userMessage: FirestoreMessage = {
         id: userMessageId,
         conversationId,
@@ -174,7 +174,7 @@ export class ChatController {
       res.setHeader('Connection', 'keep-alive');
       res.flushHeaders();
 
-      const assistantMsgId = uuidv4();
+      const assistantMsgId = crypto.randomUUID();
       let assistantContent = '';
 
       // 4. Stream from self-hosted inference service

@@ -60,7 +60,7 @@ export function GlassIrisNavRail() {
   return (
     <nav
       aria-label="Sidebar Navigation"
-      className="w-16 h-screen bg-[#07070f] border-r border-white/5 flex flex-col items-center justify-between py-4 select-none z-40 shrink-0"
+      className="w-14 sm:w-16 h-screen bg-[#07070f] border-r border-white/5 flex flex-col items-center justify-between py-4 select-none z-40 shrink-0"
     >
       {/* Top: Wordmark Emblem */}
       <div className="flex flex-col items-center gap-6">

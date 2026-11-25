@@ -2,17 +2,23 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json ./
-COPY shared/package.json ./shared/
-COPY frontend/web/package.json ./frontend/web/
+ARG NEXT_PUBLIC_API_URL=http://localhost:4000/api
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
-RUN npm install
+COPY package.json package-lock.json ./
+COPY shared/package.json ./shared/
+COPY backend/package.json ./backend/
+COPY frontend/web/package.json ./frontend/web/
+COPY frontend/mobile/package.json ./frontend/mobile/
+
+RUN npm ci --ignore-scripts
 
 COPY shared ./shared
 COPY frontend/web ./frontend/web
 
-RUN npm --workspace=@bantai/shared run build
-RUN npm --workspace=@bantai/web run build
+RUN npm --workspace=@bantai/shared run build && \
+    npm --workspace=@bantai/web run build && \
+    npm prune --omit=dev
 
 FROM node:20-alpine AS runner
 
@@ -20,10 +26,19 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/frontend/web/.next ./frontend/web/.next
-COPY --from=builder /app/frontend/web/package.json ./frontend/web/package.json
-COPY --from=builder /app/node_modules ./node_modules
+RUN chown -R node:node /app
 
-EXPOSE 3000
+COPY --from=builder --chown=node:node /app/package.json ./
+COPY --from=builder --chown=node:node /app/shared ./shared
+COPY --from=builder --chown=node:node /app/frontend/web/.next ./frontend/web/.next
+COPY --from=builder --chown=node:node /app/frontend/web/package.json ./frontend/web/package.json
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+
+USER node
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3001').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["npm", "--workspace=@bantai/web", "run", "start"]

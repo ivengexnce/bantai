@@ -2,17 +2,20 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY shared/package.json ./shared/
 COPY backend/package.json ./backend/
+COPY frontend/web/package.json ./frontend/web/
+COPY frontend/mobile/package.json ./frontend/mobile/
 
-RUN npm install
+RUN npm ci --ignore-scripts
 
 COPY shared ./shared
 COPY backend ./backend
 
-RUN npm --workspace=@bantai/shared run build
-RUN npm --workspace=@bantai/backend run build
+RUN npm --workspace=@bantai/shared run build && \
+    npm --workspace=@bantai/backend run build && \
+    npm prune --omit=dev
 
 FROM node:20-alpine AS runner
 
@@ -20,12 +23,19 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/shared ./shared
-COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/backend/package.json ./backend/package.json
+RUN mkdir -p /app/data && chown -R node:node /app
+
+COPY --from=builder --chown=node:node /app/package.json ./
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/shared ./shared
+COPY --from=builder --chown=node:node /app/backend/dist ./backend/dist
+COPY --from=builder --chown=node:node /app/backend/package.json ./backend/package.json
+
+USER node
 
 EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "backend/dist/index.js"]

@@ -2,18 +2,21 @@
   "status": "COMPLETED",
   "base_model": "Qwen/Qwen2.5-3B-Instruct",
   "adapter_version": "bantai-v1.0-real-lora",
-  "train_loss": 8.882,
-  "completed_at": "2026-11-22T06:37:17.735603+00:00",
+  "train_loss": 3.5231,
+  "completed_at": "2026-11-25T10:26:33.035970+00:00",
   "adapter_files": [
+    "README.md",
     "adapter_config.json",
     "adapter_model.safetensors",
     "calibration_dataset.jsonl",
     "chat_template.jinja",
-    "README.md",
     "tokenizer.json",
     "tokenizer_config.json",
     "training_manifest.json"
   ],
   "vram_gb": 4.0,
-  "epochs": 3
+  "device": "cuda",
+  "precision": "bf16",
+  "trained_examples": 10,
+  "epochs": 6
 }

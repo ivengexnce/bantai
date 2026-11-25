@@ -8,53 +8,48 @@ import {
   FirestoreKnowledgeDoc,
   PersonalityMode,
   ChatStreamChunk,
-  AIModelDescriptor
+  AIModelDescriptor,
+  AgentExecutionPlan
 } from '@bantai/shared';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
+const MUTATION_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 class ApiClient {
-  private token: string | null = null;
-
-  constructor() {
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('bantai_token');
+  private buildHeaders(method: string = 'GET', customHeaders: Record<string, string> = {}): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...customHeaders
+    };
+    if (MUTATION_METHODS.has(method.toUpperCase())) {
+      const csrf = readCookie('bantai_csrf');
+      if (csrf) {
+        headers['X-CSRF-Token'] = csrf;
+      }
     }
-  }
-
-  setToken(token: string | null) {
-    this.token = token;
-    if (typeof window !== 'undefined') {
-      if (token) localStorage.setItem('bantai_token', token);
-      else localStorage.removeItem('bantai_token');
-    }
-  }
-
-  getToken(): string | null {
-    if (!this.token && typeof window !== 'undefined') {
-      this.token = localStorage.getItem('bantai_token');
-    }
-    return this.token;
+    return headers;
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {})
-    };
-
-    const token = this.getToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const method = (options.method || 'GET').toUpperCase();
+    const headers = this.buildHeaders(method, (options.headers as Record<string, string>) || {});
 
     const res = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
-      headers
+      method,
+      headers,
+      credentials: 'include'
     });
 
-    if (res.status === 401) {
-      this.setToken(null);
+    if (res.status === 401 && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/signup')) {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('bantai:unauthorized'));
       }
@@ -68,64 +63,109 @@ class ApiClient {
     return data.data;
   }
 
-  // Auth
+  // System Health
+  async getHealth(): Promise<{
+    status: string;
+    aiEngine: { provider: string; isAlive: boolean; availableModels: string[]; error?: string };
+  }> {
+    const res = await fetch(`${API_BASE}/health`, { credentials: 'include' });
+    return await res.json();
+  }
+
+  // Auth & MFA (session stored strictly in HttpOnly cookie, never localStorage)
   async signup(payload: { email: string; password: string; name: string; username: string }) {
-    const data = await this.request<{ user: SafeUserProfile; token: string }>('/auth/signup', {
+    return await this.request<{ user: SafeUserProfile }>('/auth/signup', {
       method: 'POST',
       body: JSON.stringify(payload)
     });
-    this.setToken(data.token);
-    return data;
   }
 
   async login(payload: { email: string; password: string }) {
-    const data = await this.request<{ user: SafeUserProfile; token: string }>('/auth/login', {
+    return await this.request<{
+      user?: SafeUserProfile;
+      mfaRequired?: boolean;
+      mfaChallengeToken?: string;
+    }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload)
     });
-    this.setToken(data.token);
-    return data;
+  }
+
+  async verifyMfaChallenge(challengeToken: string, code: string) {
+    return await this.request<{ user: SafeUserProfile }>('/auth/mfa/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeToken, code })
+    });
+  }
+
+  async setupMfa() {
+    return await this.request<{ secret: string; otpauthUri: string }>('/auth/mfa/setup', {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+  }
+
+  async confirmMfa(code: string) {
+    return await this.request<{ user: SafeUserProfile; recoveryCodes: string[] }>('/auth/mfa/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ code })
+    });
+  }
+
+  async disableMfa(currentPassword: string, code: string) {
+    return await this.request<{ user: SafeUserProfile }>('/auth/mfa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, code })
+    });
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    await this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword })
+    });
   }
 
   async googleAuth(idToken: string) {
-    const data = await this.request<{ user: SafeUserProfile; token: string }>('/auth/google', {
+    return await this.request<{ user: SafeUserProfile }>('/auth/google', {
       method: 'POST',
       body: JSON.stringify({ idToken })
     });
-    this.setToken(data.token);
-    return data;
+  }
+
+  async getSession(): Promise<{ authenticated: boolean; user: SafeUserProfile | null }> {
+    return await this.request<{ authenticated: boolean; user: SafeUserProfile | null }>('/auth/session');
   }
 
   async getMe(): Promise<SafeUserProfile> {
     return await this.request<SafeUserProfile>('/auth/me');
   }
 
-  async changePassword(currentPassword: string, newPassword: string): Promise<{ token: string }> {
-    const data = await this.request<{ token: string }>('/auth/change-password', {
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await this.request('/auth/change-password', {
       method: 'POST',
       body: JSON.stringify({ currentPassword, newPassword })
     });
-    if (data?.token) this.setToken(data.token);
-    return data;
   }
 
   async logout(allSessions: boolean = false) {
-    const token = this.getToken();
-    if (token) {
-      try {
-        await fetch(`${API_BASE}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ allSessions })
-        });
-      } catch {
-        // Proceed clearing client session even if server is offline
-      }
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: this.buildHeaders('POST'),
+        credentials: 'include',
+        body: JSON.stringify({ allSessions })
+      });
+    } catch {
+      // Ignore network errors while clearing client session
     }
-    this.setToken(null);
   }
 
   async updatePreferences(prefs: Partial<SafeUserProfile['preferences']>): Promise<SafeUserProfile> {
@@ -147,7 +187,11 @@ class ApiClient {
     return await this.request<FirestoreConversation[]>('/chat/conversations');
   }
 
-  async createConversation(title?: string, personalityMode: PersonalityMode = 'tapori', modelId: string = 'qwen2.5:7b'): Promise<FirestoreConversation> {
+  async createConversation(
+    title?: string,
+    personalityMode: PersonalityMode = 'tapori',
+    modelId: string = 'bhai'
+  ): Promise<FirestoreConversation> {
     return await this.request<FirestoreConversation>('/chat/conversations', {
       method: 'POST',
       body: JSON.stringify({ title, personalityMode, modelId })
@@ -159,15 +203,27 @@ class ApiClient {
   }
 
   async deleteConversation(conversationId: string): Promise<boolean> {
-    await this.request(`/chat/conversations/${conversationId}`, { method: 'DELETE' });
+    await fetch(`${API_BASE}/chat/conversations/${conversationId}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders('DELETE'),
+      credentials: 'include'
+    }).then(async r => {
+      const body = await r.json();
+      if (!r.ok || !body.success) throw new Error(body.error || `HTTP error ${r.status}`);
+    });
     return true;
   }
 
   async sendFeedback(messageId: string, rating: 'up' | 'down', correctionText?: string): Promise<boolean> {
-    return await this.request<boolean>('/chat/feedback', {
+    const res = await fetch(`${API_BASE}/chat/feedback`, {
       method: 'POST',
+      headers: this.buildHeaders('POST'),
+      credentials: 'include',
       body: JSON.stringify({ messageId, rating, correctionText })
     });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || `HTTP error ${res.status}`);
+    return true;
   }
 
   /**
@@ -180,15 +236,16 @@ class ApiClient {
     modelId: string,
     onChunk: (chunk: ChatStreamChunk) => void
   ): Promise<void> {
-    const token = this.getToken();
     const res = await fetch(`${API_BASE}/chat/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+      headers: this.buildHeaders('POST'),
+      credentials: 'include',
       body: JSON.stringify({ conversationId, content, personalityMode, modelId })
     });
+
+    if (res.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('bantai:unauthorized'));
+    }
 
     if (!res.ok || !res.body) {
       throw new Error(`Failed to stream chat: HTTP ${res.status}`);
@@ -239,7 +296,11 @@ class ApiClient {
   }
 
   async deleteTask(id: string): Promise<boolean> {
-    await this.request(`/assistant/tasks/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE}/assistant/tasks/${id}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders('DELETE'),
+      credentials: 'include'
+    });
     return true;
   }
 
@@ -256,7 +317,11 @@ class ApiClient {
   }
 
   async deleteReminder(id: string): Promise<boolean> {
-    await this.request(`/assistant/reminders/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE}/assistant/reminders/${id}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders('DELETE'),
+      credentials: 'include'
+    });
     return true;
   }
 
@@ -273,7 +338,13 @@ class ApiClient {
   }
 
   async deleteMemory(id: string): Promise<boolean> {
-    await this.request(`/assistant/memory/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/assistant/memory/${id}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders('DELETE'),
+      credentials: 'include'
+    });
+    const body = await res.json();
+    if (!res.ok || !body.success) throw new Error(body.error || `HTTP error ${res.status}`);
     return true;
   }
 
@@ -314,34 +385,62 @@ class ApiClient {
   }
 
   // Agentic Engine
-  async createAgentPlan(goal: string, conversationId?: string): Promise<any> {
-    return await this.request<any>('/assistant/agent/plan', {
+  async createAgentPlan(goal: string, conversationId?: string): Promise<AgentExecutionPlan> {
+    return await this.request<AgentExecutionPlan>('/assistant/agent/plan', {
       method: 'POST',
       body: JSON.stringify({ goal, conversationId })
     });
   }
 
-  async executeAgentPlan(planId: string): Promise<any> {
-    return await this.request<any>(`/assistant/agent/execute/${planId}`, {
-      method: 'POST'
+  async executeAgentPlan(planId: string): Promise<AgentExecutionPlan> {
+    return await this.request<AgentExecutionPlan>(`/assistant/agent/execute/${planId}`, {
+      method: 'POST',
+      body: JSON.stringify({})
     });
   }
 
-  async approveAgentStep(planId: string, stepIndex: number, approved: boolean): Promise<any> {
-    return await this.request<any>('/assistant/agent/approve-step', {
+  async approveAgentStep(planId: string, stepIndex: number, approved: boolean): Promise<AgentExecutionPlan> {
+    return await this.request<AgentExecutionPlan>('/assistant/agent/approve-step', {
       method: 'POST',
       body: JSON.stringify({ planId, stepIndex, approved })
     });
   }
 
   // Models & System
-  async getModels(): Promise<{ supportedModels: AIModelDescriptor[]; backend: unknown }> {
-    return await this.request<{ supportedModels: AIModelDescriptor[]; backend: unknown }>('/learning/models');
+  async getLearningStatus(): Promise<{
+    crossUserTrainingOptIn: boolean;
+    personalMemoryEnabled: boolean;
+    consentTimestamp: string | null;
+    policyVersion: string;
+    inferenceBackend: { provider: string; isAlive: boolean; availableModels: string[] };
+  }> {
+    return await this.request('/learning/status');
+  }
+
+  async getModels(): Promise<{
+    supportedModels: AIModelDescriptor[];
+    backend: { provider: string; isAlive: boolean; availableModels: string[] };
+  }> {
+    return await this.request('/learning/models');
+  }
+
+  async exportDataset(): Promise<{ recordCount: number; message: string }> {
+    return await this.request('/learning/export-dataset', {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
   }
 
   async wipeUserData(): Promise<boolean> {
-    await this.request('/learning/wipe-data', { method: 'POST' });
-    this.logout();
+    await fetch(`${API_BASE}/learning/wipe-data`, {
+      method: 'POST',
+      headers: this.buildHeaders('POST'),
+      credentials: 'include',
+      body: JSON.stringify({})
+    }).then(async r => {
+      const d = await r.json();
+      if (!r.ok || !d.success) throw new Error(d.error || 'Wipe failed');
+    });
     return true;
   }
 
@@ -349,10 +448,7 @@ class ApiClient {
   async getElevenLabsVoices(apiKey?: string): Promise<{ voices: any[]; source: string }> {
     const headers: Record<string, string> = {};
     if (apiKey) headers['x-elevenlabs-key'] = apiKey;
-    return await this.request<{ voices: any[]; source: string }>(
-      '/voice/elevenlabs/voices',
-      { headers }
-    );
+    return await this.request<{ voices: any[]; source: string }>('/voice/elevenlabs/voices', { headers });
   }
 
   async synthesizeElevenLabs(
@@ -361,18 +457,11 @@ class ApiClient {
     modelId?: string,
     apiKey?: string
   ): Promise<string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-    const token = this.getToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    if (apiKey) headers['x-elevenlabs-key'] = apiKey;
-
+    const headers = this.buildHeaders('POST', apiKey ? { 'x-elevenlabs-key': apiKey } : {});
     const res = await fetch(`${API_BASE}/voice/elevenlabs/tts`, {
       method: 'POST',
       headers,
+      credentials: 'include',
       body: JSON.stringify({ text, voiceId, modelId })
     });
 

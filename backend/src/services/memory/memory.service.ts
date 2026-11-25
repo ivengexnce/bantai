@@ -1,7 +1,7 @@
 import { FirestoreMemory, MemoryCategory } from '@bantai/shared';
 import { firebaseFirestoreService } from '../database/firebase.service';
 import { mongoUserService } from '../database/mongo.service';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 /**
  * BANTAI Personal Memory Engine
@@ -36,7 +36,7 @@ export class PersonalMemoryService {
     // Pattern 1: User preferences ("I prefer...", "My favorite...")
     if (lower.includes('i prefer') || lower.includes('my preference is')) {
       const mem: FirestoreMemory = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         userId,
         key: `pref_${Date.now()}`,
         category: 'preference',
@@ -53,7 +53,7 @@ export class PersonalMemoryService {
     // Pattern 2: User goals or projects ("I am building...", "My goal is...")
     if (lower.includes('i am working on') || lower.includes('my project is') || lower.includes('my goal is')) {
       const mem: FirestoreMemory = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         userId,
         key: `project_${Date.now()}`,
         category: 'project',
@@ -96,7 +96,7 @@ export class PersonalMemoryService {
     confidence: number = 1.0
   ): Promise<FirestoreMemory> {
     const mem: FirestoreMemory = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       userId,
       key,
       category,

@@ -10,12 +10,12 @@ import { AgenticView } from '../components/assistant/AgenticView';
 import { MemoryView } from '../components/assistant/MemoryView';
 import { FineTuneView } from '../components/assistant/FineTuneView';
 import { SettingsView } from '../components/assistant/SettingsView';
+import { AuthScreen } from '../components/auth/AuthScreen';
 
 export default function HomePage() {
   const { user, isLoadingUser, activeView } = useApp();
 
-  // Clean atmospheric loading state while session initializes
-  if (isLoadingUser && !user) {
+  if (isLoadingUser) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#07070f] text-white font-mono">
         <div className="text-center space-y-4">
@@ -28,17 +28,21 @@ export default function HomePage() {
     );
   }
 
+  if (!user) {
+    return <AuthScreen />;
+  }
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[#07070f] text-white selection:bg-[#6366f1] selection:text-white font-sans relative min-w-[1280px]">
-      {/* 64px Fixed Left Navigation Rail */}
+    <div className="flex h-screen overflow-hidden bg-[#07070f] text-white selection:bg-[#6366f1] selection:text-white font-sans relative w-full">
+      {/* Left Navigation Rail */}
       <GlassIrisNavRail />
 
       {/* Main App Column */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10 bg-[#07070f]">
-        {/* 48px Top Navigation Bar */}
+        {/* Top Navigation Bar */}
         <GlassIrisTopBar />
 
-        {/* Main Content Area (Framer Motion View Transitions: fade + y: 8 to 0) */}
+        {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
           <AnimatePresence mode="wait">
             <motion.div

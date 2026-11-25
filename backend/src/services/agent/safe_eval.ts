@@ -217,6 +217,7 @@ export function evaluateSafeMathExpression(rawExpr: string): number {
 const ISOLATED_CHILD_HARNESS = `
 const vm = require('vm');
 const Module = require('module');
+for (const k of Object.keys(process.env)) { delete process.env[k]; }
 Module._load = () => { throw new Error('Module loading is disabled in sandbox'); };
 process.getBuiltinModule = () => { throw new Error('Builtin access disabled'); };
 process.binding = () => { throw new Error('Native binding access disabled'); };
@@ -235,21 +236,17 @@ process.stdin.on('data', chunk => {
 process.stdin.on('end', () => {
   const logs = [];
   try {
-    const sandbox = {
-      console: {
-        log: (...msgs) => logs.push(msgs.map(m => String(m)).join(' ')),
-        error: (...msgs) => logs.push(msgs.map(m => String(m)).join(' '))
-      },
-      Math,
-      JSON,
-      Array,
-      Object,
-      Date,
-      Number,
-      String,
-      Boolean
-    };
-    const vmContext = vm.createContext(sandbox);
+    // Pass NO outer JS constructors (Array/Object/Math) into vmContext so
+    // this.constructor.constructor cannot access outer global/process objects.
+    const vmContext = vm.createContext(
+      Object.assign(Object.create(null), {
+        console: Object.freeze({
+          log: (...msgs) => { logs.push(msgs.map(m => String(m)).join(' ')); },
+          error: (...msgs) => { logs.push(msgs.map(m => String(m)).join(' ')); }
+        })
+      }),
+      { codeGeneration: { strings: true, wasm: false } }
+    );
     const script = new vm.Script(rawCode);
     const evalResult = script.runInContext(vmContext, { timeout: 1500 });
     process.stdout.write(JSON.stringify({ ok: true, output: evalResult, logs }));

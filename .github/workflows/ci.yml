@@ -8,7 +8,7 @@ on:
 
 jobs:
   security-and-audit:
-    name: Security Scans & Dependency Audits
+    name: Secret Scan & Dependency Audit
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -20,7 +20,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true # Flag warnings in CI
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,14 +28,15 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm ci --ignore-scripts
 
-      - name: Dependency Security Audit
-        run: npm audit --audit-level=critical
-        continue-on-error: true
+      - name: Dependency Security Audit (Backend Runtime & Critical Gate)
+        run: |
+          npm audit --omit=dev --workspace=@bantai/shared --workspace=@bantai/backend --audit-level=critical
+          node -e "const {execSync}=require('child_process'); let out=''; try{out=execSync('npm audit --omit=dev --workspace=@bantai/shared --workspace=@bantai/backend --json',{encoding:'utf8'});}catch(e){out=e.stdout||'{}';} const r=JSON.parse(out); const waived=new Set(['zod']); const unwaived=Object.entries(r.vulnerabilities||{}).filter(([k,v])=>(v.severity==='critical'||v.severity==='high')&&!waived.has(k)); if(unwaived.length){console.error('Unwaived critical/high backend vulns:',unwaived);process.exit(1);} console.log('Backend production dependency policy passed');"
 
   build-and-test:
-    name: Build & Test Suite
+    name: Build, Security Regression & E2E Tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -49,23 +49,36 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci --ignore-scripts
 
-      - name: Build shared package
+      - name: Build Shared Package
         run: npm --workspace=@bantai/shared run build
 
       - name: Backend Type Check & Build
         run: npm --workspace=@bantai/backend run build
 
-      - name: Run Backend Test Suite
+      - name: Web Frontend Type Check & Production Build
+        run: npm --workspace=@bantai/web run build
+
+      - name: Mobile App Type Check
+        run: npm --workspace=@bantai/mobile run typecheck
+
+      - name: Run QA Functional & Integration Tests
         run: npm test
 
-      - name: Setup Python for Fine-Tuning Pipeline
+      - name: Run Security Regression Tests
+        run: npm run test:security
+
+      - name: Run Static Security & Rules Scanner
+        run: npm run security:scan
+
+      - name: Setup Python for Training Pipeline Checks
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
-      - name: Verify Training Pipeline Scripts
+      - name: Verify Python Scripts
         run: |
+          python -m py_compile training/scripts/train_lora_real.py training/scripts/evaluate_model.py training/scripts/model_registry.py
           python training/scripts/evaluate_model.py --model models/adapters/bantai_v1
           python training/scripts/model_registry.py

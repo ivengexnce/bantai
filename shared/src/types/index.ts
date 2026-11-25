@@ -48,10 +48,27 @@ export interface MongoUser {
   oauthProvider?: 'google' | 'local';
   oauthId?: string;
   tokenVersion?: number;
+  mfaEnabled?: boolean;
+  mfaSecret?: string;
+  mfaPendingSecret?: string;
+  mfaLastUsedStep?: number;
+  mfaRecoveryCodeHashes?: string[];
+  passwordResetTokenHash?: string;
+  passwordResetExpiresAt?: string;
 }
 
-// Safe public/session user profile (omits password hash and internal security metadata)
-export type SafeUserProfile = Omit<MongoUser, 'passwordHash' | 'tokenVersion'>;
+// Safe public/session user profile (omits password hash and all internal security tokens/secrets)
+export type SafeUserProfile = Omit<
+  MongoUser,
+  | 'passwordHash'
+  | 'tokenVersion'
+  | 'mfaSecret'
+  | 'mfaPendingSecret'
+  | 'mfaLastUsedStep'
+  | 'mfaRecoveryCodeHashes'
+  | 'passwordResetTokenHash'
+  | 'passwordResetExpiresAt'
+>;
 
 // ==========================================
 // FIREBASE FIRESTORE SCHEMA TYPES

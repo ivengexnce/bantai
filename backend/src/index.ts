@@ -2,7 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config/env';
+import { isAllowedOrigin } from './config/origins';
 import { authRateLimiter, voiceRateLimiter, generalRateLimiter } from './middleware/rate-limit.middleware';
+import { rejectUnsafePayloadKeys } from './middleware/sanitize.middleware';
 import authRoutes from './routes/auth.routes';
 import chatRoutes from './routes/chat.routes';
 import assistantRoutes from './routes/assistant.routes';
@@ -44,45 +46,20 @@ app.use(helmet({
 }));
 
 // --- CORS: strict exact-origin allowlist ---
-function normalizeOrigin(raw: string): string | null {
-  try {
-    const parsed = new URL(raw);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-    return parsed.origin;
-  } catch {
-    return null;
-  }
-}
-
-const ALLOWED_ORIGINS = new Set<string>(
-  [
-    ...(config.clientUrls || []),
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://10.0.2.2:3000'
-  ]
-    .map(normalizeOrigin)
-    .filter((o): o is string => Boolean(o))
-);
-
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow server-to-server requests (no Origin header) only in non-production
     if (!origin) {
       if (config.nodeEnv !== 'production') return callback(null, true);
       return callback(new CorsOriginError('CORS: Origin header required in production'), false);
     }
-    const normalized = normalizeOrigin(origin);
-    if (normalized && ALLOWED_ORIGINS.has(normalized)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new CorsOriginError(`CORS: origin '${sanitizeForLog(origin)}' is not allowed`), false);
     }
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-elevenlabs-key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-elevenlabs-key', 'x-csrf-token'],
   credentials: true
 }));
 
@@ -94,6 +71,7 @@ export { authRateLimiter, voiceRateLimiter };
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(rejectUnsafePayloadKeys);
 
 // Root landing
 app.get('/', (_req, res) => {

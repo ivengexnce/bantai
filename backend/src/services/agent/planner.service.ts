@@ -4,7 +4,7 @@ import {
   TOOL_NAMES
 } from '@bantai/shared';
 import { toolRegistryService } from './tool_registry.service';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 export class AgentPlannerService {
   private activePlans: Map<string, AgentExecutionPlan> = new Map();
@@ -16,7 +16,7 @@ export class AgentPlannerService {
     const steps = this.decomposeGoalIntoSteps(goal);
 
     const plan: AgentExecutionPlan = {
-      planId: uuidv4(),
+      planId: crypto.randomUUID(),
       userId,
       conversationId,
       goal,

@@ -22,6 +22,29 @@ export const ChangePasswordSchema = z.object({
   newPassword: z.string().min(8, 'New password must be at least 8 characters').max(72, 'New password must be at most 72 characters')
 });
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().trim().email('Valid email required').max(254)
+});
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().trim().min(16, 'Valid reset token required').max(256),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters').max(72, 'New password must be at most 72 characters')
+});
+
+export const MfaVerifyChallengeSchema = z.object({
+  challengeToken: z.string().min(10, 'Challenge token required').max(2048),
+  code: z.string().trim().min(6, 'Verification code required').max(32)
+});
+
+export const MfaCodeSchema = z.object({
+  code: z.string().trim().min(6, 'Verification code required').max(32)
+});
+
+export const MfaDisableSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required').max(72),
+  code: z.string().trim().min(6, 'MFA or recovery code required').max(32)
+});
+
 export const GoogleAuthRequestSchema = z.object({
   idToken: z.string().min(10, 'Google ID token required').max(4096)
 });

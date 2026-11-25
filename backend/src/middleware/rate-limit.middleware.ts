@@ -1,15 +1,27 @@
 import rateLimit from 'express-rate-limit';
 
 /**
- * Auth endpoints: 10 requests per 15 minutes per IP.
- * Protects against brute-force and credential-stuffing attacks.
+ * Auth login/oauth/password brute-force guard: 10 failed attempts per 15 minutes per IP.
+ * skipSuccessfulRequests prevents locking out legitimate users behind shared NAT IPs.
  */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests, please try again later.' }
+});
+
+/**
+ * Account creation rate limiter: 20 signups per 15 minutes per IP.
+ */
+export const signupRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many account creation attempts, please try again later.' }
 });
 
 /**
