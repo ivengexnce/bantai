@@ -6,7 +6,7 @@ BANTAI enforces a strict dual-database air-gap architecture partitioning User Id
 ---
 
 ## 2. MongoDB User Partition (`MongoUserService`) — Identity ONLY
-Implemented in `packages/backend/src/services/database/mongo.service.ts`.
+Implemented in `backend/src/services/database/mongo.service.ts`.
 **CRITICAL INVARIANT:** Storing conversation messages, prompts, or AI transcripts in the MongoDB user store is forbidden and blocked by `assertNoConversationData()` (checks keys `messages`, `conversation`, `transcript`, `chatHistory`, `aiResponse` and throws a security violation).
 
 - **Local Persistence:** Persists JSON user records at `./data/mongo_users_store.json` (ready for drop-in MongoDB driver replacement via `MONGODB_URI`).
@@ -53,14 +53,14 @@ Implemented in `packages/backend/src/services/database/mongo.service.ts`.
 
 ## 3. Firebase Cloud Firestore Partition (`FirebaseFirestoreService`)
 
-Implemented in `packages/backend/src/services/database/firebase.service.ts` with CEL security rules in `firestore.rules` (520 lines, Firebase project `bantai-369` in `.firebaserc`).
+Implemented in `backend/src/services/database/firebase.service.ts` with private CEL security rules kept inside gitignored `security/` (`firestore.rules`, 520 lines).
 
 - **Dual-Mode Storage:**
-  1. **Live Cloud Firestore:** Activates automatically when `serviceAccountKey.json`, `GOOGLE_APPLICATION_CREDENTIALS`, or `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` are detected via `firebase-admin`.
-  2. **Local User-Isolated Store:** Automatically persists collections to `./data/firestore_store/*.json` when cloud credentials are not configured (`conversations.json`, `messages.json`, `tasks.json`, `reminders.json`, `memories.json`, `calendar.json`, `emails.json`, `knowledge.json`).
+  1. **Live Cloud Firestore:** Activates automatically when `serviceAccountKey.json` (in gitignored `security/` or root), `GOOGLE_APPLICATION_CREDENTIALS`, or `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` are detected via `firebase-admin`.
+  2. **Local User-Isolated Store:** Automatically persists collections to `./data/firestore_store/*.json` (`backend/data/firestore_store/` when running backend) when cloud credentials are not configured (`conversations.json`, `messages.json`, `tasks.json`, `reminders.json`, `memories.json`, `calendar.json`, `emails.json`, `knowledge.json`).
 
 ### Collections & Ownership Rules
-Every document carries an immutable `userId` field verified in `firestore.rules` (`request.auth != null && request.auth.uid == userId`), with strict field whitelists (`hasOnly`), string/array bounds, and default-deny wildcard root matching.
+Every document carries an immutable `userId` field verified in the local `security/` Firestore rules (`request.auth != null && request.auth.uid == userId`), with strict field whitelists (`hasOnly`), string/array bounds, and default-deny wildcard root matching.
 
 1. **`conversations`** (`/conversations/{conversationId}`)
    - Fields: `id`, `userId`, `title`, `personalityMode`, `modelId`, `messageCount`, `isArchived`, `isPinned`, `createdAt`, `updatedAt`, `lastMessageAt`, optional `tags`, `summary`.

@@ -3,13 +3,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package.json ./
-COPY packages/shared/package.json ./packages/shared/
-COPY apps/web/package.json ./apps/web/
+COPY shared/package.json ./shared/
+COPY frontend/web/package.json ./frontend/web/
 
 RUN npm install
 
-COPY packages/shared ./packages/shared
-COPY apps/web ./apps/web
+COPY shared ./shared
+COPY frontend/web ./frontend/web
 
 RUN npm --workspace=@bantai/shared run build
 RUN npm --workspace=@bantai/web run build
@@ -20,9 +20,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/apps/web/public ./apps/web/public
-COPY --from=builder /app/apps/web/.next ./apps/web/.next
-COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
+COPY --from=builder /app/frontend/web/.next ./frontend/web/.next
+COPY --from=builder /app/frontend/web/package.json ./frontend/web/package.json
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000

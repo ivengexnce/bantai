@@ -57,8 +57,8 @@ jobs:
       - name: Backend Type Check & Build
         run: npm --workspace=@bantai/backend run build
 
-      - name: Run Backend & Security Tests
-        run: npm --workspace=@bantai/backend run test
+      - name: Run Backend Test Suite
+        run: npm test
 
       - name: Setup Python for Fine-Tuning Pipeline
         uses: actions/setup-python@v5

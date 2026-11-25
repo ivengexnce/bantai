@@ -4,20 +4,22 @@
   "private": true,
   "description": "BANTAI — Apna Model. Apna Dimaag. Apna AI. Production Self-Hosted Agentic AI Platform",
   "workspaces": [
-    "packages/*",
-    "apps/*",
-    "services/*"
+    "frontend/*",
+    "backend",
+    "shared"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "dev:backend": "npm --workspace=@bantai/backend run dev",
     "dev:web": "npm --workspace=@bantai/web run dev",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm --workspace=@bantai/backend run test",
+    "test:security": "npm --workspace=@bantai/backend run test:security",
     "lint": "echo \"Linting all workspaces...\""
   },
   "overrides": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@types/react": "^18.3.2"
   },
   "keywords": [
     "agentic-ai",

@@ -37,8 +37,8 @@ BANTAI is a local-first, hardware-aware, self-hosted agentic AI runtime with an 
 |                    |     | [ToolRegistry: 10] |     |    Local Dialogue Engine    |
 | [FirebaseService]  |     | - Calculator       |     |                             |
 | - Live Firestore   |     | - Doc Reader / RAG |     | [RagService & Memory]       |
-|   (bantai-369) OR  |     | - File Search      |     | - 384-d L2-normalized       |
-|   local JSON store |     | - Sandbox VM*      |     |   cosine vectors            |
+|   OR local JSON    |     | - File Search      |     | - 384-d L2-normalized       |
+|   isolated store   |     | - Sandbox VM*      |     |   cosine vectors            |
 | - Conversations,   |     | - Tasks/Reminders/ |     | - User-isolated facts       |
 |   Messages, Tasks, |     |   Calendar/Email*  |     |                             |
 |   Memories, RAG    |     | (*Requires Auth)   |     | [QLoRA Fine-Tuning]         |
@@ -52,7 +52,7 @@ BANTAI is a local-first, hardware-aware, self-hosted agentic AI runtime with an 
 ## 2. Strict Data Separation Policy
 Data is partitioned across structural boundaries enforced at both schema and service layers:
 - **User Identity Partition (`MongoUserService`)**: Stores `userId` (UUID v4), `email`, `name`, `username`, bcrypt password hash, `preferences`, and `learningConsent`. Includes a runtime defensive assertion (`assertNoConversationData`) that throws a security violation error if conversation keys (`messages`, `conversation`, `transcript`, `chatHistory`, `aiResponse`) are passed.
-- **Application & Telemetry Partition (`FirebaseFirestoreService`)**: Stores conversations, messages, tasks, reminders, personal memories, calendar events, email drafts, and knowledge document records scoped by `userId`. Connects to live Cloud Firestore (`bantai-369`) via Firebase Admin SDK when credentials are present, or falls back transparently to user-isolated local JSON storage (`packages/backend/data/firestore_store/`). Client direct access is governed by 520 lines of CEL security rules (`firestore.rules`).
+- **Application & Telemetry Partition (`FirebaseFirestoreService`)**: Stores conversations, messages, tasks, reminders, personal memories, calendar events, email drafts, and knowledge document records scoped by `userId`. Connects to live Cloud Firestore via Firebase Admin SDK when credentials are placed in gitignored `security/`, or falls back transparently to user-isolated local JSON storage (`backend/data/firestore_store/`). Private client security rules reside in gitignored `security/`.
 
 ---
 
@@ -61,4 +61,4 @@ Data is partitioned across structural boundaries enforced at both schema and ser
 2. **Personal Assistant & Agentic Engine (`planner.service.ts`, `tool_registry.service.ts`)**: Multi-step goal decomposition across 10 registered tools (`calculator`, `document_reader`, `file_search`, `database_retrieval`, `rag_retrieval`, `sandbox_code_executor`, `task_manager`, `reminder_scheduler`, `calendar_connector`, `email_connector`), enforcing human authorization gates on sensitive operations.
 3. **Personal Memory & RAG (`memory.service.ts`, `rag.service.ts`)**: Automatic extraction of user preference/project statements (`personalMemoryEnabled`), explicit CRUD management via `/api/assistant/memory`, and 400-word overlapping chunking with 384-dimensional cosine similarity search (`./data/vector_chunks_store.json`).
 4. **Voice Engine (`voiceEngine.ts`, `elevenlabs.service.ts`)**: Browser Web Speech STT (`en-IN` for Tapori, `en-US` otherwise), Chromium chunked Web Speech TTS fallback, and optional server-proxied ElevenLabs neural voice synthesis (`/api/voice/elevenlabs/*`).
-5. **Continuous Learning & QLoRA (`learning.service.ts`, `train_lora_real.py`)**: Strict opt-in consent (`crossUserTrainingOptIn: false` by default), automated PII scrubbing (API tokens, emails, phones), 80/10/10 split export, and real 4-bit NF4 LoRA fine-tuning producing `.safetensors` adapters (`training/models/adapters/bantai_v1/`).
+5. **Continuous Learning & QLoRA (`learning.service.ts`, `train_lora_real.py`)**: Strict opt-in consent (`crossUserTrainingOptIn: false` by default), automated PII scrubbing (API tokens, emails, phones), 80/10/10 split export, and real 4-bit NF4 LoRA fine-tuning producing `.safetensors` adapters (`models/adapters/bantai_v1/`).

@@ -1,6 +1,6 @@
 # BANTAI — Environment Configuration Guide
 
-This guide documents all environment variables read by `packages/backend/src/config/env.ts`, `apps/web/next.config.mjs`, `.env.example`, and `docker/docker-compose.yml`.
+This guide documents all environment variables read by `backend/src/config/env.ts`, `frontend/web/next.config.mjs`, `.env.example`, and `docker/docker-compose.yml`.
 
 ---
 
@@ -12,7 +12,7 @@ cp .env.example .env
 
 ---
 
-## 2. Backend Environment Variables (`packages/backend`)
+## 2. Backend Environment Variables (`backend`)
 
 | Variable | Type | Default (`env.ts`) | Description |
 | :--- | :--- | :--- | :--- |
@@ -35,11 +35,11 @@ cp .env.example .env
 
 ## 3. Firebase Cloud Firestore Variables
 
-Firebase Admin SDK checks, in order: `packages/backend/serviceAccountKey.json` (or `process.cwd()/serviceAccountKey.json`), `GOOGLE_APPLICATION_CREDENTIALS`, or the environment variables below. When none are present, BANTAI uses local JSON persistence in `packages/backend/data/firestore_store/`.
+Firebase Admin SDK checks, in order: `security/serviceAccountKey.json`, `serviceAccountKey.json`, `backend/serviceAccountKey.json`, `GOOGLE_APPLICATION_CREDENTIALS`, or the environment variables below. When none are present, BANTAI uses local JSON persistence in `backend/data/firestore_store/`.
 
 | Variable | Default / Project | Description |
 | :--- | :--- | :--- |
-| `FIREBASE_PROJECT_ID` | `bantai-production` (`.firebaserc` default: `bantai-369`) | Google Cloud / Firebase project ID. |
+| `FIREBASE_PROJECT_ID` | `bantai-production` | Google Cloud / Firebase project ID. |
 | `FIREBASE_CLIENT_EMAIL` | `""` | Firebase Service Account client email. |
 | `FIREBASE_PRIVATE_KEY` | `""` | PEM private key (escaped `\n` sequences automatically unescaped). |
 | `FIREBASE_STORAGE_BUCKET` | `bantai-production.appspot.com` | Firebase Storage bucket name. |
@@ -47,11 +47,11 @@ Firebase Admin SDK checks, in order: `packages/backend/serviceAccountKey.json` (
 
 ---
 
-## 4. Web Frontend Variables (`apps/web/.env.local`)
+## 4. Web Frontend Variables (`frontend/web/.env.local`)
 
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | URL | `http://localhost:4000/api` | Base URL for backend REST and SSE calls (`apps/web/next.config.mjs`). |
+| `NEXT_PUBLIC_API_URL` | URL | `http://localhost:4000/api` | Base URL for backend REST and SSE calls (`frontend/web/next.config.mjs`). |
 | `PORT` | Number | `3001` | Port used by Next.js `dev` and `start` scripts (`package.json`). |
 | `NEXT_PUBLIC_ELEVENLABS_API_KEY` | String | Optional | Optional client key passed as `x-elevenlabs-key` if browser voice chooses ElevenLabs; never commit real keys to git. |
 

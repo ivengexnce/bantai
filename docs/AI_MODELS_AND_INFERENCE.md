@@ -7,7 +7,7 @@ BANTAI prohibits third-party cloud LLM inference APIs (no OpenAI, Anthropic, Gem
 
 ## 2. Active Sovereign Model Lineup
 
-In the active web console (`apps/web/src/lib/models.ts`), mobile app (`apps/mobile/App.tsx`), and backend inference mapper (`packages/backend/src/services/ai/inference.service.ts`), BANTAI exposes two streamlined local models calibrated via custom Ollama `Modelfile` definitions:
+In the active web console (`frontend/web/src/lib/models.ts`), mobile app (`frontend/mobile/App.tsx`), and backend inference mapper (`backend/src/services/ai/inference.service.ts`), BANTAI exposes two streamlined local models calibrated via custom Ollama `Modelfile` definitions:
 
 | Display Name | Model ID | Ollama Model Tag | Base Architecture | Parameters | RAM / VRAM Floor | Primary Strengths |
 | :--- | :--- | :--- | :--- | :---: | :--- | :--- |
@@ -25,7 +25,7 @@ In the active web console (`apps/web/src/lib/models.ts`), mobile app (`apps/mobi
 
 ## 3. Local Setup via Ollama & Custom Modelfiles
 
-BANTAI ships calibrated `Modelfile` (`bantai-bhai`) and `Modelfile.chhotu` (`bantai-chhotu`) at the repository root with `temperature 0.6`, `top_p 0.85`, `repeat_penalty 1.15`, Qwen stop tokens (`<|im_start|>`, `<|im_end|>`), and zero-profanity Hinglish system instructions.
+BANTAI ships calibrated `models/ollama/Modelfile` (`bantai-bhai`) and `models/ollama/Modelfile.chhotu` (`bantai-chhotu`) with `temperature 0.6`, `top_p 0.85`, `repeat_penalty 1.15`, Qwen stop tokens (`<|im_start|>`, `<|im_end|>`), and zero-profanity Hinglish system instructions.
 
 ```bash
 # 1. Install Ollama (https://ollama.com) and start the daemon on port 11434
@@ -34,9 +34,9 @@ BANTAI ships calibrated `Modelfile` (`bantai-bhai`) and `Modelfile.chhotu` (`ban
 ollama pull qwen2.5:3b
 ollama pull qwen2.5:7b
 
-# 3. Build branded BANTAI sovereign Ollama models from root Modelfiles
-ollama create bantai-chhotu -f Modelfile.chhotu
-ollama create bantai-bhai -f Modelfile
+# 3. Build branded BANTAI sovereign Ollama models from models/ollama/
+ollama create bantai-chhotu -f models/ollama/Modelfile.chhotu
+ollama create bantai-bhai -f models/ollama/Modelfile
 
 # 4. Verify active models
 ollama list
@@ -55,7 +55,7 @@ curl http://localhost:11434/api/tags
 
 ## 5. Local Vector Embeddings (RAG)
 
-Implemented in `packages/backend/src/services/rag/rag.service.ts`:
+Implemented in `backend/src/services/rag/rag.service.ts`:
 - **Descriptor (`LOCAL_EMBEDDING_MODEL`):** `BAAI/bge-small-en-v1.5` (384 dimensions, 512 max sequence tokens).
 - **Runtime Implementation:** Computes deterministic 384-dimensional L2-normalized vector embeddings locally from character n-gram hashing + trigonometric projection and scores matches via cosine similarity.
 - **Chunking Strategy:** 400 words per chunk with 80-word sliding overlap (`chunkText`).

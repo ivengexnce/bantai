@@ -1,18 +1,37 @@
+# Dependencies & Build Artifacts
 node_modules/
 .next/
 dist/
 build/
 .expo/
+*.tsbuildinfo
 *.log
-.env
-.env.local
 .DS_Store
+
+# Environment Variables & Secrets (Never reveal)
+.env
+.env.*
+!.env.example
+
+# Private Security Folder, Rules, Keys & Credentials
+security/
+*serviceAccount*.json
+*firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+*.pem
+*.key
+*.p12
+
+# Runtime Private Data & Uploads
 data/
+backend/data/
 uploads/
+
+# Python Virtualenvs & Binary Model Weights
 .venv*
 venv/
 __pycache__/
 *.pyc
 *.safetensors
 *.gguf
-

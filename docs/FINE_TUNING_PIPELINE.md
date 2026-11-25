@@ -9,7 +9,7 @@ BANTAI separates personalization and model adaptation across three distinct mech
 ---
 
 ## 2. Strict Opt-In Consent & PII Scrubbing
-Implemented in `packages/backend/src/services/learning/learning.service.ts`:
+Implemented in `backend/src/services/learning/learning.service.ts`:
 - **Default Off:** `crossUserTrainingOptIn` defaults to `false`. Responses are silently discarded unless explicit opt-in is active and not withdrawn (`withdrawnAt === null`).
 - **Decoupled Controls:** `personalMemoryEnabled` and `crossUserTrainingOptIn` operate independently.
 - **PII Scrubber (`scrubPII`):** Runs before any example enters `approved_examples_buffer.jsonl`, redacting API keys (`sk-...`, `ghp_...`, `AIza...` -> `[REDACTED_TOKEN]`), email addresses (`[REDACTED_EMAIL]`), and phone numbers (`[REDACTED_PHONE]`).
@@ -61,7 +61,7 @@ Optimized for 4 GB VRAM GPUs (tested on NVIDIA RTX A2000 Laptop GPU using ~3,860
 python training/scripts/train_lora_real.py \
   --base_model Qwen/Qwen2.5-3B-Instruct \
   --dataset_path ./training/datasets/tapori_dataset.jsonl \
-  --output_dir ./training/models/adapters/bantai_v1 \
+  --output_dir ./models/adapters/bantai_v1 \
   --epochs 3 \
   --batch_size 1 \
   --gradient_accumulation_steps 4 \
@@ -72,7 +72,7 @@ python training/scripts/train_lora_real.py \
 ```
 
 - **Target Modules:** `["q_proj", "k_proj", "v_proj", "o_proj"]`, `lora_dropout=0.05`, `optim="paged_adamw_8bit"`, `fp16=True`, gradient checkpointing enabled.
-- **Generated Outputs (`training/models/adapters/bantai_v1/`):**
+- **Generated Outputs (`models/adapters/bantai_v1/`):**
   - `adapter_model.safetensors` (~14.8 MB real LoRA weights)
   - `adapter_config.json`
   - `tokenizer.json` (~11.4 MB) & `tokenizer_config.json` & `chat_template.jinja`
@@ -81,7 +81,7 @@ python training/scripts/train_lora_real.py \
 
 ### Evaluation & Adapter Registry
 ```bash
-python training/scripts/evaluate_model.py --model training/models/adapters/bantai_v1
+python training/scripts/evaluate_model.py --model models/adapters/bantai_v1
 python training/scripts/model_registry.py
 ```
 `training/eval_report.json` tracks the 6-dimension evaluation harness (`Technical Accuracy`, `Multi-step Reasoning`, `Coding Ability`, `Hinglish Comprehension`, `Mumbai Tapori Persona`, `Safety Compliance`, and `Hallucination Rate`, overall score `95.5/100`, verdict `PASSED`).
