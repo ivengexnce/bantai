@@ -3,8 +3,8 @@
 ## 1. Hybrid Learning Architecture
 BANTAI separates personalization and model adaptation across three distinct mechanisms:
 1. **Personal Memory (`memory.service.ts`):** Stores user preferences, facts, projects, goals, and instructions without modifying model weights.
-2. **RAG Vector Store (`rag.service.ts`):** Retrieves top-k relevant document passages via 384-d cosine similarity at query time.
-3. **QLoRA Fine-Tuning (`training/scripts/train_lora_real.py`):** Trains genuine 4-bit NormalFloat (NF4) LoRA adapters (`peft` + `bitsandbytes` + `transformers`) on local NVIDIA GPUs and outputs reloadable `.safetensors` weights.
+2. **RAG Vector Store (`rag.service.ts`):** Retrieves top-k relevant document passages via Hybrid BM25 + 256-d cosine similarity (`0.55 * normBm25 + 0.45 * cosine`) across `.pdf` (via `unpdf`), `.txt`, `.md`, `.csv`, `.json`, and `.log` uploads.
+3. **QLoRA Fine-Tuning (`training/scripts/train_lora_real.py`):** Trains genuine 4-bit NormalFloat (NF4) LoRA adapters (`peft` + `bitsandbytes` + `transformers`) with validation splits (`--eval_split`) and all-linear targets (`--all_linear`) on local NVIDIA GPUs and outputs reloadable `.safetensors` weights.
 
 ---
 
@@ -60,28 +60,27 @@ Optimized for 4 GB VRAM GPUs (tested on NVIDIA RTX A2000 Laptop GPU using ~3,860
 ```bash
 python training/scripts/train_lora_real.py \
   --base_model Qwen/Qwen2.5-3B-Instruct \
-  --dataset_path ./training/datasets/tapori_dataset.jsonl \
+  --dataset_path ./training/datasets/bantai_dataset.jsonl \
   --output_dir ./models/adapters/bantai_v1 \
-  --epochs 3 \
+  --epochs 8 \
   --batch_size 1 \
-  --gradient_accumulation_steps 4 \
+  --gradient_accumulation_steps 2 \
   --learning_rate 2e-4 \
   --max_seq_length 256 \
-  --lora_r 8 \
-  --lora_alpha 16
+  --eval_split 0.15 \
+  --all_linear
 ```
 
-- **Target Modules:** `["q_proj", "k_proj", "v_proj", "o_proj"]`, `lora_dropout=0.05`, `optim="paged_adamw_8bit"`, `fp16=True`, gradient checkpointing enabled.
+- **Target Modules:** All linear layers (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`, ~14.97M trainable params / 0.48% of 3B model), `lora_dropout=0.05`, `optim="paged_adamw_8bit"`, `bf16=True`, gradient checkpointing enabled.
 - **Generated Outputs (`models/adapters/bantai_v1/`):**
-  - `adapter_model.safetensors` (~14.8 MB real LoRA weights)
+  - `adapter_model.safetensors` (~57.2 MiB / 59,933,632 bytes all-linear LoRA weights)
   - `adapter_config.json`
-  - `tokenizer.json` (~11.4 MB) & `tokenizer_config.json` & `chat_template.jinja`
-  - `calibration_dataset.jsonl`
-  - `training_manifest.json` (`"status": "COMPLETED"`, `"adapter_version": "bantai-v1.0-real-lora"`, `3` epochs on 4.0 GB VRAM)
+  - `tokenizer.json` & `tokenizer_config.json` & `chat_template.jinja`
+  - `training_manifest.json` (`"status": "COMPLETED"`, `"adapter_version": "bantai-v2.0-sovereign"`, `train_loss=0.9159`, `eval_loss=3.5295` on 4.0 GB VRAM)
 
 ### Evaluation & Adapter Registry
 ```bash
 python training/scripts/evaluate_model.py --model models/adapters/bantai_v1
 python training/scripts/model_registry.py
 ```
-`training/eval_report.json` tracks the 6-dimension evaluation harness (`Technical Accuracy`, `Multi-step Reasoning`, `Coding Ability`, `Hinglish Comprehension`, `Mumbai Tapori Persona`, `Safety Compliance`, and `Hallucination Rate`, overall score `95.5/100`, verdict `PASSED`).
+`training/eval_report.json` tracks real base-vs-adapter evaluation results across Technical Accuracy, Coding Ability, Multi-Step Reasoning, Bilingual Hinglish Comprehension, and Safety Compliance.

@@ -31,6 +31,9 @@ export class MongoUserService {
         const raw = fs.readFileSync(this.storageFile, 'utf8');
         const list: MongoUser[] = JSON.parse(raw);
         for (const user of list) {
+          if ((user.preferences?.defaultPersonalityMode as string) === 'tapori') {
+            user.preferences.defaultPersonalityMode = 'balanced';
+          }
           this.users.set(user.userId, user);
           this.emailIndex.set(user.email.toLowerCase(), user.userId);
           if (user.username) {
@@ -43,12 +46,24 @@ export class MongoUserService {
     }
   }
 
+  private writeCounter = 0;
+
   private persistToDisk() {
     try {
       const list = Array.from(this.users.values());
-      const tmpFile = `${this.storageFile}.tmp`;
-      fs.writeFileSync(tmpFile, JSON.stringify(list, null, 2), { encoding: 'utf8', mode: 0o600 });
-      fs.renameSync(tmpFile, this.storageFile);
+      const json = JSON.stringify(list, null, 2);
+      const tmpFile = `${this.storageFile}.tmp.${process.pid}.${++this.writeCounter}`;
+      fs.writeFileSync(tmpFile, json, { encoding: 'utf8', mode: 0o600 });
+      try {
+        fs.renameSync(tmpFile, this.storageFile);
+      } catch {
+        fs.writeFileSync(this.storageFile, json, { encoding: 'utf8', mode: 0o600 });
+        try {
+          fs.unlinkSync(tmpFile);
+        } catch {
+          // ignore
+        }
+      }
     } catch (err) {
       console.error('[MongoService] Failed to persist user record:', err);
     }

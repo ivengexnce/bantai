@@ -141,9 +141,9 @@ function FormattedContent({ content }: { content: string }) {
 
 const SUGGESTION_CHIPS = [
   'Analyze architecture & performance bottlenecks',
-  'Mera aaj ka briefing aur tasks bata bantai',
+  'Summarize my active tasks and daily engineering plan',
   'Write an Express middleware with rate limiting',
-  'Summarize technical specs cleanly'
+  'Explain REST vs GraphQL clearly in natural Hinglish'
 ];
 
 export function ChatView() {
@@ -166,6 +166,7 @@ export function ChatView() {
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [fallbackActive, setFallbackActive] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState<Record<string, 'up' | 'down'>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -184,6 +185,13 @@ export function ChatView() {
     if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
       setHistoryOpen(true);
     }
+    api.getHealth()
+      .then(res => {
+        if (res?.aiEngine && !res.aiEngine.isAlive) {
+          setFallbackActive(true);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -381,18 +389,48 @@ export function ChatView() {
     setIsRecording(true);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setChatError(null);
 
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setChatError(`File "${file.name}" exceeds the 512 KB attachment limit.`);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._ -]/g, '_');
+    const isPdf = /\.pdf$/i.test(safeName) || file.type === 'application/pdf';
+
+    if (isPdf) {
+      if (file.size > 1400 * 1024) {
+        setChatError(`PDF "${file.name}" exceeds the 1.4 MB attachment limit.`);
+        e.target.value = '';
+        return;
+      }
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const raw = String(reader.result || '');
+            resolve(raw.includes(',') ? raw.split(',')[1] : raw);
+          };
+          reader.onerror = () => reject(new Error('Failed to read PDF file.'));
+          reader.readAsDataURL(file);
+        });
+        const indexed = await api.uploadKnowledgePdf(safeName, base64);
+        setAttachedFile({
+          name: safeName,
+          content: `Indexed PDF into your private Knowledge Base (${indexed.chunkCount} chunks). Summary preview: ${indexed.summary || 'Ready for questions.'}`
+        });
+      } catch (err) {
+        setChatError((err as Error).message || 'Failed to parse PDF file.');
+      }
       e.target.value = '';
       return;
     }
 
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setChatError(`File "${file.name}" exceeds the 512 KB text limit.`);
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = ev => {
       const content = typeof ev.target?.result === 'string' ? ev.target.result : '';
@@ -516,6 +554,21 @@ export function ChatView() {
 
         {/* Scrollable Message Viewport */}
         <div className="flex-1 overflow-y-auto px-3 sm:px-6 pt-5 pb-6 scroll-smooth">
+          {fallbackActive && (
+            <div className="max-w-3xl mx-auto mb-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-2">
+              <span>
+                Offline Fallback Demo Engine is responding (local Ollama daemon not detected). Start Ollama with Qwen2.5 for full neural generation.
+              </span>
+              <button
+                type="button"
+                onClick={() => setFallbackActive(false)}
+                className="text-[11px] underline shrink-0 text-amber-300"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {chatError && (
             <div className="max-w-3xl mx-auto mb-4 p-3 rounded-xl bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#fca5a5] text-xs">
               {chatError}
@@ -678,14 +731,14 @@ export function ChatView() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.md,.json,.csv,.log,.py,.ts,.tsx,.js"
+                accept=".txt,.md,.markdown,.json,.csv,.log,.pdf"
                 onChange={handleFileUpload}
                 className="hidden"
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                aria-label="Attach text file"
+                aria-label="Attach text or PDF file"
                 className="p-2 rounded-xl text-[#94a3b8] hover:text-white hover:bg-white/5 transition-colors shrink-0"
               >
                 <Paperclip size={18} />

@@ -17,7 +17,7 @@ import { api } from '../../lib/api';
 import { useApp } from '../../context/AppContext';
 
 export function AuthScreen() {
-  const { setUser } = useApp();
+  const { setUser, localWorkstationAvailable } = useApp();
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -66,7 +66,7 @@ export function AuthScreen() {
         if (!forgotRequested) {
           await api.forgotPassword(email.trim());
           setForgotRequested(true);
-          setInfoMessage('If an account exists for that email, a reset token has been generated. Enter your reset token below.');
+          setInfoMessage('If an account exists for that email, a single-use reset token has been sent via configured SMTP (or queued to local mail outbox in dev). Enter your token below.');
         } else {
           if (resetNewPassword.length < 8 || resetNewPassword.length > 72) {
             setError('New password must be between 8 and 72 characters.');
@@ -436,6 +436,28 @@ export function AuthScreen() {
               ? 'Sign In'
               : 'Create Account'}
           </button>
+
+          {localWorkstationAvailable && !mfaChallengeToken && mode !== 'forgot' && (
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={async () => {
+                setError(null);
+                setSubmitting(true);
+                try {
+                  const res = await api.startWorkstationSession();
+                  setUser(res.user);
+                } catch (err) {
+                  setError((err as Error).message || 'Local workstation session unavailable.');
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+              className="w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[#cbd5e1] text-xs font-medium transition-colors"
+            >
+              Continue in Local Workstation Mode (Loopback Only)
+            </button>
+          )}
         </form>
       </div>
     </div>

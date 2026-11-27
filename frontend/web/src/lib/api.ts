@@ -140,8 +140,23 @@ class ApiClient {
     });
   }
 
-  async getSession(): Promise<{ authenticated: boolean; user: SafeUserProfile | null }> {
-    return await this.request<{ authenticated: boolean; user: SafeUserProfile | null }>('/auth/session');
+  async getSession(): Promise<{
+    authenticated: boolean;
+    user: SafeUserProfile | null;
+    localWorkstationAvailable?: boolean;
+  }> {
+    return await this.request<{
+      authenticated: boolean;
+      user: SafeUserProfile | null;
+      localWorkstationAvailable?: boolean;
+    }>('/auth/session');
+  }
+
+  async startWorkstationSession(): Promise<{ user: SafeUserProfile }> {
+    return await this.request<{ user: SafeUserProfile }>('/auth/workstation-session', {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
   }
 
   async getMe(): Promise<SafeUserProfile> {
@@ -189,7 +204,7 @@ class ApiClient {
 
   async createConversation(
     title?: string,
-    personalityMode: PersonalityMode = 'tapori',
+    personalityMode: PersonalityMode = 'balanced',
     modelId: string = 'bhai'
   ): Promise<FirestoreConversation> {
     return await this.request<FirestoreConversation>('/chat/conversations', {
@@ -358,10 +373,21 @@ class ApiClient {
     return await this.request<FirestoreKnowledgeDoc[]>('/assistant/knowledge/docs');
   }
 
-  async uploadKnowledgeDoc(filename: string, rawText: string): Promise<FirestoreKnowledgeDoc> {
+  async uploadKnowledgeDoc(
+    filename: string,
+    rawText: string,
+    mimeType: 'text/plain' | 'text/markdown' | 'text/csv' | 'application/json' = 'text/plain'
+  ): Promise<FirestoreKnowledgeDoc> {
     return await this.request<FirestoreKnowledgeDoc>('/assistant/knowledge/upload', {
       method: 'POST',
-      body: JSON.stringify({ filename, rawText })
+      body: JSON.stringify({ filename, rawText, mimeType })
+    });
+  }
+
+  async uploadKnowledgePdf(filename: string, rawPdfBase64: string): Promise<FirestoreKnowledgeDoc> {
+    return await this.request<FirestoreKnowledgeDoc>('/assistant/knowledge/upload', {
+      method: 'POST',
+      body: JSON.stringify({ filename, rawPdfBase64, mimeType: 'application/pdf' })
     });
   }
 
@@ -385,6 +411,10 @@ class ApiClient {
   }
 
   // Agentic Engine
+  async listAgentPlans(): Promise<AgentExecutionPlan[]> {
+    return await this.request<AgentExecutionPlan[]>('/assistant/agent/plans');
+  }
+
   async createAgentPlan(goal: string, conversationId?: string): Promise<AgentExecutionPlan> {
     return await this.request<AgentExecutionPlan>('/assistant/agent/plan', {
       method: 'POST',

@@ -28,6 +28,10 @@ cp .env.example .env
 | `DEFAULT_MODEL` | String | `qwen2.5:7b` | Fallback model name when unmapped. *(Note: `.env.example` also lists `BANTAI_DEFAULT_MODEL=bhai` for reference.)* |
 | `CLIENT_URLS` | CSV URLs | `http://localhost:3000,http://localhost:3001,http://localhost:8081,http://10.0.2.2:4000` | Allowed CORS origins in addition to built-in localhost/emulator origins. |
 | `ELEVENLABS_API_KEY` | String | `""` *(Optional)* | Server-side ElevenLabs key for `/api/voice/elevenlabs/tts`. |
+| `ELEVENLABS_MAX_CHARS_PER_USER_DAY` | Number | `20000` | Daily per-user character quota when using server-paid ElevenLabs TTS (bypassed only on BYOK header). |
+| `REDIS_URL` | URI | `""` *(Optional)* | Optional `redis://` or `rediss://` URL for shared JWT revocations, agent plans, and quotas across multiple API instances. |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | Strings | Unset *(Dev outbox fallback)* | Optional SMTP credentials for password resets and approved agent emails; queues to `DATA_DIR/mail_outbox.jsonl` if unset. |
+| `BANTAI_LOCAL_WORKSTATION` | Boolean | `false` | Opt-in loopback-only workstation session (`POST /api/auth/workstation-session`) rejected for forwarded or non-loopback sockets. |
 | `UPLOAD_DIR` | String | `uploads` | Directory for local uploads (max 50 MB). |
 | `GOOGLE_CLIENT_ID` | String | Unset *(Optional)* | Required outside `production` to enable `/api/auth/google`; otherwise returns `501`. |
 

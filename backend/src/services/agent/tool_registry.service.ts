@@ -1,8 +1,47 @@
 import { ToolDefinition, TOOL_NAMES } from '@bantai/shared';
 import { firebaseFirestoreService } from '../database/firebase.service';
 import { ragService } from '../rag/rag.service';
+import { buildEmlDocument, mailerService } from '../mail/mailer.service';
 import crypto from 'crypto';
 import { evaluateSafeMathExpression, executeInIsolatedSubprocess } from './safe_eval';
+
+function formatIcsDate(isoInput: string): string {
+  const dt = new Date(isoInput);
+  const valid = Number.isNaN(dt.getTime()) ? new Date() : dt;
+  return valid.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function escapeIcsText(text: string): string {
+  return text.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+}
+
+function buildIcsEvent(params: {
+  uid: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+  description?: string;
+}): string {
+  const dtStamp = formatIcsDate(new Date().toISOString());
+  const dtStart = formatIcsDate(params.startTime);
+  const dtEnd = formatIcsDate(params.endTime);
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//BANTAI//Sovereign Calendar Connector//EN',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${params.uid}@bantai.local`,
+    `DTSTAMP:${dtStamp}`,
+    `DTSTART:${dtStart}`,
+    `DTEND:${dtEnd}`,
+    `SUMMARY:${escapeIcsText(params.title)}`,
+    ...(params.description ? [`DESCRIPTION:${escapeIcsText(params.description)}`] : []),
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+}
 
 export interface ToolExecutionContext {
   userId: string;
@@ -339,16 +378,36 @@ export class ToolRegistryService {
         case TOOL_NAMES.CALENDAR_CONNECTOR: {
           const action = String(args.action || 'view');
           if (action === 'create') {
+            const eventId = crypto.randomUUID();
+            const title = String(args.title || 'Meeting');
+            const startTime = String(args.startTime || new Date().toISOString());
+            const endTime = String(args.endTime || new Date(Date.now() + 3600000).toISOString());
             const evt = await firebaseFirestoreService.createCalendarEvent({
-              id: crypto.randomUUID(),
+              id: eventId,
               userId: ctx.userId,
-              title: String(args.title || 'Meeting'),
-              startTime: String(args.startTime || new Date().toISOString()),
-              endTime: String(args.endTime || new Date(Date.now() + 3600000).toISOString()),
+              title,
+              startTime,
+              endTime,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             });
-            return { success: true, data: { created: true, event: evt } };
+            const icsContent = buildIcsEvent({
+              uid: eventId,
+              title,
+              startTime,
+              endTime,
+              description: typeof args.description === 'string' ? args.description : undefined
+            });
+            return {
+              success: true,
+              data: {
+                created: true,
+                event: evt,
+                icsContent,
+                filename: `bantai_event_${eventId.slice(0, 8)}.ics`,
+                mimeType: 'text/calendar'
+              }
+            };
           }
           const events = await firebaseFirestoreService.getCalendarEvents(ctx.userId);
           return { success: true, data: events };
@@ -357,17 +416,31 @@ export class ToolRegistryService {
         case TOOL_NAMES.EMAIL_CONNECTOR: {
           const action = String(args.action || 'draft');
           if (action === 'draft') {
+            const draftId = crypto.randomUUID();
+            const toAddr = String(args.to || '');
+            const subject = String(args.subject || 'No Subject');
+            const body = String(args.body || '');
             const draft = await firebaseFirestoreService.createEmailDraft({
-              id: crypto.randomUUID(),
+              id: draftId,
               userId: ctx.userId,
-              to: [String(args.to || '')],
-              subject: String(args.subject || 'No Subject'),
-              body: String(args.body || ''),
+              to: [toAddr],
+              subject,
+              body,
               status: 'draft',
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             });
-            return { success: true, data: { draftCreated: true, draft } };
+            const emlContent = buildEmlDocument({ to: toAddr || 'undisclosed-recipients:;', subject, body });
+            return {
+              success: true,
+              data: {
+                draftCreated: true,
+                draft,
+                emlContent,
+                filename: `bantai_draft_${draftId.slice(0, 8)}.eml`,
+                mimeType: 'message/rfc822'
+              }
+            };
           }
           if (action === 'send') {
             if (!ctx.userApproved) {
@@ -377,12 +450,24 @@ export class ToolRegistryService {
                 approvalPrompt: `Confirm sending email to ${args.to} with subject "${args.subject}"?`
               };
             }
+            const toAddr = String(args.to || '').trim();
+            if (!toAddr || !toAddr.includes('@')) {
+              return { success: false, error: 'A valid recipient email address is required to send mail.' };
+            }
+            const subject = String(args.subject || 'Update from BANTAI');
+            const body = String(args.body || '');
+            const dispatch = await mailerService.sendMail({ to: toAddr, subject, text: body });
             return {
               success: true,
               data: {
-                sent: true,
-                to: args.to,
-                subject: args.subject,
+                sent: dispatch.delivered,
+                transport: dispatch.transport,
+                messageId: dispatch.messageId,
+                to: toAddr,
+                subject,
+                emlContent: dispatch.emlContent,
+                filename: `bantai_sent_${Date.now()}.eml`,
+                mimeType: 'message/rfc822',
                 timestamp: new Date().toISOString()
               }
             };

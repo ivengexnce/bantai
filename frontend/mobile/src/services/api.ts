@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // Configurable public API URL for production builds; defaults to emulator loopback in dev.
@@ -55,6 +56,18 @@ export interface MobileMemory {
 export class MobileApi {
   static async getToken(): Promise<string | null> {
     try {
+      if (Platform.OS !== 'web') {
+        const secure = await SecureStore.getItemAsync('bantai_token');
+        if (secure) return secure;
+        // One-time seamless migration from legacy AsyncStorage
+        const legacy = await AsyncStorage.getItem('bantai_token');
+        if (legacy) {
+          await SecureStore.setItemAsync('bantai_token', legacy);
+          await AsyncStorage.removeItem('bantai_token');
+          return legacy;
+        }
+        return null;
+      }
       return await AsyncStorage.getItem('bantai_token');
     } catch {
       return null;
@@ -63,10 +76,19 @@ export class MobileApi {
 
   static async setToken(token: string | null): Promise<void> {
     try {
+      if (Platform.OS !== 'web') {
+        if (token) {
+          await SecureStore.setItemAsync('bantai_token', token);
+        } else {
+          await SecureStore.deleteItemAsync('bantai_token');
+        }
+        await AsyncStorage.removeItem('bantai_token').catch(() => {});
+        return;
+      }
       if (token) await AsyncStorage.setItem('bantai_token', token);
       else await AsyncStorage.removeItem('bantai_token');
     } catch (err) {
-      console.error('AsyncStorage error:', err);
+      console.error('Secure storage error:', err);
     }
   }
 
@@ -153,7 +175,7 @@ export class MobileApi {
 
   static async createConversation(
     title: string = 'Mobile Chat',
-    personalityMode: string = 'tapori',
+    personalityMode: string = 'balanced',
     modelId: string = 'chhotu'
   ): Promise<MobileConversation> {
     return this.request<MobileConversation>('/chat/conversations', {
@@ -169,7 +191,7 @@ export class MobileApi {
   static async sendChatStream(
     conversationId: string,
     content: string,
-    personalityMode: string = 'tapori',
+    personalityMode: string = 'balanced',
     modelId: string = 'chhotu',
     onToken?: (partialText: string) => void
   ): Promise<string> {

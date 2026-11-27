@@ -19,10 +19,10 @@ export interface ChatInferenceParams {
 
 /**
  * BANTAI Self-Hosted Inference Service
- * 
+ *
  * STRICT COMPLIANCE:
  * ZERO calls to third-party hosted AI APIs (no OpenAI, no Anthropic, no Gemini, no Groq, no OpenRouter).
- * Connects directly to local Ollama, llama.cpp, vLLM, or self-hosted local inference runtime.
+ * Connects directly to local Ollama, llama.cpp, vLLM, or self-hosted local fallback engine.
  */
 export class InferenceService {
   private activeProvider: 'ollama' | 'llamacpp' | 'vllm' | 'local_engine';
@@ -89,7 +89,7 @@ export class InferenceService {
     return {
       provider: 'local_engine',
       isAlive: true,
-      availableModels: ['qwen2.5:7b-bantai-specialized', 'llama3.1:8b-bantai-specialized']
+      availableModels: ['qwen2.5:7b-bantai-specialized', 'qwen2.5:3b-bantai-specialized']
     };
   }
 
@@ -109,7 +109,7 @@ export class InferenceService {
       ...params.messages.map(m => ({ role: m.role, content: m.content }))
     ];
 
-    // Map friendly model IDs to base model names
+    // Map friendly model IDs to Ollama / base model names
     const MODEL_BASE_MAP: Record<string, string> = {
       chhotu: 'bantai-chhotu',
       bhai: 'bantai-bhai',
@@ -125,7 +125,7 @@ export class InferenceService {
       try {
         return await this.streamFromOllama(targetModel, formattedMessages, onChunk);
       } catch (err) {
-        console.warn('[InferenceService] Ollama stream failed or daemon unavailable. Falling back to BANTAI Local Engine.', (err as Error).message);
+        console.warn('[InferenceService] Ollama stream failed or daemon unavailable. Falling back to offline fallback engine.', (err as Error).message);
       }
     }
 
@@ -134,11 +134,11 @@ export class InferenceService {
       try {
         return await this.streamFromLlamaCpp(formattedMessages, onChunk);
       } catch (err) {
-        console.warn('[InferenceService] llama.cpp stream failed. Falling back to BANTAI Local Engine.', (err as Error).message);
+        console.warn('[InferenceService] llama.cpp stream failed. Falling back to offline fallback engine.', (err as Error).message);
       }
     }
 
-    // Default: High-Fidelity BANTAI Local Engine
+    // Deterministic offline fallback engine
     return await this.streamFromLocalEngine(params, formattedMessages, onChunk);
   }
 
@@ -272,8 +272,8 @@ export class InferenceService {
   }
 
   /**
-   * BANTAI Local Engine:
-   * Provides intelligent, accurate, personality-aligned responses offline without third-party APIs.
+   * Deterministic offline fallback engine when Ollama/llama.cpp daemon is not running.
+   * Responds cleanly in Balanced, Developer, Academic, or Professional styles without external APIs.
    */
   private async streamFromLocalEngine(
     params: ChatInferenceParams,
@@ -281,7 +281,7 @@ export class InferenceService {
     onChunk: (chunk: ChatStreamChunk) => void
   ): Promise<string> {
     const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
-    const mode = params.personalityMode;
+    const mode = params.personalityMode || 'balanced';
 
     const responseContent = this.generateLocalResponse(
       lastUserMsg,
@@ -291,11 +291,10 @@ export class InferenceService {
       params.userName
     );
 
-    // Stream out words with realistic pacing
     const tokens = responseContent.split(/(\s+)/);
     let accumulated = '';
-
     const delay = process.env.NODE_ENV === 'test' ? 0 : 8;
+
     for (const token of tokens) {
       accumulated += token;
       onChunk({ type: 'token', content: token });
@@ -316,21 +315,19 @@ export class InferenceService {
     passedUserName?: string
   ): string {
     const qLower = query.toLowerCase().trim();
-
-    // Model branding badge
     const modelBadge = modelId === 'chhotu' ? '⚡ BANTAI Chhotu' : '🤝 BANTAI Bhai';
 
-    // Extract userName if present in context or parameters
     let userName = passedUserName;
     if (!userName && context) {
-      const match = context.match(/Name:\s*([^\n\r]+)/i);
+      const match = context.match(/(?:Name|USER DISPLAY NAME):\s*([^\n\r]+)/i);
       if (match && match[1]) {
         userName = match[1].trim();
       }
     }
-    const displayName = userName && userName !== 'current' ? userName : 'Bantai';
+    const displayName = userName && userName !== 'current' ? userName : 'User';
+    const isHinglishQuery = /\b(kya|kaise|kaisa|kaun|mera|meri|naam|bata|batao|samjhao|kyun|ya|aur|mein|hai|hoon|hu)\b/i.test(qLower);
 
-    // 1. USER IDENTITY & NAME INQUIRY ("mera naam bta", "who am i", etc.)
+    // 1. Identity lookup
     if (
       qLower.includes('mera naam') ||
       qLower.includes('mera name') ||
@@ -341,86 +338,39 @@ export class InferenceService {
       qLower.includes('what is my name') ||
       qLower.includes('kya naam hai mera')
     ) {
-      if (mode === 'tapori') {
-        return `Arey bantai! Tera naam **${displayName}** hai! Apun tere ko kaise bhulega bhidu? Tu hi toh apna asli hero hai! Bol mere bhai, aaj kya bawaal task solve karne ka hai?`;
-      }
-      if (mode === 'balanced') {
-        return `Aapka naam **${displayName}** hai. Main aapka personal AI assistant BANTAI hoon! Aaj main aapki kis kaam mein madad kar sakta hoon?`;
+      if (mode === 'balanced' && isHinglishQuery) {
+        return `Aapka naam **${displayName}** hai. Main BANTAI hoon — aapka private local AI assistant. Aaj kis kaam mein madad kar sakta hoon?`;
       }
       if (mode === 'developer') {
-        return `Authenticated Session Identity: Name="${displayName}". User memory and profile records are loaded and verified in local MongoDB store. Ready for instruction.`;
+        return `Authenticated Session Identity: Name="${displayName}". Profile verified in local store. Ready for instruction.`;
       }
       if (mode === 'academic') {
-        return `According to verified system profile records, your registered user name is **${displayName}**.`;
+        return `According to verified session profile records, your registered display name is **${displayName}**.`;
       }
-      return `Your registered name is **${displayName}**. I am your personal AI assistant. How can I help you today?`;
+      return `Your registered name is **${displayName}**. How can I assist you today?`;
     }
 
-    // 2. SELF-STATEMENTS & PERSONAL REFLECTION ("mein sirf ek ladka hu", "i am a student", etc.)
-    if (
-      qLower.includes('sirf ek ladka') ||
-      qLower.includes('ek ladka hu') ||
-      qLower.includes('ladka hu') ||
-      qLower.includes('just a boy') ||
-      qLower.includes('i am a boy') ||
-      qLower.includes('just a guy')
-    ) {
-      if (mode === 'tapori') {
-        return `Arre bantai! 'Sirf ek ladka' kya bolta hai re tu? Tu sher hai apun ka! 
-
-Mumbai ki sadkon se leke Silicon Valley tak, duniya ka har bada kissa ek aam ladke ke dimaag aur zid se hi shuru hota hai. Apun BANTAI tere dimaag aur mehnat pe poora bharosa karta hai bhidu! 
-
-Chahe coding karni ho, career ka plan banana ho ya life me bawaal machana ho — apun 24/7 tere sath khada hai. Chal bata, aaj apun dono milke kya naya start karein?`;
-      }
-      if (mode === 'balanced') {
-        return `Aap 'sirf ek ladka' nahi hain, aap ek aisi personality hain jiske paas apna dimaag, unique sapne aur endless potential hai! Har bada journey ek aam shuruaat se hoti hai. BANTAI aapke har step par support karne ke liye yahan hai. Kahiye, aaj kis cheez pe kaam karna chahte hain?`;
-      }
-      if (mode === 'developer') {
-        return `Identity acknowledged: Human operator. Potential unlimited. BANTAI sovereign tools (RAG, code execution, planning, memory) are fully at your command. State your objective.`;
-      }
-      return `Every major achievement begins with one focused individual. BANTAI is here to assist you with knowledge, planning, and execution. What would you like to achieve today?`;
-    }
-
-    if (qLower.includes('student hu') || qLower.includes('student hoon') || qLower.includes('i am a student')) {
-      if (mode === 'tapori') {
-        return `Student hai toh solid scene hai bantai! Student log hi aage chalke duniya hilaate hain. Chahe computer science ho, mathematics ho ya DSA — concepts apun tere dimaag me direct ghusa dega! Bol konsa topic phodna hai aaj?`;
-      }
-      return `Being a student is the best foundation. BANTAI is equipped with academic pedagogic breakdowns, coding analysis, and study planning to help you excel. Which subject or concept would you like to master?`;
-    }
-
-    // 3. GREETINGS & CASUAL CHIT-CHAT ("hi", "hello", "kya bolti public", "kaisa hai", etc.)
+    // 2. Greetings & general check-ins
     if (
       qLower === 'hi' ||
       qLower === 'hello' ||
       qLower === 'hey' ||
-      qLower.includes('kya bolti public') ||
       qLower.includes('kya scene') ||
       qLower.includes('kaisa hai') ||
       qLower.includes('kaise ho') ||
       qLower.includes('wassup') ||
-      qLower.includes('sun na') ||
-      qLower.includes('bol na') ||
       qLower.includes('namaste')
     ) {
-      if (mode === 'tapori') {
-        return `Ekdum rapchik bantai! Tera **${modelBadge}** full power me online hai! 
-
-Apun ka dimaag ekdum sharp daud raha hai bhidu. Bol kya scene hai aaj? 
-- Koi solid code likhna hai?
-- Poore din ka task ya reminder set karna hai?
-- Ya kisi complex concept ka post-mortem karna hai?
-Bindaas bol, tera bhai sab sambhal lega!`;
-      }
-      if (mode === 'balanced') {
-        return `Namaste! Main bilkul theek hoon. BANTAI aapki seva mein online hai. Aap batayein, aaj kis cheez mein aapki madad kar sakta hoon?`;
+      if (mode === 'balanced' && isHinglishQuery) {
+        return `Namaste ${displayName}! Main ready hoon (${modelBadge}). Aaj coding, architecture, ya task planning mein kis cheez pe kaam karna hai?`;
       }
       if (mode === 'developer') {
-        return `System Status: ONLINE. Active Model: ${modelBadge}. Latency: minimal (local execution). Memory: persistent & isolated. Awaiting input.`;
+        return `Status: ONLINE. Model Target: ${modelBadge} (offline deterministic fallback active until Ollama/llama.cpp connects). Awaiting input.`;
       }
-      return `Hello ${displayName}! I am operational and ready to assist you. What are we working on today?`;
+      return `Hello ${displayName}! I am ready to assist with engineering, technical writing, documents, and task workflows. What would you like to work on today?`;
     }
 
-    // 4. BANTAI SOVEREIGN ARCHITECTURE & MODELS
+    // 3. About BANTAI & Local Models
     if (
       qLower.includes('who are you') ||
       qLower.includes('kaun hai') ||
@@ -428,44 +378,17 @@ Bindaas bol, tera bhai sab sambhal lega!`;
       qLower.includes('what is bantai') ||
       qLower.includes('bantai kya hai')
     ) {
-      if (mode === 'tapori') {
-        return `Apun hai **${modelBadge}**! Tagline yaad rakh bhidu: *Apna Model. Apna Dimaag. Apna AI.*
-        
-Mumbai ka asli swag aur world-class self-hosted sovereign AI ek sath! Apun 100% open-weight model pe chalta hai:
-- **Zero API leaks:** Na koi foreign cloud, na OpenAI, na corporate surveillance.
-- **Strict Data Separation:** Tera login credentials safe local MongoDB me, aur chat history isolated Firebase Firestore me!
-- **Dual Engine:** Ollama / llama.cpp GPU execution + Ultra-fast local dialogue engine.
-
-Bol mere bhai, aaj kya bawaal task solve karne ka hai?`;
+      if (mode === 'balanced' && isHinglishQuery) {
+        return `Main **${modelBadge}** hoon (*Apna Model. Apna Dimaag. Apna AI.*) — ek privacy-first, self-hosted agentic AI workbench.\n\n- **Local First:** Zero external cloud LLM APIs.\n- **Isolated Architecture:** Account profile aur chat history separate stores mein rehte hain.\n- **Bilingual Support:** Natural English aur saaf Hindi/Hinglish mein coding, analysis aur tasks.`;
       }
-      return `I am **${modelBadge}** (*Apna Model. Apna Dimaag. Apna AI.*). I am an enterprise-grade, self-hosted agentic personal AI platform designed for private, high-accuracy conversational intelligence, task execution, and sovereign memory management with zero external API dependencies.`;
+      return `I am **${modelBadge}** (*Apna Model. Apna Dimaag. Apna AI.*), a self-hosted local-first AI workbench built for private engineering, structured reasoning, RAG retrieval, and human-approved tool workflows.`;
     }
 
-    if (
-      qLower.includes('model family') ||
-      qLower.includes('models') ||
-      qLower.includes('chhotu') ||
-      qLower.includes('bhai')
-    ) {
-      if (mode === 'tapori') {
-        return `BANTAI ki sovereign local model family ka poora hisaab-kitaab ye raha bhidu:
-
-1. **⚡ BANTAI Chhotu (3B)**: Ekdum bullet speed! 4GB RAM pe bhi daudta hai. Low-latency chats aur edge inference ke liye ekdum mast.
-2. **🤝 BANTAI Bhai (7B - Default)**: All-rounder Mumbai bhai! 8GB RAM / 6GB VRAM. Coding, planning, Hinglish reasoning aur daily sovereign intelligence ka baap.
-
-Dono model 100% offline local Ollama pe run hote hain, Apache 2.0 open-weight base pe calibrated!`;
-      }
-      return `### BANTAI Sovereign Model Family Architecture
-
-| Model | Parameters | Base Arch | RAM / VRAM | Primary Use Case |
-| :--- | :--- | :--- | :--- | :--- |
-| **⚡ BANTAI Chhotu** | 3B | Qwen 2.5 3B | 4GB / 2GB | Low latency, edge inference, rapid task routing |
-| **🤝 BANTAI Bhai** | 7B | Qwen 2.5 7B | 8GB / 6GB | Daily sovereign driver, coding, general intelligence |
-
-All models run 100% locally with zero external API leakage.`;
+    if (qLower.includes('model family') || qLower.includes('models') || qLower.includes('chhotu') || qLower.includes('bhai')) {
+      return `### BANTAI Local Model Lineup\n\n| Model | Parameters | Base Arch | RAM / VRAM | Primary Use Case |\n| :--- | :--- | :--- | :--- | :--- |\n| **⚡ BANTAI Chhotu** | 3B | Qwen 2.5 3B | 4 GB / 2 GB | Low latency & edge laptops |\n| **🤝 BANTAI Bhai** | 7B | Qwen 2.5 7B | 8 GB / 6 GB | Daily coding, reasoning & bilingual writing |\n\n*Runtime Note: Currently using the deterministic offline fallback engine. Start Ollama for live generative LLM inference.*`;
     }
 
-    // 5. PERSONAL MEMORY & CONTEXT INQUIRY
+    // 4. Memory lookup
     if (
       qLower.includes('meri memory') ||
       qLower.includes('my memory') ||
@@ -473,358 +396,44 @@ All models run 100% locally with zero external API leakage.`;
       qLower.includes('kya yaad hai') ||
       qLower.includes('mere baare me')
     ) {
-      const memoryLines = context ? context.split('\n').filter(l => l.trim().length > 0) : [];
-      if (mode === 'tapori') {
-        return `Apun ke dimaag me tera poora record safe hai bantai!
-        
-Dekh apun ko tere baare me ye sab pakka pata hai:
-- **Naam:** ${displayName}
-- **Status:** Authenticated Bantai Operator
-${memoryLines.length > 0 ? memoryLines.map(l => `- ${l}`).join('\n') : '- **Memory Store:** Teri personal preferences aur facts local store me secure hain!'}
-
-Apun bina teri permission ke kisi tisre ko ek lafz bhi share nahi karta!`;
-      }
-      return `### Verified Local Personal Memory Profile
-- **User Identifier:** ${displayName}
-- **Memory Storage:** Sovereign Isolated Local Store
-${context ? `\n**Contextual Records:**\n${context}` : '\nNo restricted memories flagged. All conversation data remains strictly on-premise.'}`;
+      return `### Verified Local Personal Memory Profile\n- **User Identifier:** ${displayName}\n- **Memory Storage:** User-Isolated Persistent Store\n${context ? `\n**Contextual Records:**\n${context}` : '\nNo custom memories retrieved yet.'}`;
     }
 
-    // 6. MOTIVATION, EMOTIONAL SUPPORT & LIFE ADVICE
-    if (
-      qLower.includes('sad hu') ||
-      qLower.includes('udaas hu') ||
-      qLower.includes('depressed') ||
-      qLower.includes('pareshan hu') ||
-      qLower.includes('mann nahi lag raha') ||
-      qLower.includes('motivation') ||
-      qLower.includes('give me advice')
-    ) {
-      if (mode === 'tapori') {
-        return `Arre bantai! Thoda chill maar aur ek gehri saans le! 
-        
-Dekh bhidu, life me kabhi-kabhi local train late hoti hai, traffic lagta hai, aur code me bugs aate hain — par iska matlab ye nahi ki apun safar chhod de! 
-
-Tu ekdum solid banda hai. Jo cheez tujhe pareshan kar rahi hai, usko chhote-chhote hisson me tod:
-1. Pehle 1 glass thanda paani pi aur screen se 5 minute aankh hata.
-2. Bas agla **ek chhota step** utha — sab ek sath theek karne ki zaroorat nahi hai.
-3. Apun BANTAI 24 ghante tere sath khada hai. 
-
-Bata mere bhai, kis cheez ne tera mood kharab kiya? Milke uska tod nikaalenge!`;
+    // 5. RAG & Retrieval
+    if (qLower.includes('rag') || qLower.includes('retrieval augmented') || qLower.includes('vector search') || qLower.includes('embedding')) {
+      if (mode === 'balanced' && isHinglishQuery) {
+        return `### RAG (Retrieval-Augmented Generation) Kaise Kaam Karta Hai\n\n1. **Chunking:** Documents ko overlapping sections mein split kiya jata hai.\n2. **Hybrid Scoring:** Har chunk par keyword (BM25) aur vector similarity calculate hoti hai.\n3. **Grounding:** Top relevant passages system prompt mein inject hote hain taaki answers accurate aur verifiable rahein.`;
       }
-      return `### Personal Mindset & Execution Reset
-1. **Acknowledge and Pause:** High cognitive load or emotional fatigue is a signal to reset, not a permanent state. Step back for 5 minutes.
-2. **Decompose the Friction:** Whatever feels overwhelming, break it down into the single smallest immediate action (micro-task).
-3. **Focus on Process, Not Outcome:** Execution momentum restores confidence faster than overthinking.
-4. **Sovereign Support:** BANTAI is fully available to help you plan, organize, or write whatever is on your mind. How can we make progress together today?`;
+      return `### Retrieval-Augmented Generation (RAG) Architecture\n\n1. **Chunking:** Documents are split into overlapping semantic passages.\n2. **Hybrid Scoring:** Combines lexical relevance with cosine similarity ($\\frac{\\vec{q} \\cdot \\vec{v}_i}{\\|\\vec{q}\\| \\|\\vec{v}_i\\|}$).\n3. **Context Injection:** Top-$k$ relevant passages are safely fenced inside untrusted-data boundaries to prevent prompt injection.`;
     }
 
-    // 7. RAG & VECTOR SEARCH EXPLANATIONS
-    if (
-      qLower.includes('rag') ||
-      qLower.includes('retrieval augmented') ||
-      qLower.includes('vector search') ||
-      qLower.includes('embedding')
-    ) {
-      if (mode === 'tapori') {
-        return `Dekh bantai, RAG (Retrieval-Augmented Generation) ka funda ekdum solid style me samajh:
-
-Soch ek open-book exam chal raha hai! Agar model ko bina RAG ke pucho toh wo apne dimaag me jo ratta maara tha wahi bolega. Par RAG ke sath:
-1. **Chunking & Embedding:** Apun tere documents ko chhote tukdon me baant ke 384-dimensional mathematical numbers (embeddings) bana deta hai via BGE-small.
-2. **Vector Similarity:** Jab tu sawal puchta hai, apun Cosine Similarity formula ($A \\cdot B / (\\|A\\| \\|B\\|)$) laga ke sabse match hone wale passages dhoondhta hai.
-3. **Augmentation:** Un passages ko model ke prompt me chipka deta hai.
-4. **Accurate Answer:** Model unhi passages ko padh ke ekdum 100% sachha answer deta hai — zero gappabazi (hallucination)!
-
-BANTAI ka Knowledge Base poora isi RAG tech pe local execute hota hai!`;
-      }
-      return `### Retrieval-Augmented Generation (RAG) Architecture
-
-RAG combines parametric model weights with non-parametric external document retrieval:
-1. **Ingestion & Chunking:** Raw documents are split into overlapping semantic chunks ($k \\approx 256$ to $512$ tokens).
-2. **Dense Vector Embeddings:** Each chunk is converted into an embedding vector using a local embedding model (e.g. \`BAAI/bge-small-en-v1.5\`, 384 dimensions).
-3. **Semantic Similarity Search:** At inference time, the user's query vector $\\vec{q}$ is compared against stored vectors $\\vec{v}_i$ via Cosine Similarity:
-   $$\\text{similarity} = \\frac{\\vec{q} \\cdot \\vec{v}_i}{\\|\\vec{q}\\| \\|\\vec{v}_i\\|}$$
-4. **Context Injection:** Top-$k$ relevant passages are appended into the system context window.
-5. **Grounded Generation:** The foundation model generates factual, source-attributed responses with minimal hallucination.`;
+    // 6. Docker & Containers
+    if (qLower.includes('docker') || qLower.includes('container') || qLower.includes('dockerfile')) {
+      return `### Docker & Containerization Principles\nContainers package applications with deterministic dependencies while sharing the host kernel.\n\n\`\`\`dockerfile\nFROM node:20-alpine AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --ignore-scripts\nCOPY . .\nRUN npm run build\n\nFROM node:20-alpine AS production\nWORKDIR /app\nCOPY --from=build /app/dist ./dist\nUSER node\nEXPOSE 4000\nCMD ["node", "dist/index.js"]\n\`\`\``;
     }
 
-    // 8. DOCKER & DEVOPS
-    if (
-      qLower.includes('docker') ||
-      qLower.includes('container') ||
-      qLower.includes('dockerfile')
-    ) {
-      if (mode === 'tapori') {
-        return `Docker ka funda ekdum saral hai bantai!
-
-Pehle kya hota tha? Developer bolta tha *"Mere laptop me toh chal raha tha, production server pe kyu phat gaya?"*
-Docker ne aake bola: *"Chal tere laptop ka poora system hi dabba bana ke server pe bhejte hain!"*
-
-- **Image:** Recipe ya blue-print.
-- **Container:** Recipe se bana hua live cake (running process).
-- **Dockerfile:** Steps likhne ki file.
-
-Ye le production Dockerfile ka ekdum kadak template:
-\`\`\`dockerfile
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-FROM node:20-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-EXPOSE 4000
-CMD ["node", "dist/index.js"]
-\`\`\`
-Samjha kya bhidu? Containers light-weight hote hain aur har jagah same chalte hain!`;
-      }
-      return `### Docker & Containerization Principles
-Docker isolates applications inside lightweight Linux containers sharing the host kernel, preventing environment drift.
-
-\`\`\`dockerfile
-# Multi-stage production build
-FROM node:20-alpine AS build
-WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-
-FROM node:20-alpine AS production
-WORKDIR /usr/src/app
-COPY --from=build /usr/src/app/dist ./dist
-COPY --from=build /usr/src/app/node_modules ./node_modules
-USER node
-EXPOSE 4000
-CMD ["node", "dist/index.js"]
-\`\`\`
-
-**Key Benefits:**
-- Environment determinism across development, staging, and production.
-- Lightweight compared to VMs (shares kernel, no hypervisor overhead).
-- Rapid startup and horizontal scalability.`;
-    }
-
-    // 9. ALGORITHMS: QUICKSORT, BINARY SEARCH, FIBONACCI
+    // 7. QuickSort & Binary Search
     if (qLower.includes('quicksort') || qLower.includes('quick sort')) {
-      if (mode === 'tapori') {
-        return `Dekh bantai, QuickSort ka funda ekdum mast Mumbai style me samjhata hoon:
-
-Soch ek lambi bheed khadi hai ticket counter pe. Apun beech me se ek bande ko pakad ke **'Pivot'** bana dete hain (jaise Dadar station!).
-1. Dadar se pehle utarne wale log left side me daalo (chhoti values).
-2. Dadar ke baad wale right side me daalo (badi values).
-3. Dadar wala banda ekdum sahi jagah pe fit ho gaya!
-4. Fir left aur right wali dono toliyon pe yahi same formula repeat maaro!
-
-\`\`\`typescript
-export function quickSort<T>(arr: T[]): T[] {
-  if (arr.length <= 1) return arr;
-  const pivot = arr[Math.floor(arr.length / 2)];
-  const left = arr.filter(x => x < pivot);
-  const middle = arr.filter(x => x === pivot);
-  const right = arr.filter(x => x > pivot);
-  return [...quickSort(left), ...middle, ...quickSort(right)];
-}
-\`\`\`
-
-- **Average Complexity:** O(N log N) — Superfast!
-- **Worst Case:** O(N²) — Agar pivot galat choose hua toh thoda slow hota hai.`;
+      if (mode === 'balanced' && isHinglishQuery) {
+        return `### QuickSort (Divide-and-Conquer)\nQuickSort ek **pivot** element choose karke array ko chhoti aur badi values mein partition karta hai, aur recursively sort karta hai:\n\n\`\`\`typescript\nexport function quickSort<T>(arr: T[]): T[] {\n  if (arr.length <= 1) return arr;\n  const pivot = arr[arr.length >> 1];\n  const left = arr.filter(x => x < pivot);\n  const equal = arr.filter(x => x === pivot);\n  const right = arr.filter(x => x > pivot);\n  return [...quickSort(left), ...equal, ...quickSort(right)];\n}\n\`\`\`\n- **Average:** $O(N \\log N)$, **Worst Case:** $O(N^2)$`;
       }
-      return `### QuickSort: Divide-and-Conquer Partitioning
-\`\`\`typescript
-export function quickSort<T>(arr: T[]): T[] {
-  if (arr.length <= 1) return arr;
-  const pivot = arr[arr.length >> 1];
-  const left = arr.filter(x => x < pivot);
-  const equal = arr.filter(x => x === pivot);
-  const right = arr.filter(x => x > pivot);
-  return [...quickSort(left), ...equal, ...quickSort(right)];
-}
-\`\`\`
-- **Time Complexity:** $O(N \\log N)$ average, $O(N^2)$ worst case.
-- **Space Complexity:** $O(\\log N)$ recursion stack frames.`;
+      return `### QuickSort Algorithm\n\`\`\`typescript\nexport function quickSort<T>(arr: T[]): T[] {\n  if (arr.length <= 1) return arr;\n  const pivot = arr[arr.length >> 1];\n  const left = arr.filter(x => x < pivot);\n  const equal = arr.filter(x => x === pivot);\n  const right = arr.filter(x => x > pivot);\n  return [...quickSort(left), ...equal, ...quickSort(right)];\n}\n\`\`\`\n- **Time Complexity:** $O(N \\log N)$ average, $O(N^2)$ worst case.\n- **Space Complexity:** $O(\\log N)$ recursion depth.`;
     }
 
     if (qLower.includes('binary search')) {
-      if (mode === 'tapori') {
-        return `Binary Search ka funda ekdum classic hai bantai!
-        
-Soch dictionary me word dhoondna hai. Tu pehle page se shuru karega kya? Bilkul nahi! Beech me se kholega:
-- Agar word aage hai, toh pichhe ke aadhe panne fek do.
-- Agar pichhe hai, toh aage ke aadhe panne fek do.
-- Har step pe aadha kaam khatam! Isi ko bolte hain **O(log N)**!
-
-\`\`\`typescript
-export function binarySearch(arr: number[], target: number): number {
-  let low = 0;
-  let high = arr.length - 1;
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    if (arr[mid] === target) return mid;
-    if (arr[mid] < target) low = mid + 1;
-    else high = mid - 1;
-  }
-  return -1; // Not found
-}
-\`\`\`
-Shart bas itni hai bantai: Array pehle se **Sorted** hona chahiye!`;
-      }
-      return `### Binary Search Algorithm ($O(\\log N)$)
-\`\`\`typescript
-export function binarySearch(arr: number[], target: number): number {
-  let low = 0;
-  let high = arr.length - 1;
-
-  while (low <= high) {
-    const mid = (low + high) >> 1;
-    if (arr[mid] === target) return mid;
-    if (arr[mid] < target) low = mid + 1;
-    else high = mid - 1;
-  }
-  return -1;
-}
-\`\`\`
-Requires monotonic sorted array. Halves search space each iteration.`;
+      return `### Binary Search ($O(\\log N)$)\n\`\`\`typescript\nexport function binarySearch(arr: number[], target: number): number {\n  let low = 0;\n  let high = arr.length - 1;\n  while (low <= high) {\n    const mid = (low + high) >> 1;\n    if (arr[mid] === target) return mid;\n    if (arr[mid] < target) low = mid + 1;\n    else high = mid - 1;\n  }\n  return -1;\n}\n\`\`\``;
     }
 
-    // 10. REACT, TYPESCRIPT & WEB DEVELOPMENT
-    if (
-      qLower.includes('react') ||
-      qLower.includes('hook') ||
-      qLower.includes('component') ||
-      qLower.includes('typescript')
-    ) {
-      if (mode === 'tapori') {
-        return `React aur TypeScript ka combo bol bole toh ekdum solid scene!
-        
-Ye le ek clean modern TypeScript React component with state aur clean design:
-\`\`\`tsx
-import React, { useState } from 'react';
-
-interface CounterProps {
-  initialCount?: number;
-  label?: string;
-}
-
-export const ModernCounter: React.FC<CounterProps> = ({ initialCount = 0, label = 'Bantai Counter' }) => {
-  const [count, setCount] = useState<number>(initialCount);
-
-  return (
-    <div className="p-4 rounded-xl bg-gray-900 border border-gray-800 text-white flex items-center gap-4">
-      <span className="font-semibold text-sm">{label}: {count}</span>
-      <button 
-        onClick={() => setCount(prev => prev + 1)}
-        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs"
-      >
-        Badhao (+1)
-      </button>
-    </div>
-  );
-};
-\`\`\`
-TypeScript se bugs run-time pe nahi, direct editor me pakde jaate hain bhidu!`;
-      }
-      return `### Modern React & TypeScript Component Architecture
-\`\`\`tsx
-import React, { useState, useCallback } from 'react';
-
-interface ComponentProps {
-  initialCount?: number;
-  title: string;
-  onUpdate?: (val: number) => void;
-}
-
-export const MetricsCounter: React.FC<ComponentProps> = ({ initialCount = 0, title, onUpdate }) => {
-  const [count, setCount] = useState<number>(initialCount);
-
-  const increment = useCallback(() => {
-    setCount(prev => {
-      const next = prev + 1;
-      onUpdate?.(next);
-      return next;
-    });
-  }, [onUpdate]);
-
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 text-zinc-100 border border-zinc-800">
-      <h4 className="text-xs font-mono uppercase tracking-wider">{title}</h4>
-      <span className="text-sm font-bold">{count}</span>
-      <button 
-        onClick={increment} 
-        className="px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 rounded font-medium"
-      >
-        Increment
-      </button>
-    </div>
-  );
-};
-\`\`\``;
+    // 8. React / TypeScript
+    if (qLower.includes('useeffect') || (qLower.includes('react') && qLower.includes('hook'))) {
+      return `### React \`useEffect\` Pattern\n\`\`\`tsx\nuseEffect(() => {\n  const controller = new AbortController();\n  fetch(endpoint, { signal: controller.signal })\n    .then(r => r.json())\n    .then(setState)\n    .catch(err => { if (err.name !== 'AbortError') console.error(err); });\n  return () => controller.abort();\n}, [endpoint]);\n\`\`\`\n- Empty \`[]\` runs once on mount; cleanup prevents leaks across unmounts.`;
     }
 
-    // 11. GENERAL KNOWLEDGE & WORLD CAPITALS
-    if (qLower.includes('capital of') || qLower.includes('rajdhani')) {
-      const capitals: Record<string, string> = {
-        india: 'New Delhi',
-        bharat: 'New Delhi',
-        france: 'Paris',
-        japan: 'Tokyo',
-        usa: 'Washington, D.C.',
-        'united states': 'Washington, D.C.',
-        uk: 'London',
-        'united kingdom': 'London',
-        germany: 'Berlin',
-        canada: 'Ottawa',
-        australia: 'Canberra',
-        russia: 'Moscow',
-        china: 'Beijing',
-        brazil: 'Brasília',
-        italy: 'Rome'
-      };
-
-      for (const [country, cap] of Object.entries(capitals)) {
-        if (qLower.includes(country)) {
-          if (mode === 'tapori') {
-            return `Sahi sawal bantai! **${country.toUpperCase()}** ki capital **${cap}** hai! Ekdum direct aur accurate answer. Aur koi sawal?`;
-          }
-          return `The capital of **${country.toUpperCase()}** is **${cap}**.`;
-        }
-      }
+    if (qLower.includes('react') || qLower.includes('component') || qLower.includes('typescript')) {
+      return `### React & TypeScript Component Pattern\n\`\`\`tsx\nimport React, { useState, useCallback } from 'react';\n\nexport const MetricsCounter: React.FC<{ title: string }> = ({ title }) => {\n  const [count, setCount] = useState(0);\n  const increment = useCallback(() => setCount(prev => prev + 1), []);\n  return (\n    <button onClick={increment} className="px-3 py-1.5 rounded bg-indigo-600 text-white text-xs">\n      {title}: {count}\n    </button>\n  );\n};\n\`\`\``;
     }
 
-    // 12. SCIENCE & PHYSICS
-    if (qLower.includes('speed of light')) {
-      return `The speed of light in vacuum ($c$) is exactly **299,792,458 meters per second** (approximately $3 \\times 10^8 \\text{ m/s}$, or $300,000 \\text{ km/s}$). In Einstein's theory of relativity, nothing in spacetime can travel faster than $c$.`;
-    }
-
-    // 13. JOKES & HUMOR
-    if (qLower.includes('joke') || qLower.includes('chutkula') || qLower.includes('hasao')) {
-      if (mode === 'tapori') {
-        return `Ye sun bantai ekdum kadak developer joke:
-
-Ek baar ek junior developer ne bhagwan se pucha:
-*Junior:* "Bhagwan, aapke liye ek million saal kitne hote hain?"
-*Bhagwan:* "Sirf ek second, mere bachhe."
-*Junior:* "Aur bhagwan, aapke liye ek million dollar kitne hote hain?"
-*Bhagwan:* "Sirf ek rupiya."
-*Junior (muskurate hue):* "Toh bhagwan, kripya karke mujhe ek rupiya de dijiye na!"
-*Bhagwan:* "Haan zaroor, bas ek second ruko!" 
-
-Samjha kya bantai? Code me bhi kabhi-kabhi aisi hi latency aati hai!`;
-      }
-      return `Why do programmers prefer dark mode?
-Because light attracts bugs!
-
-And why was the JavaScript developer sad?
-Because they didn't know how to 'null' their feelings.`;
-    }
-
-    // 14. MATH & ARITHMETIC EVALUATION (deterministic)
+    // 9. Arithmetic
     const mathMatch = qLower.match(/^(\d+(?:\.\d+)?)\s*([\+\-\*\/])\s*(\d+(?:\.\d+)?)$/);
     if (mathMatch) {
       const a = parseFloat(mathMatch[1]);
@@ -835,222 +444,24 @@ Because they didn't know how to 'null' their feelings.`;
       else if (op === '-') res = a - b;
       else if (op === '*') res = a * b;
       else if (op === '/') res = b !== 0 ? a / b : NaN;
-
-      if (mode === 'tapori') {
-        return `Calculation ka scene ekdum clear hai bantai: **${a} ${op} ${b} = ${res}**! Bina kisi locha ke exact answer.`;
-      }
-      return `Result: **${a} ${op} ${b} = ${res}**. Calculated deterministically via local math evaluation.`;
+      return `Result: **${a} ${op} ${b} = ${res}**`;
     }
 
-    // 15. COMPREHENSIVE MULTI-DOMAIN KNOWLEDGE & QUESTION-ANSWERING RESOLUTION
-    // A. Common Technical Concepts & Frameworks
-    if (qLower.includes('useeffect') || (qLower.includes('effect') && qLower.includes('react'))) {
-      if (mode === 'tapori') {
-        return `React ka \`useEffect\` hook samajhna bohot saral hai bantai!
-        
-Soch component ka life cycle: render hone ke baad jo bhi side kaam (side-effects) karna hai — jaise backend API se data laana, timer chalana, ya window resize sunna — wo sab \`useEffect\` me hota hai:
-
-\`\`\`tsx
-import { useEffect, useState } from 'react';
-
-export function UserDataFetcher({ userId }: { userId: string }) {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    let isSubscribed = true;
-    
-    // API call after DOM render
-    fetch(\`/api/user/\${userId}\`)
-      .then(res => res.json())
-      .then(json => { if (isSubscribed) setData(json); });
-
-    // Cleanup function: Memory leak se bachata hai!
-    return () => { isSubscribed = false; };
-  }, [userId]); // Dependency array: Jab userId badlega, tabhi dubara chalega!
-
-  return <div>{data ? JSON.stringify(data) : 'Loading...'}</div>;
-}
-\`\`\`
-**Bantai Golden Rules:**
-1. Empty dependency array \`[]\` = Sirf pehli baar mount hone pe chalega.
-2. Dependencies \`[a, b]\` = Jab a ya b change honge tab chalega.
-3. Cleanup return function = Component unmount ya next run se pehle safai karega!`;
-      }
-      return `### React \`useEffect\` Hook Architecture & Best Practices
-\`useEffect\` handles imperative side-effects following component render passes:
-
-\`\`\`tsx
-useEffect(() => {
-  const controller = new AbortController();
-  
-  async function fetchData() {
-    try {
-      const res = await fetch(endpoint, { signal: controller.signal });
-      const json = await res.json();
-      setState(json);
-    } catch (err: unknown) {
-      if ((err as Error).name !== 'AbortError') console.error(err);
-    }
-  }
-
-  fetchData();
-  return () => controller.abort(); // Cleanup on unmount/re-render
-}, [endpoint]);
-\`\`\`
-- **Execution Timing:** Runs asynchronously after browser layout and paint.
-- **Dependency Invariant:** Include all reactive primitives referenced in effect scope.
-- **Cleanup Return:** Essential to cancel network subscriptions, timers, or DOM event listeners.`;
-    }
-
-    if (qLower.includes('python') && (qLower.includes('kya hai') || qLower.includes('what is') || qLower.includes('explain') || qLower.includes('batao'))) {
-      if (mode === 'tapori') {
-        return `Python bole toh programming ki duniya ka Swiss Army Knife bantai!
-        
-1991 me Guido van Rossum ne banaya tha. Iska syntax itna clean aur simple hai ki lagta hai normal English likh rahe ho:
-- **Clean Syntax:** No curly braces \`{}\`, seedha indentation (spaces) pe chalta hai.
-- **AI/ML Ka Baap:** PyTorch, TensorFlow, Scikit-learn, Pandas, NumPy — duniya ka har bada AI model Python me train hota hai.
-- **Interpreted & High Level:** Line by line execute hota hai, memory management automatic hoti hai.
-
-\`\`\`python
-# Simple Python List Comprehension & Generator
-numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-even_squares = [x**2 for x in numbers if x % 2 == 0]
-print(f"Bantai ke even squares: {even_squares}")
-# Output: [4, 16, 36, 64, 100]
-\`\`\`
-Bol bhidu, Python me koi specific project ya script likhna hai kya?`;
-      }
-      return `### Python Language Overview & Core Characteristics
-Python is a high-level, interpreted, dynamically-typed programming language emphasizing code readability (PEP 8):
-- **Core Strengths:** Extensive standard library ("batteries included"), prominent in scientific computing, machine learning (PyTorch, NumPy), web backends (FastAPI, Django), and automation tooling.
-- **Execution Model:** Source code compiles to CPython bytecode (.pyc) executed on a stack-based virtual machine governed by the Global Interpreter Lock (GIL).`;
-    }
-
-    if (qLower.includes('javascript') || qLower.includes('what is js') || qLower.includes('js kya hai')) {
-      if (mode === 'tapori') {
-        return `JavaScript bole toh poore internet ka engine bantai!
-        
-1995 me Brendan Eich ne sirf 10 din me banaya tha, aur aaj duniya ka har browser aur Node.js server JS pe hi chalta hai:
-1. **Event-Driven & Asynchronous:** Single-threaded hone ke baad bhi Event Loop ki wajah se non-blocking I/O karta hai.
-2. **Everywhere:** Frontend me React/Next.js, Backend me Node/Express, Mobile me React Native, Desktop me Electron!
-3. **Dynamic Typing:** Prototypes aur closures pe based powerful language hai.`;
-      }
-      return `### JavaScript Runtime Environment & Event Loop
-JavaScript is a single-threaded, non-blocking, asynchronous runtime utilizing an event loop backed by a call stack, microtask queue (Promises), and macrotask queue (I/O, timers).`;
-    }
-
-    // B. Geography & World Facts (Deterministic Fact Engine)
-    const capitalFacts: Record<string, string> = {
-      'france': 'Paris',
-      'india': 'New Delhi',
-      'japan': 'Tokyo',
-      'usa': 'Washington, D.C.',
-      'america': 'Washington, D.C.',
-      'united states': 'Washington, D.C.',
-      'uk': 'London',
-      'britain': 'London',
-      'england': 'London',
-      'germany': 'Berlin',
-      'russia': 'Moscow',
-      'china': 'Beijing',
-      'australia': 'Canberra',
-      'canada': 'Ottawa',
-      'italy': 'Rome',
-      'spain': 'Madrid',
-      'brazil': 'Brasília',
-      'egypt': 'Cairo'
-    };
-
-    for (const [country, capital] of Object.entries(capitalFacts)) {
-      if (qLower.includes(`capital of ${country}`) || (qLower.includes(country) && (qLower.includes('capital') || qLower.includes('rajdhani')))) {
-        if (mode === 'tapori') {
-          return `Sawal ekdum simple hai bantai: **${country.toUpperCase()}** ki capital **${capital}** hai! Ekdum solid fact, bina kisi locha ke. Aur kya general knowledge check karna hai?`;
-        }
-        return `The capital of **${country.charAt(0).toUpperCase() + country.slice(1)}** is **${capital}**. Verified deterministic geographic record.`;
-      }
-    }
-
-    // C. Natural Science & Physics Queries
-    if (qLower.includes('sky is blue') || qLower.includes('aasmaan neela') || qLower.includes('sky') && qLower.includes('blue')) {
-      if (mode === 'tapori') {
-        return `Aasmaan neela kyu dikhta hai? Iska scientific funda hai **Rayleigh Scattering** bantai!
-        
-Suraj ki roshni me saaton rang (VIBGYOR) hote hain. Jab light dharti ke atmosphere me ghusti hai, toh hawa ke chhote gas molecules (nitrogen aur oxygen) chhoti wavelength wali blue light ko charo taraf scatter (bikhra) dete hain. Red aur yellow light seedhi nikal jaati hai, par blue light bikharke hamari aankhon tak aati hai! Isliye aasmaan neela dikhta hai bhidu!`;
-      }
-      return `### Optical Phenomenon: Rayleigh Scattering of Solar Radiation
-The atmosphere appears blue due to **Rayleigh Scattering**, where particles smaller than the wavelength of visible light scatter shorter wavelengths (blue/violet, $\\approx 400-450\\text{ nm}$) inversely proportional to the fourth power of wavelength ($I \\propto 1/\\lambda^4$). Because blue light scatters roughly 10 times more efficiently than red light ($700\\text{ nm}$), diffuse sky radiation is predominantly blue.`;
-    }
-
-    if (qLower.includes('creator') || qLower.includes('who made you') || qLower.includes('banaya kisne') || qLower.includes('owner') || qLower.includes('meet maru') || qLower.includes('founder')) {
-      if (mode === 'tapori') {
-        return `Apun ko banaya hai **Meet Maru** ([@ivengexnce](https://github.com/ivengexnce)) ne bantai!
-        
-Unka vision ekdum clear tha: India ka apna 100% self-hosted, sovereign agentic AI platform hona chahiye jisme zero cloud API reliance ho, strict data privacy ho, aur asli Mumbai swag ke sath sharp technical intelligence ho!`;
-      }
-      return `BANTAI was architected and built by **Meet Maru** ([github.com/ivengexnce](https://github.com/ivengexnce)) as a sovereign, self-hosted, agentic personal AI platform with zero third-party cloud API dependencies and dual-database data isolation.`;
-    }
-
-    // D. Dynamic Subject Synthesis for Any General Question
+    // 10. Honest deterministic fallback response
     const cleanSubject = query.replace(/[?]/g, '').trim();
-    if (mode === 'tapori') {
-      return `Bantai, tune pucha: **"${cleanSubject}"** — chal apun iska ekdum concrete aur solid jawaab deta hai:
-
-1. **Seedha Tod (Core Essence):**
-   Iska sabse important point ye hai ki jo sawal tu puch raha hai, wo practicality aur logic pe tika hua hai. Koi ghuma-fira ke baat nahi: ground reality yehi hai ki jab tu iske basics samajhta hai, toh agla step lena ekdum aasan ho jata hai.
-
-2. **Practical Scene & Execution:**
-   - **Step 1:** Pehle fundamentals aur prerequisites verify kar.
-   - **Step 2:** Isko chhote-chhote workable parts me divide kar.
-   - **Step 3:** Directly implement karke dekh.
-
-3. **Bantai Pro Tip:**
-   Agar tujhe iska specific code, step-by-step roadmap ya agent planner execution chahiye, toh bindaas bol! Apun ka local engine 100% on-device execute karke dega!`;
-    }
-
     if (mode === 'developer') {
-      return `### Technical Inquiry Resolution: "${cleanSubject}"
-
-**1. Architectural Scope & Specifications:**
-Processing input within current sovereign session. Evaluating dependencies, invariant constraints, and runtime efficiency.
-
-**2. Implementation Mechanics:**
-- Validate operational boundaries and type constraints.
-- Implement stateless, deterministic execution pipeline.
-- Ensure strict zero-egress data privacy compliance.
-
-**3. Execution Ready:**
-Specify target language, schema, or system parameters to proceed with immediate artifact generation.`;
+      return `### Technical Inquiry: "${cleanSubject}"\n\n- **Runtime Notice:** Using deterministic offline fallback (start Ollama/llama.cpp for generative LLM responses).\n- **Next Step:** Share specific error traces, upload files to the Knowledge Base, or trigger an Agent Plan.`;
     }
-
     if (mode === 'academic') {
-      return `### Systematic Examination: ${cleanSubject}
-
-**Theoretical Framework & Definition:**
-The subject under consideration requires analytical decomposition through foundational principles, contextual operational mechanics, and empirical implications.
-
-**Methodological Analysis:**
-1. Axiomatic definition and contextual boundaries.
-2. Structural decomposition and dependent variables.
-3. Rigorous synthesis adhering to verifiable criteria.
-
-Please specify any subsequent formal mathematical or empirical parameters you wish to explore.`;
+      return `### Analytical Overview: ${cleanSubject}\n\n1. Define assumptions and constraints explicitly.\n2. Ground conclusions in uploaded reference materials.\n\n*Note: Offline fallback engine is active; connect Ollama for full generative synthesis.*`;
     }
-
     if (mode === 'professional') {
-      return `### Strategic Briefing: ${cleanSubject}
-
-**Executive Summary:**
-1. **Core Objective:** Directly addressing your inquiry with verified on-premise analytical synthesis.
-2. **Actionable Roadmap:** Structured progression prioritizing high-impact milestones, structural reliability, and risk mitigation.
-3. **Data Governance:** Executed under strict local data sovereignty boundaries.
-
-Please indicate if you require an expanded technical brief or customized workflow execution.`;
+      return `### Executive Summary: ${cleanSubject}\n\n- **Status:** Query recorded in isolated session storage.\n- **Runtime Note:** Start a local Ollama or llama.cpp instance for full generative output.`;
     }
-
-    return `### Response: ${cleanSubject}
-1. **Overview:** I have evaluated "${cleanSubject}" within your private sovereign session.
-2. **Key Takeaway:** Execution adheres to strict local data separation with persistent memory active.
-3. **Next Steps:** How would you like to proceed with implementation, planning, or code generation?`;
+    if (isHinglishQuery) {
+      return `### Jawaab: "${cleanSubject}"\n\n- **Runtime Note:** Abhi offline fallback mode chal raha hai (full generative AI responses ke liye local Ollama start karein).\n- **Next Step:** Specific code error, document, ya task share karein.`;
+    }
+    return `### Response: ${cleanSubject}\n\n- **Context:** Processed inside your isolated session.\n- **Runtime Note:** Offline fallback engine active (connect Ollama/llama.cpp for live LLM generation).\n- **Next Steps:** Share specific code, upload docs, or run an Agent workflow.`;
   }
 }
 

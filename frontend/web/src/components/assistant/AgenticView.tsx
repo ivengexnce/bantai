@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
 import { useApp } from '../../context/AppContext';
@@ -16,14 +16,28 @@ import {
   Clock,
   Wrench,
   Terminal,
-  AlertCircle
+  AlertCircle,
+  Download
 } from 'lucide-react';
 
 const PRESET_GOALS = [
   'Create a task to review BANTAI quarterly security audit and schedule a reminder for tomorrow',
+  'Schedule a team architecture review meeting on calendar for tomorrow',
   'Send an email status update to team@bantai.local summarizing local model benchmarks',
   'Calculate SLA uptime for 43200 minutes minus 12 minutes downtime'
 ];
+
+function triggerTextDownload(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 function stepStatusBadge(status: AgentPlanStep['status']) {
   switch (status) {
@@ -64,6 +78,17 @@ export function AgenticView() {
   const [isPlanning, setIsPlanning] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.listAgentPlans()
+      .then(saved => {
+        if (Array.isArray(saved) && saved.length > 0) {
+          setPlans(saved);
+          setActivePlanId(prev => prev || saved[0].planId);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const activePlan = plans.find(p => p.planId === activePlanId) || plans[0] || null;
 
@@ -350,10 +375,48 @@ export function AgenticView() {
                     <p className="text-xs text-[#94a3b8]">{step.rationale}</p>
 
                     {step.result !== undefined && (
-                      <div className="p-2.5 rounded-lg bg-[#07070f] border border-white/5 text-[11px] font-mono text-[#10b981] overflow-x-auto">
-                        {typeof step.result === 'string'
-                          ? step.result
-                          : JSON.stringify(step.result, null, 2)}
+                      <div className="space-y-2">
+                        <div className="p-2.5 rounded-lg bg-[#07070f] border border-white/5 text-[11px] font-mono text-[#10b981] overflow-x-auto">
+                          {typeof step.result === 'string'
+                            ? step.result
+                            : JSON.stringify(step.result, null, 2)}
+                        </div>
+                        {typeof step.result === 'object' && step.result !== null && (
+                          <div className="flex flex-wrap gap-2">
+                            {'icsContent' in step.result && typeof (step.result as any).icsContent === 'string' && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  triggerTextDownload(
+                                    (step.result as any).filename || 'bantai_event.ics',
+                                    (step.result as any).icsContent,
+                                    'text/calendar'
+                                  )
+                                }
+                                className="px-3 py-1.5 rounded-lg bg-[#22d3ee]/15 hover:bg-[#22d3ee]/25 border border-[#22d3ee]/40 text-[#22d3ee] text-xs font-semibold flex items-center gap-1.5"
+                              >
+                                <Download size={12} />
+                                <span>Download Calendar (.ics)</span>
+                              </button>
+                            )}
+                            {'emlContent' in step.result && typeof (step.result as any).emlContent === 'string' && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  triggerTextDownload(
+                                    (step.result as any).filename || 'bantai_message.eml',
+                                    (step.result as any).emlContent,
+                                    'message/rfc822'
+                                  )
+                                }
+                                className="px-3 py-1.5 rounded-lg bg-[#6366f1]/15 hover:bg-[#6366f1]/25 border border-[#6366f1]/40 text-[#a5b4fc] text-xs font-semibold flex items-center gap-1.5"
+                              >
+                                <Download size={12} />
+                                <span>Download Email (.eml)</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 

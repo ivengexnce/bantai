@@ -9,7 +9,6 @@ import { Cpu, ShieldCheck, ChevronDown, Check, MessageSquare } from 'lucide-reac
 import { PersonalityMode } from '@bantai/shared';
 
 const PERSONALITIES: Array<{ id: PersonalityMode; label: string }> = [
-  { id: 'tapori', label: 'Tapori' },
   { id: 'balanced', label: 'Balanced' },
   { id: 'professional', label: 'Professional' },
   { id: 'developer', label: 'Developer' },
@@ -137,7 +136,7 @@ export function GlassIrisTopBar() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10b981] shadow-[0_0_8px_#10b981]" />
           </span>
           <span className="text-[10px] font-mono font-semibold tracking-wider uppercase text-[#10b981]">
-            {backendHealth.isAlive ? `${backendHealth.provider} Active` : 'Local Engine'}
+            {backendHealth.isAlive ? `${backendHealth.provider} Live` : 'Fallback Demo Engine'}
           </span>
         </div>
 

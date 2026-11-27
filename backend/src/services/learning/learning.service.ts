@@ -1,4 +1,4 @@
-import { SafeUserProfile } from '@bantai/shared';
+import { getSystemPromptForMode, PersonalityMode, SafeUserProfile } from '@bantai/shared';
 import { mongoUserService } from '../database/mongo.service';
 import fs from 'fs';
 import path from 'path';
@@ -7,6 +7,8 @@ import { config } from '../../config/env';
 export interface TrainingExample {
   id: string;
   sourceUserId: string;
+  personalityMode?: PersonalityMode;
+  systemPrompt?: string;
   consentTimestamp: string;
   policyVersion: string;
   messages: Array<{
@@ -117,7 +119,8 @@ export class LearningService {
     userQuery: string,
     assistantResponse: string,
     feedbackRating: 'up' | 'down',
-    correction?: string
+    correction?: string,
+    personalityMode: PersonalityMode = 'balanced'
   ): Promise<TrainingExample | null> {
     const consentCheck = await this.canIngestForTraining(userId);
     if (!consentCheck.allowed || !consentCheck.userProfile) {
@@ -135,6 +138,8 @@ export class LearningService {
     const example: TrainingExample = {
       id: `ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       sourceUserId: userId,
+      personalityMode,
+      systemPrompt: getSystemPromptForMode(personalityMode),
       consentTimestamp: consentCheck.userProfile.learningConsent.consentTimestamp || new Date().toISOString(),
       policyVersion: consentCheck.userProfile.learningConsent.policyVersion,
       messages: [
@@ -147,9 +152,50 @@ export class LearningService {
     };
 
     const bufferFile = path.join(this.datasetsDir, 'approved_examples_buffer.jsonl');
-    fs.appendFileSync(bufferFile, JSON.stringify(example) + '\n', 'utf8');
+    fs.appendFileSync(bufferFile, JSON.stringify(example) + '\n', { encoding: 'utf8', mode: 0o600 });
 
     return example;
+  }
+
+  /**
+   * Purge all collected training examples belonging to a specific user (consent withdrawal / GDPR wipe)
+   */
+  public purgeUserExamples(userId: string): number {
+    const bufferFile = path.join(this.datasetsDir, 'approved_examples_buffer.jsonl');
+    if (!fs.existsSync(bufferFile)) return 0;
+
+    const lines = fs.readFileSync(bufferFile, 'utf8').split('\n').filter(Boolean);
+    const retained: string[] = [];
+    let removed = 0;
+
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line) as TrainingExample;
+        if (parsed.sourceUserId === userId) {
+          removed++;
+          continue;
+        }
+        retained.push(line);
+      } catch {
+        // Drop corrupted lines safely
+      }
+    }
+
+    const payload = retained.length > 0 ? retained.join('\n') + '\n' : '';
+    const tmp = `${bufferFile}.tmp.${process.pid}.${Date.now()}`;
+    fs.writeFileSync(tmp, payload, { encoding: 'utf8', mode: 0o600 });
+    try {
+      fs.renameSync(tmp, bufferFile);
+    } catch {
+      fs.writeFileSync(bufferFile, payload, { encoding: 'utf8', mode: 0o600 });
+      try {
+        fs.unlinkSync(tmp);
+      } catch {
+        // ignore
+      }
+    }
+
+    return removed;
   }
 
   /**
@@ -165,7 +211,23 @@ export class LearningService {
 
     if (fs.existsSync(bufferFile)) {
       const lines = fs.readFileSync(bufferFile, 'utf8').split('\n').filter(Boolean);
-      examples = lines.map(l => JSON.parse(l));
+      const parsed = lines.map(l => JSON.parse(l) as TrainingExample);
+
+      // Re-verify live opt-in consent and user existence at export time
+      const userConsentCache = new Map<string, boolean>();
+      for (const item of parsed) {
+        if (item.sourceUserId === 'system_curated') {
+          examples.push(item);
+          continue;
+        }
+        if (!userConsentCache.has(item.sourceUserId)) {
+          const check = await this.canIngestForTraining(item.sourceUserId);
+          userConsentCache.set(item.sourceUserId, check.allowed);
+        }
+        if (userConsentCache.get(item.sourceUserId)) {
+          examples.push(item);
+        }
+      }
     }
 
     // Add baseline exemplar pairs if buffer is small to allow initial pipeline execution
@@ -233,8 +295,8 @@ export class LearningService {
         consentTimestamp: new Date().toISOString(),
         policyVersion: '1.0.0-2026',
         messages: [
-          { role: 'user', content: 'Bantai, quicksort ka time complexity kya hai?' },
-          { role: 'assistant', content: 'Arey bhidu! Quicksort ka average time complexity O(n log n) hota hai, par worst case me O(n^2) chala jata hai agar pivot ekdum faltu choose hua toh. Best case me bhi O(n log n) rehta hai bantai!' }
+          { role: 'user', content: 'QuickSort ka average aur worst-case time complexity kya hai?' },
+          { role: 'assistant', content: 'Quicksort ki average time complexity O(n log n) hoti hai aur space O(log n). Worst case mein yeh O(n^2) jaati hai jab pivot selection unbalanced ho (for example, already sorted array par fixed end-pivot lena).' }
         ],
         qualityScore: 1.0,
         piiScrubbed: false,
@@ -246,8 +308,8 @@ export class LearningService {
         consentTimestamp: new Date().toISOString(),
         policyVersion: '1.0.0-2026',
         messages: [
-          { role: 'user', content: 'Explain REST vs GraphQL in Mumbai style.' },
-          { role: 'assistant', content: 'Suno bantai! REST bole toh thali system — pura packet ek sath aayega chahe tu sirf roti khaye ya daal. Aur GraphQL bole toh buffet system — plate utha aur jitna item maangta hai utna hi le! Over-fetching ka jhanjhat hi khatam!' }
+          { role: 'user', content: 'Explain REST vs GraphQL concisely in natural Hinglish.' },
+          { role: 'assistant', content: 'REST aur GraphQL mein main difference response structure ka hai: REST mein fixed endpoints fixed payload bhejte hain (jisse over-fetching ya under-fetching ho sakti hai), jabki GraphQL mein ek single endpoint par client exact zaroori fields request karta hai.' }
         ],
         qualityScore: 1.0,
         piiScrubbed: false,

@@ -12,6 +12,7 @@ router.post('/mfa/verify', authRateLimiter, (req, res) => authController.mfaVeri
 router.post('/forgot-password', authRateLimiter, (req, res) => authController.forgotPassword(req, res));
 router.post('/reset-password', authRateLimiter, (req, res) => authController.resetPassword(req, res));
 router.post('/google', authRateLimiter, (req, res) => authController.googleAuth(req, res));
+router.post('/workstation-session', authRateLimiter, (req, res) => authController.workstationSession(req, res));
 router.post('/logout', (req, res) => authController.logout(req, res));
 router.get('/session', (req, res) => authController.session(req, res));
 

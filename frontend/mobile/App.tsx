@@ -171,7 +171,7 @@ export default function App() {
       if (!convId) {
         const created = await MobileApi.createConversation(
           trimmed.slice(0, 40),
-          user?.preferences?.defaultPersonalityMode || 'tapori',
+          user?.preferences?.defaultPersonalityMode || 'balanced',
           'chhotu'
         );
         convId = created.id;
@@ -181,7 +181,7 @@ export default function App() {
       const reply = await MobileApi.sendChatStream(
         convId,
         trimmed,
-        user?.preferences?.defaultPersonalityMode || 'tapori',
+        user?.preferences?.defaultPersonalityMode || 'balanced',
         'chhotu',
         partial => {
           setMessages(prev => {

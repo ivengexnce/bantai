@@ -31,7 +31,7 @@ describe('Consent Management, PII Scrubbing & Fine-Tuning Pipeline', () => {
       preferences: {
         theme: 'dark',
         language: 'hinglish',
-        defaultPersonalityMode: 'tapori',
+        defaultPersonalityMode: 'balanced',
         voiceSpeed: 1.0,
         voiceGender: 'male',
         soundEffectsEnabled: true,
@@ -119,7 +119,7 @@ describe('Consent Management, PII Scrubbing & Fine-Tuning Pipeline', () => {
     const example = await learningService.recordTrainingExample(
       userIdOptIn,
       'What is Mumbai known for? Reach me at user@test.com',
-      'Mumbai is the financial capital of India, known for its spirit and vada pav bantai!',
+      'Mumbai is the financial capital of India, known for its commerce and vada pav!',
       'up'
     );
 
@@ -151,5 +151,9 @@ describe('Consent Management, PII Scrubbing & Fine-Tuning Pipeline', () => {
     expect(manifest.valCount).toBeGreaterThanOrEqual(0);
     expect(manifest.testCount).toBeGreaterThanOrEqual(0);
     expect(manifest.trainFile).toBeDefined();
+
+    // Purging withdrawn user examples removes them from buffer
+    const purgedCount = learningService.purgeUserExamples(userIdOptIn);
+    expect(purgedCount).toBeGreaterThanOrEqual(1);
   });
 });

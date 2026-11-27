@@ -74,5 +74,25 @@ export const config = {
 
   // File Uploads & Temp storage
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
-  maxUploadSizeBytes: 2 * 1024 * 1024 // 2MB JSON / document bound
+  maxUploadSizeBytes: 2 * 1024 * 1024, // 2MB JSON / document bound
+
+  // Multi-instance State Store (optional Redis URL; durable disk persistence by default)
+  redisUrl: (process.env.REDIS_URL || '').trim(),
+
+  // SMTP / Password Reset Email Delivery (writes to local outbox JSONL if SMTP_HOST unset)
+  smtpHost: (process.env.SMTP_HOST || '').trim(),
+  smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
+  smtpSecure: process.env.SMTP_SECURE === 'true',
+  smtpUser: (process.env.SMTP_USER || '').trim(),
+  smtpPass: (process.env.SMTP_PASS || '').trim(),
+  smtpFrom: (process.env.SMTP_FROM || 'no-reply@bantai.local').trim(),
+
+  // ElevenLabs Per-User Daily Character Cap (protects server-side API bill; 0 disables hosted TTS)
+  elevenlabsMaxCharsPerUserDay: Math.max(
+    0,
+    parseInt(process.env.ELEVENLABS_MAX_CHARS_PER_USER_DAY || '20000', 10) || 20000
+  ),
+
+  // Explicit opt-in Local Workstation Mode (strictly restricted to direct loopback sockets)
+  localWorkstationMode: process.env.BANTAI_LOCAL_WORKSTATION === 'true'
 };

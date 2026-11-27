@@ -3,7 +3,7 @@
 BANTAI Real LoRA / QLoRA Training Engine
 Fine-tunes causal language models with 4-bit NF4 QLoRA on NVIDIA GPUs
 (optimized for 4GB VRAM) or standard FP32 LoRA fallback on CPU (--allow_cpu).
-Generates reloadable LoRA adapter weights (.safetensors).
+Supports held-out validation loss (--eval_split) and optional all-linear LoRA.
 """
 
 import argparse
@@ -32,15 +32,17 @@ def parse_args() -> argparse.Namespace:
     """Parse and validate CLI arguments for LoRA fine-tuning."""
     parser = argparse.ArgumentParser(description="BANTAI Genuine LoRA / QLoRA Training Engine")
     parser.add_argument("--base_model", type=str, default="Qwen/Qwen2.5-3B-Instruct", help="Hugging Face model ID or local model path")
-    parser.add_argument("--dataset_path", type=str, default="./training/datasets/tapori_dataset.jsonl", help="Path to JSONL dataset")
+    parser.add_argument("--dataset_path", type=str, default="./training/datasets/bantai_dataset.jsonl", help="Path to JSONL dataset")
     parser.add_argument("--output_dir", type=str, default="./models/adapters/bantai_v1", help="Output directory for LoRA adapter weights")
-    parser.add_argument("--epochs", type=int, default=3, help="Training epochs")
+    parser.add_argument("--epochs", type=int, default=8, help="Training epochs")
     parser.add_argument("--batch_size", type=int, default=1, help="Per-device batch size (1 for 4GB VRAM)")
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=4, help="Gradient accumulation steps")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=2, help="Gradient accumulation steps")
     parser.add_argument("--learning_rate", type=float, default=2e-4, help="Learning rate")
-    parser.add_argument("--max_seq_length", type=int, default=256, help="Max sequence length for 4GB VRAM safety")
+    parser.add_argument("--max_seq_length", type=int, default=320, help="Max sequence length for 4GB VRAM safety")
     parser.add_argument("--lora_r", type=int, default=8, help="LoRA rank dimension")
     parser.add_argument("--lora_alpha", type=int, default=16, help="LoRA alpha scaling factor")
+    parser.add_argument("--eval_split", type=float, default=0.15, help="Fraction of dataset reserved for held-out validation (0.0 disables)")
+    parser.add_argument("--all_linear", action="store_true", help="Attach LoRA adapters to MLP projections (gate/up/down) alongside attention layers")
     parser.add_argument("--allow_cpu", action="store_true", help="Fallback to FP32 LoRA training when CUDA is unavailable")
     args = parser.parse_args()
 
@@ -50,6 +52,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--max_seq_length must be >= 16.")
     if args.lora_r < 1 or args.lora_alpha < 1 or args.learning_rate <= 0:
         parser.error("--lora_r, --lora_alpha must be >= 1 and --learning_rate must be > 0.")
+    if args.eval_split < 0.0 or args.eval_split >= 0.5:
+        parser.error("--eval_split must be in [0.0, 0.5).")
     return args
 
 
@@ -74,8 +78,7 @@ def resolve_compute_mode(allow_cpu: bool) -> ComputeMode:
 
     if not allow_cpu:
         print(f"[!] Error: CUDA is not available in {sys.executable} (torch {torch.__version__}).")
-        print("[!] QLoRA requires a CUDA-enabled PyTorch build (e.g. install torch with cu124 in a venv),")
-        print("[!] or re-run with --allow_cpu for slower FP32 LoRA fallback without 4-bit quantization.")
+        print("[!] QLoRA requires a CUDA-enabled PyTorch build, or re-run with --allow_cpu.")
         sys.exit(1)
 
     return ComputeMode(
@@ -166,7 +169,6 @@ def build_tokenize_fn(tokenizer, max_seq_length: int):
         input_ids = tokens["input_ids"]
         assistant_indices = [i for i, m in enumerate(messages) if m["role"] == "assistant"]
 
-        # Unmask only assistant responses so CrossEntropyLoss ignores system/user prompts and padding (-100).
         if not assistant_indices:
             tokens["labels"] = input_ids.copy()
             return tokens
@@ -190,8 +192,8 @@ def build_tokenize_fn(tokenizer, max_seq_length: int):
     return format_and_tokenize
 
 
-def prepare_dataset(tokenizer, raw_examples: list[dict], max_seq_length: int):
-    """Tokenize chat examples, mask prompts, and filter out fully truncated rows."""
+def prepare_dataset(tokenizer, raw_examples: list[dict], max_seq_length: int, eval_split: float):
+    """Tokenize chat examples, mask prompts, filter truncated rows, and split train/val."""
     from datasets import Dataset
 
     hf_dataset = Dataset.from_list(raw_examples)
@@ -201,11 +203,15 @@ def prepare_dataset(tokenizer, raw_examples: list[dict], max_seq_length: int):
     valid = tokenized.filter(lambda row: any(lbl != -100 for lbl in row["labels"]))
     dropped = len(tokenized) - len(valid)
     if dropped > 0:
-        print(f"[!] Warning: Dropped {dropped} example(s) truncated before assistant output (increase --max_seq_length).")
+        print(f"[!] Warning: Dropped {dropped} example(s) truncated before assistant output.")
     if len(valid) == 0:
         print("[!] Error: 0 trainable examples remain after tokenization/truncation.")
         sys.exit(1)
-    return valid
+
+    if eval_split > 0.0 and len(valid) >= 5:
+        split = valid.train_test_split(test_size=eval_split, seed=42)
+        return split["train"], split["test"]
+    return valid, None
 
 
 def load_model_and_tokenizer(args: argparse.Namespace, compute_mode: ComputeMode):
@@ -242,16 +248,17 @@ def load_model_and_tokenizer(args: argparse.Namespace, compute_mode: ComputeMode
         )
     else:
         print(f"[3/5] Loading {args.base_model} in FP32 CPU fallback mode...")
-        model = AutoModelForCausalLM.from_pretrained(
-            args.base_model,
-            trust_remote_code=True,
-        )
+        model = AutoModelForCausalLM.from_pretrained(args.base_model, trust_remote_code=True)
         model.config.use_cache = False
+
+    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
+    if args.all_linear:
+        target_modules.extend(["gate_proj", "up_proj", "down_proj"])
 
     lora_config = LoraConfig(
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        target_modules=target_modules,
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM",
@@ -270,10 +277,9 @@ def main():
     print(f"[*] Base Foundation Model : {args.base_model}")
     print(f"[*] Input Dataset Path    : {args.dataset_path}")
     print(f"[*] Adapter Output Target : {args.output_dir}")
-    print(f"[*] Hyperparameters       : epochs={args.epochs}, lr={args.learning_rate}, seq_len={args.max_seq_length}")
+    print(f"[*] Hyperparameters       : epochs={args.epochs}, lr={args.learning_rate}, seq_len={args.max_seq_length}, all_linear={args.all_linear}")
     print("-" * 65)
 
-    # 1. Hardware & Dataset Validation
     compute_mode = resolve_compute_mode(allow_cpu=args.allow_cpu)
     print(f"[1/5] Compute Target: {compute_mode.gpu_name} ({compute_mode.vram_gb} GB VRAM, {compute_mode.precision})")
 
@@ -281,22 +287,24 @@ def main():
     raw_examples = load_training_examples(args.dataset_path)
     print(f"[*] Successfully loaded {len(raw_examples)} training examples.")
 
-    # 2. Model, Tokenizer, and Tokenized Dataset
     model, tokenizer = load_model_and_tokenizer(args, compute_mode)
-    tokenized_dataset = prepare_dataset(tokenizer, raw_examples, args.max_seq_length)
+    train_dataset, eval_dataset = prepare_dataset(tokenizer, raw_examples, args.max_seq_length, args.eval_split)
+    print(f"[*] Prepared splits: train={len(train_dataset)}, val={len(eval_dataset) if eval_dataset else 0}")
 
-    # 3. Training Execution (use isolated temp dir for transient trainer state)
     from transformers import DataCollatorForSeq2Seq, Trainer, TrainingArguments
 
     print("[4/5] Executing LoRA gradient descent optimization...")
     with tempfile.TemporaryDirectory(prefix="bantai_ckpt_") as tmp_ckpt_dir:
+        has_eval = eval_dataset is not None
         training_args = TrainingArguments(
             output_dir=tmp_ckpt_dir,
             per_device_train_batch_size=args.batch_size,
+            per_device_eval_batch_size=args.batch_size,
             gradient_accumulation_steps=args.gradient_accumulation_steps,
             learning_rate=args.learning_rate,
             num_train_epochs=args.epochs,
             logging_steps=1,
+            eval_strategy="epoch" if has_eval else "no",
             bf16=compute_mode.use_bf16,
             fp16=compute_mode.use_fp16,
             use_cpu=(compute_mode.device == "cpu"),
@@ -309,7 +317,8 @@ def main():
         trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=tokenized_dataset,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
             processing_class=tokenizer,
             data_collator=DataCollatorForSeq2Seq(
                 tokenizer,
@@ -319,8 +328,8 @@ def main():
             ),
         )
         train_result = trainer.train()
+        eval_metrics = trainer.evaluate() if has_eval else {}
 
-    # 4. Save Genuine Adapter Weights & Manifest
     os.makedirs(args.output_dir, exist_ok=True)
     print(f"[5/5] Saving genuine LoRA adapter weights to {args.output_dir}...")
     model.save_pretrained(args.output_dir)
@@ -332,25 +341,27 @@ def main():
     manifest = {
         "status": "COMPLETED",
         "base_model": args.base_model,
-        "adapter_version": "bantai-v1.0-real-lora",
+        "adapter_version": "bantai-v2.0-sovereign",
         "train_loss": round(float(train_result.training_loss), 4),
+        "eval_loss": round(float(eval_metrics["eval_loss"]), 4) if "eval_loss" in eval_metrics else None,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         "adapter_files": adapter_files,
         "vram_gb": compute_mode.vram_gb,
         "device": compute_mode.device,
         "precision": compute_mode.precision,
-        "trained_examples": len(tokenized_dataset),
+        "train_examples": len(train_dataset),
+        "val_examples": len(eval_dataset) if eval_dataset else 0,
         "epochs": args.epochs,
+        "all_linear": args.all_linear,
     }
     with open(os.path.join(args.output_dir, "training_manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
     print("=" * 65)
     print(f"  SUCCESS: Real BANTAI LoRA Adapter Generated at: {args.output_dir}")
-    print(f"  Final Loss: {manifest['train_loss']}")
+    print(f"  Train Loss: {manifest['train_loss']} | Eval Loss: {manifest['eval_loss']}")
     print("=" * 65)
 
 
 if __name__ == "__main__":
     main()
-

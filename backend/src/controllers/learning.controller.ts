@@ -4,7 +4,9 @@ import { learningService } from '../services/learning/learning.service';
 import { mongoUserService } from '../services/database/mongo.service';
 import { firebaseFirestoreService } from '../services/database/firebase.service';
 import { inferenceService } from '../services/ai/inference.service';
-import { revokeToken } from '../utils/jwt';
+import { ragService } from '../services/rag/rag.service';
+import { agentPlannerService } from '../services/agent/planner.service';
+import { revokeToken, revokeUserTokensBefore } from '../utils/jwt';
 import { clearAuthCookies } from '../utils/cookies';
 import { sendInternalError } from '../utils/security';
 import { SUPPORTED_MODELS } from '@bantai/shared';
@@ -63,14 +65,21 @@ export class LearningController {
   async wipeUserData(req: AuthenticatedRequest, res: Response) {
     try {
       const userId = req.user!.userId;
+      // Erase chat, memory, tasks, vector index, agent plans, and training buffer first
+      learningService.purgeUserExamples(userId);
+      ragService.purgeUserVectors(userId);
+      await agentPlannerService.purgeUserPlans(userId);
       await firebaseFirestoreService.wipeAllUserData(userId);
+
+      // Delete primary MongoDB account record & immediately invalidate all issued JWTs
       await mongoUserService.deleteUserAccount(userId);
+      revokeUserTokensBefore(userId, Math.floor(Date.now() / 1000) + 1);
       revokeToken(req.user!.jti, req.user!.exp);
       clearAuthCookies(res, req);
 
       return res.json({
         success: true,
-        message: 'All user data across MongoDB and Firebase has been permanently and securely erased.'
+        message: 'All user data across MongoDB, Firebase, vector storage, and training buffers has been permanently erased.'
       });
     } catch (err) {
       return sendInternalError(res, 'LearningController.wipeUserData', err);

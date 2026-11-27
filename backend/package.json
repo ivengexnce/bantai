@@ -4,11 +4,11 @@
   "description": "Production Node.js/TypeScript backend for BANTAI agentic AI platform",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').copyFileSync('src/services/rag/unpdf_import.cjs','dist/services/rag/unpdf_import.cjs')\"",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "test": "jest --config ../tests/jest.config.js --runInBand",
-    "test:security": "jest --config ../tests/jest.config.js --roots ../security --runInBand"
+    "test": "node --experimental-vm-modules ../node_modules/jest/bin/jest.js --config ../tests/jest.config.js --runInBand",
+    "test:security": "node --experimental-vm-modules ../node_modules/jest/bin/jest.js --config ../tests/jest.config.js --roots ../security --runInBand"
   },
   "author": "Meet Maru (https://github.com/ivengexnce)",
   "repository": {
@@ -25,6 +25,8 @@
     "firebase-admin": "^14.5.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^10.6.1",
+    "unpdf": "^2.2.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -35,6 +37,7 @@
     "@types/jest": "^29.5.12",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.12.12",
+    "@types/nodemailer": "^7.0.12",
     "@types/supertest": "^6.0.2",
     "jest": "^29.7.0",
     "supertest": "^7.0.0",

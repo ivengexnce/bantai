@@ -26,7 +26,7 @@ Implemented in `backend/src/services/database/mongo.service.ts`.
   "preferences": {
     "theme": "dark",
     "language": "hinglish",
-    "defaultPersonalityMode": "tapori",
+    "defaultPersonalityMode": "balanced",
     "voiceSpeed": 1.0,
     "voiceGender": "male",
     "soundEffectsEnabled": true,

@@ -1,14 +1,14 @@
 {
   "status": "COMPLETED",
   "base_model": "Qwen/Qwen2.5-3B-Instruct",
-  "adapter_version": "bantai-v1.0-real-lora",
-  "train_loss": 3.5231,
-  "completed_at": "2026-11-25T10:26:33.035970+00:00",
+  "adapter_version": "bantai-v2.0-sovereign",
+  "train_loss": 0.9159,
+  "eval_loss": 3.5295,
+  "completed_at": "2026-11-27T07:57:43.817528+00:00",
   "adapter_files": [
     "README.md",
     "adapter_config.json",
     "adapter_model.safetensors",
-    "calibration_dataset.jsonl",
     "chat_template.jinja",
     "tokenizer.json",
     "tokenizer_config.json",
@@ -17,6 +17,8 @@
   "vram_gb": 4.0,
   "device": "cuda",
   "precision": "bf16",
-  "trained_examples": 10,
-  "epochs": 6
+  "train_examples": 34,
+  "val_examples": 6,
+  "epochs": 8,
+  "all_linear": true
 }

@@ -12,8 +12,8 @@ describe('Authentication & Protected Route Endpoints', () => {
       .send({
         email: uniqueEmail,
         password,
-        name: 'Munna Bhai',
-        username: `munna_${Date.now().toString().slice(-4)}`
+        name: 'Aarav Sharma',
+        username: `aarav_${Date.now().toString().slice(-4)}`
       });
 
     expect(res.status).toBe(201);

@@ -2,8 +2,8 @@
  * BANTAI ADVANCED VOICE SPEECH & RECOGNITION ENGINE
  * 
  * Provides crystal-clear text-to-speech (TTS) and speech-to-text (STT) calibrated for:
- * 1. Indian English / Hindi accent matching for Tapori mode ("bhidu", "ekdum rapchik").
- * 2. Natural human English voices for Developer, Academic, and Balanced modes.
+ * 1. Indian English / Hindi natural voices when preferred in Balanced mode.
+ * 2. Natural human English voices for Developer, Academic, Professional, and Balanced modes.
  * 3. Robust markdown, code, and emoji stripping so punctuation/syntax isn't spoken.
  * 4. Automatic sentence chunking (<160 chars) to bypass Chromium's 15-second speech cutoff bug.
  * 5. Garbage collection protection for active SpeechSynthesisUtterances.
@@ -189,12 +189,12 @@ export function getAvailableVoices(): Promise<SpeechSynthesisVoice[]> {
 
 /**
  * Selects the optimal voice depending on personality mode and user preferences.
- * - Tapori mode prioritizes Indian English (en-IN) or Hindi (hi-IN) so slang sounds natural.
- * - Developer / Academic / Balanced modes prioritize high-fidelity natural English voices.
+ * - Balanced mode considers natural Indian English (en-IN) / Hindi alongside high-fidelity English voices.
+ * - Developer / Academic / Professional modes prioritize high-fidelity natural English voices.
  */
 export function pickBestVoice(
   voices: SpeechSynthesisVoice[],
-  mode: PersonalityMode = 'tapori',
+  mode: PersonalityMode = 'balanced',
   preferredGender: 'male' | 'female' = 'male',
   preferredVoiceURI?: string
 ): SpeechSynthesisVoice | null {
@@ -206,13 +206,9 @@ export function pickBestVoice(
     if (matched) return matched;
   }
 
-  const isTapori = mode === 'tapori';
+  const preferIndicFriendly = mode === 'balanced';
 
-  if (isTapori) {
-    // 2. Tapori Mode: Indian English (en-IN) or Hindi (hi-IN)
-    // Common Indian voices on Windows / Chrome / Android / Mac:
-    // "Google हिन्दी", "Google English (India)", "Microsoft Ravi", "Microsoft Heera",
-    // "Microsoft Neerja", "Microsoft Madhur", "Microsoft Swara", "Veena", "Rishi"
+  if (preferIndicFriendly) {
     const indianVoices = voices.filter(v =>
       v.lang.toLowerCase().startsWith('en-in') ||
       v.lang.toLowerCase().startsWith('hi') ||
@@ -328,7 +324,7 @@ function speakWithBrowser(
 
     const chosenVoice = pickBestVoice(
       voices,
-      options.mode || 'tapori',
+      options.mode || 'balanced',
       options.gender || 'male',
       options.voiceURI
     );
@@ -357,7 +353,7 @@ function speakWithBrowser(
         utterance.lang = chosenVoice.lang;
       }
 
-      utterance.rate = options.rate || (options.mode === 'tapori' ? 1.05 : 1.0);
+      utterance.rate = options.rate || 1.0;
       utterance.pitch = options.pitch || 1.0;
 
       utterance.onend = () => {
@@ -511,7 +507,7 @@ export function stopSpeaking() {
 
 /**
  * Creates an enhanced SpeechRecognizer instance for voice input.
- * Dynamically switches locale for Tapori (en-IN) vs Global English (en-US).
+ * Switches locale between en-IN (Balanced) and en-US (Technical/Formal modes).
  */
 export function createSpeechRecognizer(options: {
   mode?: PersonalityMode;
@@ -537,8 +533,8 @@ export function createSpeechRecognizer(options: {
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    // Use Indian English locale for Tapori mode, US English for others
-    recognition.lang = options.mode === 'tapori' ? 'en-IN' : 'en-US';
+    // Use Indian English locale for Balanced bilingual mode, US English for technical/formal modes
+    recognition.lang = !options.mode || options.mode === 'balanced' ? 'en-IN' : 'en-US';
 
     recognition.onstart = () => {
       options.onStart?.();

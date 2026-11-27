@@ -4,8 +4,37 @@
  * Covers end-to-end REST CRUD flows, SSE streaming, Agentic approval gates,
  * RAG ingestion/retrieval, account lifecycle, and concurrent load resilience.
  */
+import fs from 'fs';
+import path from 'path';
 import request from 'supertest';
 import { app } from '../backend/src/index';
+import { StateStoreService } from '../backend/src/services/state/state_store.service';
+import { config } from '../backend/src/config/env';
+
+function buildMinimalPdfBase64(text: string): string {
+  const escaped = text.replace(/([()\\])/g, '\\$1');
+  const stream = `BT\n/F1 12 Tf\n72 720 Td\n(${escaped}) Tj\nET`;
+  const objects = [
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>\nendobj\n',
+    '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    `5 0 obj\n<< /Length ${Buffer.byteLength(stream, 'utf8')} >>\nstream\n${stream}\nendstream\nendobj\n`
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [0];
+  for (const obj of objects) {
+    offsets.push(Buffer.byteLength(pdf, 'utf8'));
+    pdf += obj;
+  }
+  const xrefStart = Buffer.byteLength(pdf, 'utf8');
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i <= objects.length; i++) {
+    pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`;
+  return Buffer.from(pdf, 'utf8').toString('base64');
+}
 
 async function registerUser(prefix: string) {
   const unique = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -68,7 +97,7 @@ describe('QA Functional & Integration Suite', () => {
     const createRes = await request(app)
       .post('/api/chat/conversations')
       .set('Authorization', `Bearer ${u.token}`)
-      .send({ title: 'Architecture Review', personalityMode: 'tapori', modelId: 'chhotu' });
+      .send({ title: 'Architecture Review', personalityMode: 'balanced', modelId: 'chhotu' });
     expect(createRes.status).toBe(201);
     const convId = createRes.body.data.id as string;
 
@@ -81,7 +110,7 @@ describe('QA Functional & Integration Suite', () => {
     const streamRes = await request(app)
       .post('/api/chat/stream')
       .set('Authorization', `Bearer ${u.token}`)
-      .send({ conversationId: convId, content: 'QuickSort bata bantai', personalityMode: 'tapori', modelId: 'chhotu' });
+      .send({ conversationId: convId, content: 'Explain QuickSort concisely', personalityMode: 'balanced', modelId: 'chhotu' });
     expect(streamRes.status).toBe(200);
     expect(streamRes.headers['content-type']).toContain('text/event-stream');
     expect(streamRes.text).toContain('data: ');
@@ -201,6 +230,97 @@ describe('QA Functional & Integration Suite', () => {
       .send({ planId, stepIndex: 1, approved: true });
     expect(approvedExec.status).toBe(200);
     expect(approvedExec.body.data.status).toBe('completed');
+    const emailStepResult = approvedExec.body.data.steps[1].result;
+    expect(emailStepResult.emlContent).toContain('MIME-Version: 1.0');
+    expect(emailStepResult.transport).toBe('local_outbox');
+
+    // Persisted plans survive stateStore restart & calendar generates real RFC 5545 .ics
+    const calPlan = await request(app)
+      .post('/api/assistant/agent/plan')
+      .set('Authorization', `Bearer ${u.token}`)
+      .send({ goal: 'Schedule architecture calendar meeting tomorrow' });
+    expect(calPlan.status).toBe(201);
+    const calExec = await request(app)
+      .post(`/api/assistant/agent/execute/${calPlan.body.data.planId}`)
+      .set('Authorization', `Bearer ${u.token}`);
+    expect(calExec.status).toBe(200);
+    expect(calExec.body.data.steps[0].result.icsContent).toContain('BEGIN:VCALENDAR');
+
+    const reloadedStore = new StateStoreService(process.env.DATA_DIR || config.dataDir, '');
+    const reloadedPlan = await reloadedStore.get<{ planId: string }>(`agent_plan:${calPlan.body.data.planId}`);
+    expect(reloadedPlan?.planId).toBe(calPlan.body.data.planId);
+
+    const plansList = await request(app)
+      .get('/api/assistant/agent/plans')
+      .set('Authorization', `Bearer ${u.token}`);
+    expect(plansList.status).toBe(200);
+    expect(plansList.body.data.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('supports bounded PDF ingestion, Hybrid BM25 + Cosine RAG ranking, and complete GDPR wipe', async () => {
+    const u = await registerUser('qa_pdf_rag');
+
+    // Reject forged non-PDF header cleanly
+    const badPdf = await request(app)
+      .post('/api/assistant/knowledge/upload')
+      .set('Authorization', `Bearer ${u.token}`)
+      .send({
+        filename: 'fake.pdf',
+        mimeType: 'application/pdf',
+        rawPdfBase64: Buffer.from('NOT_A_PDF_FILE').toString('base64')
+      });
+    expect(badPdf.status).toBe(400);
+
+    // Upload genuine minimal PDF & distractor text doc
+    const validPdfRes = await request(app)
+      .post('/api/assistant/knowledge/upload')
+      .set('Authorization', `Bearer ${u.token}`)
+      .send({
+        filename: 'hardware_spec.pdf',
+        mimeType: 'application/pdf',
+        rawPdfBase64: buildMinimalPdfBase64('BANTAI RTX-A2000-NVENC-9942 QLoRA Spec')
+      });
+    if (validPdfRes.status !== 201) {
+      throw new Error(`Expected 201 from PDF upload, got ${validPdfRes.status}: ${JSON.stringify(validPdfRes.body)}`);
+    }
+    expect(validPdfRes.status).toBe(201);
+    expect(validPdfRes.body.data.chunkCount).toBeGreaterThan(0);
+
+    await request(app)
+      .post('/api/assistant/knowledge/upload')
+      .set('Authorization', `Bearer ${u.token}`)
+      .send({
+        filename: 'distractor.md',
+        mimeType: 'text/markdown',
+        rawText: 'Monthly team sync notes covering frontend styling and deployment checklists.'
+      });
+
+    // Hybrid BM25 + Cosine prioritizes exact technical identifier
+    const queryRes = await request(app)
+      .post('/api/assistant/knowledge/query')
+      .set('Authorization', `Bearer ${u.token}`)
+      .send({ query: 'RTX-A2000-NVENC-9942', topK: 2 });
+    expect(queryRes.status).toBe(200);
+    expect(queryRes.body.data.length).toBeGreaterThan(0);
+    expect(queryRes.body.data[0].text).toContain('RTX-A2000-NVENC-9942');
+
+    // Wipe cleans user records, vectors, plans, and invalidates JWT
+    const wipeRes = await request(app)
+      .post('/api/learning/wipe-data')
+      .set('Authorization', `Bearer ${u.token}`)
+      .send({});
+    expect(wipeRes.status).toBe(200);
+
+    const postWipeMe = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${u.token}`);
+    expect(postWipeMe.status).toBe(401);
+
+    const vecPath = path.join(process.env.DATA_DIR || config.dataDir, 'rag_vectors.json');
+    if (fs.existsSync(vecPath)) {
+      const vecs = JSON.parse(fs.readFileSync(vecPath, 'utf8')) as Array<{ userId: string }>;
+      expect(vecs.some(v => v.userId === u.userId)).toBe(false);
+    }
   });
 
   it('handles concurrent bursts cleanly with zero 5xx errors', async () => {

@@ -1,6 +1,6 @@
 // BANTAI Shared Type Definitions
 
-export type PersonalityMode = 'tapori' | 'balanced' | 'professional' | 'developer' | 'academic';
+export type PersonalityMode = 'balanced' | 'professional' | 'developer' | 'academic';
 
 export type UserRole = 'user' | 'admin' | 'moderator';
 

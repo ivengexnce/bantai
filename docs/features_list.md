@@ -13,12 +13,12 @@
 | **SSE Token Streaming Chat** | Real-time Server-Sent Events streaming with client-disconnect abort handling and auto conversation titling | Implemented | `POST /api/chat/stream`, `ChatView.tsx` |
 | **Local Model Lineup** | **BANTAI Chhotu** (`qwen2.5:3b`, fast/CPU-ready) & **BANTAI Bhai** (`qwen2.5:7b`, default all-rounder) | Implemented | `Modelfile`, `Modelfile.chhotu`, `shared/src/constants` |
 | **Multi-Backend Inference** | Self-hosted **Ollama** (`/api/chat`) and **llama.cpp** (`/v1/chat/completions`) with automatic deterministic offline fallback engine | Implemented | `backend/src/services/ai/inference.service.ts` |
-| **5 Personality Modes** | **Tapori** (clean Mumbai Hinglish swagger, zero profanity), **Balanced**, **Professional**, **Developer**, **Academic** | Implemented | `shared/src/prompts/personalities.ts` |
+| **4 Personality Modes** | **Balanced** (natural English & clean Hinglish/Hindi, zero slang), **Professional**, **Developer**, **Academic** | Implemented | `shared/src/prompts/personalities.ts` |
 | **Prompt Injection Defense** | Strips `<|im_start|>`/`<|im_end|>` control tokens and fences RAG/memory data in `<untrusted_reference_data>` tags | Hardened | `shared/src/prompts/personalities.ts` |
 | **Conversation History Management** | Create, list, search, load message transcripts, and cascade-delete conversations | Implemented | `POST/GET/DELETE /api/chat/conversations` |
 | **Message Feedback Loop** | Thumbs-up / thumbs-down rating (`up` / `down`), reason codes, and optional correction text | Implemented | `POST /api/chat/feedback` |
 | **Rich Markdown & Code Blocks** | Safe React-rendered headings, lists, bold/inline code, syntax blocks, and one-click code copy (XSS-safe) | Implemented | `frontend/web/src/components/chat/ChatView.tsx` |
-| **File Context Attachment** | Client-side `.txt/.md/.csv/.json/.log` attachment preview & injection into prompt composer (size bounded) | Implemented | `frontend/web/src/components/chat/ChatView.tsx` |
+| **File & PDF Context Attachment** | `.txt/.md/.csv/.json/.log` prompt attachments plus bounded `.pdf` (up to `1.4 MB`) extraction & Knowledge indexing | Implemented | `ChatView.tsx`, `MemoryView.tsx`, `pdf_extractor.ts` |
 
 ---
 
@@ -58,8 +58,8 @@
 | :--- | :--- | :--- | :--- |
 | **User-Isolated Personal Memory** | Auto-extraction (`I prefer...`, `My goal is...`) and manual CRUD across 5 categories (`preference`, `fact`, `project`, `goal`, `instruction`) | Implemented | `/api/assistant/memory`, `MemoryView.tsx` |
 | **Memory Consent Toggle** | Instant opt-in/out switch (`personalMemoryEnabled`) blocking extraction & system prompt injection when off | Implemented | `PATCH /api/auth/consent` |
-| **Local 384-D Vector RAG Engine** | Deterministic local embeddings (`BAAI/bge-small-en-v1.5` compatible 384-dim), overlapping chunking, cosine similarity top-K retrieval | Implemented | `backend/src/services/rag/rag.service.ts` |
-| **Safe Document Ingestion** | Filename regex validation (zero `..` traversal), extension allowlist (`.txt/.md/.csv/.json/.log`), MIME allowlist, `500KB` size limit | Hardened | `POST /api/assistant/knowledge/upload` |
+| **Hybrid BM25 + Cosine RAG Engine** | Deterministic dense cosine + BM25 lexical ranking (`0.55 * normBm25 + 0.45 * cosine`), overlapping chunking, and user-isolated purge | Implemented | `backend/src/services/rag/rag.service.ts` |
+| **Safe Document & PDF Ingestion** | Filename regex validation (zero `..` traversal), extension allowlist (`.txt/.md/.csv/.json/.log/.pdf`), `unpdf` extractor with `%PDF-` / 50-page / `1.4MB` caps | Hardened | `POST /api/assistant/knowledge/upload` |
 
 ---
 
@@ -67,7 +67,7 @@
 
 | Feature | Description | Status | Location / Endpoint |
 | :--- | :--- | :--- | :--- |
-| **On-Device Web Speech STT/TTS** | Browser SpeechRecognition (`en-IN` for Tapori, `en-US` otherwise), markdown/emoji cleaning, 160-char sentence chunking & Chromium keep-alive | Implemented | `frontend/web/src/lib/voiceEngine.ts` |
+| **On-Device Web Speech STT/TTS** | Browser SpeechRecognition (`en-IN` for Balanced, `en-US` otherwise), markdown/emoji cleaning, 160-char sentence chunking & Chromium keep-alive | Implemented | `frontend/web/src/lib/voiceEngine.ts` |
 | **Server-Side ElevenLabs Integration** | Neural TTS proxy with `AbortController` timeouts, `voiceId`/`modelId` path injection validation, 5,000-char caps, zero client key exposure | Hardened | `GET /api/voice/elevenlabs/voices`, `POST /tts` |
 
 ---

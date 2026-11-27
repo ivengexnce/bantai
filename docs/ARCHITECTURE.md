@@ -2,7 +2,7 @@
 > **Apna Model. Apna Dimaag. Apna AI.**
 
 ## 1. Architectural Philosophy
-BANTAI is a local-first, hardware-aware, self-hosted agentic AI runtime with an authentic Mumbai Tapori persona. It eliminates dependence on third-party hosted inference APIs (no OpenAI, Anthropic, Gemini, Groq, or OpenRouter). Core conversational intelligence, semantic vector retrieval, autonomous tool execution, and QLoRA fine-tuning operate under strict local boundaries.
+BANTAI is a local-first, hardware-aware, self-hosted agentic AI workbench for private reasoning, coding, and bilingual productivity. It eliminates dependence on third-party hosted LLM inference APIs (no OpenAI, Anthropic, Gemini, Groq, or OpenRouter). Core conversational intelligence, hybrid retrieval, autonomous tool execution, and QLoRA fine-tuning operate under strict local boundaries.
 
 ```text
 +-----------------------------------------------------------------------------------+
@@ -13,7 +13,7 @@ BANTAI is a local-first, hardware-aware, self-hosted agentic AI runtime with an 
 |  - 64px Nav Rail + 48px Telemetry Top Bar     - Auth, Chat (Chhotu/Bhai), Tasks,  |
 |  - 5 Views: Chat, Agent, Memory, FineTune,      Settings bottom-tab navigation    |
 |    Settings                                                                       |
-|  - SSE Token Streaming & Voice (STT / TTS)    - AsyncStorage + Backend REST API   |
+|  - SSE Token Streaming & Voice (STT / TTS)    - Expo SecureStore + Backend REST |
 +-----------------------------------------------------------------------------------+
                                           |
                                           v
@@ -37,11 +37,11 @@ BANTAI is a local-first, hardware-aware, self-hosted agentic AI runtime with an 
 |                    |     | [ToolRegistry: 10] |     |    Local Dialogue Engine    |
 | [FirebaseService]  |     | - Calculator       |     |                             |
 | - Live Firestore   |     | - Doc Reader / RAG |     | [RagService & Memory]       |
-|   OR local JSON    |     | - File Search      |     | - 384-d L2-normalized       |
-|   isolated store   |     | - Sandbox VM*      |     |   cosine vectors            |
+|   OR local JSON    |     | - File Search      |     | - Hybrid BM25+256-d cosine  |
+|   isolated store   |     | - Sandbox VM*      |     | - Bounded PDF (unpdf) RAG   |
 | - Conversations,   |     | - Tasks/Reminders/ |     | - User-isolated facts       |
-|   Messages, Tasks, |     |   Calendar/Email*  |     |                             |
-|   Memories, RAG    |     | (*Requires Auth)   |     | [QLoRA Fine-Tuning]         |
+|   Messages, Tasks, |     |   Calendar (.ics)/ |     |                             |
+|   Memories, RAG    |     |   Email (.eml/SMTP)|     | [QLoRA Fine-Tuning]         |
 +--------------------+     +--------------------+     | - PyTorch + PEFT 4-bit NF4  |
                                                       |   on RTX A2000 (4GB VRAM)   |
                                                       +-----------------------------+
@@ -57,8 +57,8 @@ Data is partitioned across structural boundaries enforced at both schema and ser
 ---
 
 ## 3. Core Systems & Modules
-1. **Conversational AI (`inference.service.ts`, `chat.controller.ts`)**: Multi-turn SSE streaming supporting `Tapori`, `Balanced`, `Professional`, `Developer`, and `Academic` modes defined in `@bantai/shared`, personal memory & top-2 RAG chunk injection, and deterministic offline fallback.
+1. **Conversational AI (`inference.service.ts`, `chat.controller.ts`)**: Multi-turn SSE streaming supporting `Balanced`, `Professional`, `Developer`, and `Academic` modes defined in `@bantai/shared`, personal memory & top-K RAG chunk injection, and deterministic offline fallback.
 2. **Personal Assistant & Agentic Engine (`planner.service.ts`, `tool_registry.service.ts`)**: Multi-step goal decomposition across 10 registered tools (`calculator`, `document_reader`, `file_search`, `database_retrieval`, `rag_retrieval`, `sandbox_code_executor`, `task_manager`, `reminder_scheduler`, `calendar_connector`, `email_connector`), enforcing human authorization gates on sensitive operations.
-3. **Personal Memory & RAG (`memory.service.ts`, `rag.service.ts`)**: Automatic extraction of user preference/project statements (`personalMemoryEnabled`), explicit CRUD management via `/api/assistant/memory`, and 400-word overlapping chunking with 384-dimensional cosine similarity search (`./data/vector_chunks_store.json`).
-4. **Voice Engine (`voiceEngine.ts`, `elevenlabs.service.ts`)**: Browser Web Speech STT (`en-IN` for Tapori, `en-US` otherwise), Chromium chunked Web Speech TTS fallback, and optional server-proxied ElevenLabs neural voice synthesis (`/api/voice/elevenlabs/*`).
+3. **Personal Memory & RAG (`memory.service.ts`, `rag.service.ts`)**: Automatic extraction of user preference/project statements (`personalMemoryEnabled`), explicit CRUD management via `/api/assistant/memory`, PDF (`unpdf`) + text ingestion, and Hybrid BM25 + 256-dimensional cosine similarity search (`./data/rag_vectors.json`).
+4. **Voice Engine (`voiceEngine.ts`, `elevenlabs.service.ts`)**: Browser Web Speech STT (`en-IN` for Balanced, `en-US` otherwise), Chromium chunked Web Speech TTS fallback, and optional server-proxied ElevenLabs neural voice synthesis (`/api/voice/elevenlabs/*`).
 5. **Continuous Learning & QLoRA (`learning.service.ts`, `train_lora_real.py`)**: Strict opt-in consent (`crossUserTrainingOptIn: false` by default), automated PII scrubbing (API tokens, emails, phones), 80/10/10 split export, and real 4-bit NF4 LoRA fine-tuning producing `.safetensors` adapters (`models/adapters/bantai_v1/`).

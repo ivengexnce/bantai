@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { firebaseFirestoreService } from '../services/database/firebase.service';
 import { personalMemoryService } from '../services/memory/memory.service';
 import { ragService } from '../services/rag/rag.service';
+import { extractTextFromPdfBase64, PdfExtractionError } from '../services/rag/pdf_extractor';
 import { agentPlannerService } from '../services/agent/planner.service';
 import { sendInternalError, sendResourceError } from '../utils/security';
 import {
@@ -271,7 +272,29 @@ export class AssistantController {
       }
 
       const safeOriginalName = path.basename(parsed.data.filename).replace(/[^a-zA-Z0-9._-]/g, '_');
-      const { rawText, mimeType } = parsed.data;
+      const { mimeType, rawPdfBase64 } = parsed.data;
+      let rawText = (parsed.data.rawText || '').trim();
+      let sizeBytes = Buffer.byteLength(rawText, 'utf8');
+
+      if (rawPdfBase64 || mimeType === 'application/pdf' || /\.pdf$/i.test(safeOriginalName)) {
+        if (!rawPdfBase64) {
+          return res.status(400).json({
+            success: false,
+            error: 'PDF uploads require a base64-encoded PDF payload (`rawPdfBase64`).'
+          });
+        }
+        try {
+          const pdfRes = await extractTextFromPdfBase64(rawPdfBase64);
+          rawText = pdfRes.text;
+          sizeBytes = pdfRes.byteLength;
+        } catch (pdfErr) {
+          if (pdfErr instanceof PdfExtractionError) {
+            return res.status(400).json({ success: false, error: pdfErr.message });
+          }
+          throw pdfErr;
+        }
+      }
+
       const userId = req.user!.userId;
       const docId = crypto.randomUUID();
 
@@ -280,11 +303,11 @@ export class AssistantController {
         userId,
         filename: `${docId}_${safeOriginalName}`,
         originalName: safeOriginalName,
-        mimeType,
-        sizeBytes: Buffer.byteLength(rawText, 'utf8'),
+        mimeType: rawPdfBase64 ? 'application/pdf' : mimeType,
+        sizeBytes,
         storageUrl: `local://storage/${docId}`,
         chunkCount: 0,
-        embeddingModel: 'BAAI/bge-small-en-v1.5',
+        embeddingModel: 'hybrid-bm25+cosine-v1',
         summary: rawText.substring(0, 160) + (rawText.length > 160 ? '...' : ''),
         createdAt: new Date().toISOString()
       };
@@ -313,6 +336,15 @@ export class AssistantController {
   }
 
   // --- AGENTIC EXECUTION ---
+  async listAgentPlans(req: AuthenticatedRequest, res: Response) {
+    try {
+      const plans = await agentPlannerService.listPlans(req.user!.userId);
+      return res.json({ success: true, data: plans });
+    } catch (err) {
+      return sendInternalError(res, 'AssistantController.listAgentPlans', err);
+    }
+  }
+
   async createAgentPlan(req: AuthenticatedRequest, res: Response) {
     try {
       const parsed = CreateAgentPlanSchema.safeParse(req.body);

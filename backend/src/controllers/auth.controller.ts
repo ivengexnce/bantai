@@ -7,6 +7,8 @@ import { AuthenticatedRequest, validateCsrfForCookieRequest } from '../middlewar
 import { config } from '../config/env';
 import { sendInternalError } from '../utils/security';
 import { SESSION_COOKIE_NAME, clearAuthCookies, parseCookies, setAuthCookies } from '../utils/cookies';
+import { mailerService } from '../services/mail/mailer.service';
+import { learningService } from '../services/learning/learning.service';
 import {
   buildOtpAuthUri,
   generateRecoveryCodes,
@@ -320,11 +322,19 @@ export class AuthController {
       }
 
       // Never return reset tokens in HTTP responses or distinguish existing vs non-existing emails
-      await this.createPasswordResetTokenForUser(parsed.data.email);
+      const rawToken = await this.createPasswordResetTokenForUser(parsed.data.email);
+      if (rawToken) {
+        try {
+          await mailerService.sendPasswordResetEmail(parsed.data.email.trim().toLowerCase(), rawToken, 15);
+        } catch (mailErr) {
+          // Log sanitized error without leaking email existence externally
+          console.error('[AuthController.forgotPassword] Delivery error:', (mailErr as Error).message);
+        }
+      }
 
       return res.json({
         success: true,
-        message: 'If an account matches that email, password reset instructions have been initiated.'
+        message: 'If an account matches that email, password reset instructions have been sent.'
       });
     } catch (err) {
       return sendInternalError(res, 'AuthController.forgotPassword', err);
@@ -456,7 +466,72 @@ export class AuthController {
     }
   }
 
+  private isLoopbackWorkstationRequest(req: Request): boolean {
+    if (!config.localWorkstationMode) return false;
+    if (req.headers['x-forwarded-for']) return false;
+    const remote = (req.socket?.remoteAddress || req.ip || '').trim();
+    return remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+  }
+
+  async workstationSession(req: Request, res: Response) {
+    try {
+      if (!this.isLoopbackWorkstationRequest(req)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Local workstation session is disabled or restricted to direct loopback connections.'
+        });
+      }
+
+      const workstationEmail = 'workstation@localhost.bantai';
+      let user = await mongoUserService.findByEmail(workstationEmail);
+      if (!user) {
+        const now = new Date().toISOString();
+        const created = await mongoUserService.createUser({
+          userId: 'local_workstation_owner',
+          email: workstationEmail,
+          name: 'Local Workstation',
+          username: 'local_workstation',
+          role: 'user',
+          status: 'active',
+          preferences: { ...DEFAULT_USER_PREFERENCES },
+          learningConsent: { ...DEFAULT_LEARNING_CONSENT },
+          subscriptionPlan: 'free',
+          createdAt: now,
+          updatedAt: now,
+          lastLoginAt: now,
+          oauthProvider: 'local',
+          tokenVersion: 0,
+          mfaEnabled: false
+        });
+        user = await mongoUserService.findById(created.userId);
+      } else {
+        await mongoUserService.updateLastLogin(user.userId);
+      }
+
+      if (!user || user.status !== 'active') {
+        return res.status(403).json({ success: false, error: 'Local workstation profile unavailable.' });
+      }
+
+      const token = signToken({
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+        tokenVersion: user.tokenVersion ?? 0
+      });
+      setAuthCookies(res, token, req);
+      const safeUser = await mongoUserService.findSafeProfileById(user.userId);
+
+      return res.json({
+        success: true,
+        data: { user: safeUser, token }
+      });
+    } catch (err) {
+      return sendInternalError(res, 'AuthController.workstationSession', err);
+    }
+  }
+
   async session(req: Request, res: Response) {
+    const localWorkstationAvailable = this.isLoopbackWorkstationRequest(req);
     try {
       const authHeader = req.headers.authorization;
       const cookies = parseCookies(req);
@@ -468,22 +543,31 @@ export class AuthController {
       }
 
       if (!token) {
-        return res.json({ success: true, data: { authenticated: false, user: null } });
+        return res.json({
+          success: true,
+          data: { authenticated: false, user: null, localWorkstationAvailable }
+        });
       }
 
       const decoded = verifyToken(token, 'session');
       const fullUser = await mongoUserService.findById(decoded.userId);
       if (!fullUser || fullUser.status !== 'active' || (decoded.tokenVersion ?? 0) !== (fullUser.tokenVersion ?? 0)) {
-        return res.json({ success: true, data: { authenticated: false, user: null } });
+        return res.json({
+          success: true,
+          data: { authenticated: false, user: null, localWorkstationAvailable }
+        });
       }
 
       const safeUser = await mongoUserService.findSafeProfileById(decoded.userId);
       return res.json({
         success: true,
-        data: { authenticated: Boolean(safeUser), user: safeUser }
+        data: { authenticated: Boolean(safeUser), user: safeUser, localWorkstationAvailable }
       });
     } catch {
-      return res.json({ success: true, data: { authenticated: false, user: null } });
+      return res.json({
+        success: true,
+        data: { authenticated: false, user: null, localWorkstationAvailable }
+      });
     }
   }
 
@@ -519,6 +603,9 @@ export class AuthController {
       }
 
       const updated = await mongoUserService.updateLearningConsent(req.user!.userId, parsed.data);
+      if (parsed.data.crossUserTrainingOptIn === false) {
+        learningService.purgeUserExamples(req.user!.userId);
+      }
       return res.json({ success: true, data: updated });
     } catch (err) {
       return sendInternalError(res, 'AuthController.updateConsent', err);

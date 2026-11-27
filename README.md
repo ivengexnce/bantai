@@ -7,7 +7,7 @@
 [![Platform: Web + Android](https://img.shields.io/badge/Platform-Web%20%2B%20Android-blueviolet.svg)](https://github.com/ivengexnce/bantai)
 [![AI: 100% Sovereign](https://img.shields.io/badge/AI-100%25%20Local%20Silicon-amber.svg)](https://github.com/ivengexnce/bantai)
 
-**BANTAI** is a local-first, hardware-aware, self-hosted agentic AI runtime with an authentic Mumbai Tapori soul. It combines SSE streaming chat across 5 personality modes, a 10-tool autonomous agent planner with mandatory human-in-the-loop authorization gates, user-isolated personal memory, 384-dimensional local RAG vector search, voice I/O, and real GPU QLoRA fine-tuning — executing on local silicon with zero cloud LLM API dependencies.
+**BANTAI** is a local-first, hardware-aware, self-hosted agentic AI workbench for private reasoning, coding, and bilingual productivity. It combines SSE streaming chat across 4 clean modes (`Balanced`, `Professional`, `Developer`, `Academic`), a 10-tool autonomous agent planner with mandatory human-in-the-loop authorization gates, user-isolated personal memory, local RAG vector search, voice I/O, and real GPU QLoRA fine-tuning — executing on local silicon with zero cloud LLM API dependencies.
 
 Zero OpenAI. Zero Anthropic. Zero Gemini. Seedha apna model.
 
@@ -55,7 +55,7 @@ BANTAI runs two locally calibrated Ollama models built from Apache 2.0 `qwen2.5`
 Built with Next.js 14 App Router, Tailwind CSS, Framer Motion, Inter + JetBrains Mono typography, and 18px Lucide React icons:
 
 - **64px Fixed Left Navigation Rail (`GlassIrisNavRail`):** Top emblem (starts new chat session), animated tooltips, indigo glow indicator across 5 core views, and profile popover (`Preferences`, `Reset Session`).
-- **48px Top Telemetry Bar (`GlassIrisTopBar`):** `BANTAI` wordmark, live model selector badge with throughput telemetry (`tok/s`), pulsing `Air-Gap Active` beacon, sliding 5-mode personality switcher (`Tapori`, `Balanced`, `Professional`, `Developer`, `Academic`), and hardware chips (`CPU`, `RAM`, `VRAM`).
+- **48px Top Telemetry Bar (`GlassIrisTopBar`):** `BANTAI` wordmark, live model selector badge, runtime health indicator (`Ollama Live` / `Fallback Demo Engine`), 4-mode personality switcher (`Balanced`, `Professional`, `Developer`, `Academic`), and session telemetry (`Chats`, `HttpOnly Cookie` / `MFA Protected`, model tag).
 - **5 Core Views:**
   1. **Chat Runtime (`ChatView`):** Centered `760px` canvas with empty-state 48px gradient hero, 2x2 suggested prompt grid, Chhotu/Bhai selector cards, streaming cyan caret, code block copy actions, file attachments, Web Speech STT mic input, TTS readout, and mono composer toggle.
   2. **Multi-Agent Runner (`AgenticView`):** `280px` left task panel + goal launcher + step-by-step build log + human-in-the-loop tool authorization modal.
@@ -113,18 +113,18 @@ npm run dev:web
 
 ## Genuine QLoRA Fine-Tuning (`training/` -> `models/`)
 
-BANTAI includes a real PyTorch + Hugging Face PEFT + `bitsandbytes` 4-bit NF4 QLoRA trainer (`training/scripts/train_lora_real.py`) calibrated for 4 GB VRAM NVIDIA GPUs (tested on RTX A2000 Laptop GPU at ~3,860 MiB VRAM):
+BANTAI includes a real PyTorch + Hugging Face PEFT + `bitsandbytes` 4-bit NF4 QLoRA trainer (`training/scripts/train_lora_real.py`) calibrated for 4 GB VRAM NVIDIA GPUs (tested on RTX A2000 Laptop GPU at 4.0 GB VRAM, `bf16`, `all_linear`, `train=34` / `val=6` over 8 epochs: `train_loss=0.9159`, `eval_loss=3.5295`):
 
 ```bash
 python training/scripts/train_lora_real.py \
   --base_model Qwen/Qwen2.5-3B-Instruct \
-  --dataset_path ./training/datasets/tapori_dataset.jsonl \
+  --dataset_path ./training/datasets/bantai_dataset.jsonl \
   --output_dir ./models/adapters/bantai_v1 \
-  --epochs 3 --batch_size 1 --gradient_accumulation_steps 4 \
-  --max_seq_length 256 --lora_r 8 --lora_alpha 16
+  --epochs 8 --batch_size 1 --gradient_accumulation_steps 2 \
+  --max_seq_length 256 --eval_split 0.15 --all_linear
 ```
 
-Trained outputs in `models/adapters/bantai_v1/` include `adapter_model.safetensors`, `adapter_config.json`, `tokenizer.json`, and `training_manifest.json`. Evaluate and inspect registry state with:
+Trained outputs in `models/adapters/bantai_v1/` include `adapter_model.safetensors`, `adapter_config.json`, `tokenizer.json`, and `training_manifest.json` (`bantai-v2.0-sovereign`). Latest measured evaluation in `training/eval_report.json`: **4/5 (80.0%) PASSED, 100.0% slang-free**. Re-run evaluation and inspect registry state with:
 
 ```bash
 python training/scripts/evaluate_model.py --model models/adapters/bantai_v1
@@ -135,16 +135,20 @@ python training/scripts/model_registry.py
 
 ## Testing (`tests/`)
 
-Automated suites verify authentication, database air-gap enforcement, tool sandboxing, PII scrubbing, and streaming inference:
+Automated suites verify authentication, database air-gap enforcement, tool sandboxing, PII scrubbing, PDF/Hybrid RAG ingestion, durable state recovery, SMTP/outbox delivery, and streaming inference:
 
 ```bash
 npm test
+npm run test:security
+npm run security:scan
 ```
 
-- `tests/auth.test.ts` (4 tests): Signup, login, invalid password rejection, protected JWT verification.
-- `tests/data_separation.test.ts` (3 tests): Rejects conversation data in `MongoUserService`; isolates Firestore records by `userId`.
-- `tests/chat_and_tools.test.ts` (5 tests): Personality prompts, calculator, sandbox code execution gate, task manager, live/offline SSE chat streaming.
-- `tests/consent_and_learning.test.ts` (5 tests): PII redaction (`[REDACTED_EMAIL]`, `[REDACTED_PHONE]`, `[REDACTED_TOKEN]`), opt-in checks, memory gating, dataset export.
+- `tests/auth.test.ts`: Signup, login, invalid password rejection, protected JWT verification.
+- `tests/data_separation.test.ts`: Rejects conversation data in `MongoUserService`; isolates Firestore records by `userId`.
+- `tests/chat_and_tools.test.ts`: Personality prompts, calculator, sandbox code execution gate, task manager, live/offline SSE chat streaming.
+- `tests/consent_and_learning.test.ts`: PII redaction (`[REDACTED_EMAIL]`, `[REDACTED_PHONE]`, `[REDACTED_TOKEN]`), opt-in checks, memory gating, dataset export, and buffer purge on withdrawal.
+- `tests/api_functional_integration.test.ts`: End-to-end CRUD, SSE, durable agent plan persistence across restarts, RFC 5545 `.ics` / RFC 5322 `.eml`, bounded `.pdf` ingestion, Hybrid BM25 + Cosine RAG ranking, and complete GDPR wipe.
+- `security/security.test.ts`: CORS allowlist, RBAC, HS256 JWT revocation across state reload, TOTP MFA & recovery codes, CSRF double-submit cookies, forgot-password mail delivery, daily ElevenLabs quota caps, loopback workstation guard, NoSQL/prototype injection, and rate limiting.
 
 ---
 

@@ -4,7 +4,7 @@ import { AppProvider } from '../context/AppContext';
 
 export const metadata: Metadata = {
   title: 'BANTAI — Apna Model. Apna Dimaag. Apna AI.',
-  description: 'Local-first, hardware-aware, agentic AI runtime with a street-smart Mumbai Tapori soul.'
+  description: 'Local-first, hardware-aware, agentic AI workbench for private reasoning, coding, and bilingual productivity.'
 };
 
 export default function RootLayout({

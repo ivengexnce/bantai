@@ -29,12 +29,12 @@ class ModelRegistry:
             "active_version": "v1.0-default",
             "models": {
                 "v1.0-default": {
-                    "adapter_id": "bantai-v1.0-tapori",
-                    "base_model": "Qwen/Qwen2.5-7B-Instruct",
+                    "adapter_id": "bantai-v1.0-sovereign",
+                    "base_model": "Qwen/Qwen2.5-3B-Instruct",
                     "status": "ACTIVE",
                     "registered_at": datetime.now(timezone.utc).isoformat(),
-                    "eval_score": 95.8,
-                    "dataset_version": "manifest_seed_v1",
+                    "eval_score": 0.0,
+                    "dataset_version": "bantai_dataset_v2",
                     "rollback_target": None
                 }
             },

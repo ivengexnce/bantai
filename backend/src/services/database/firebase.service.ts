@@ -120,6 +120,9 @@ export class FirebaseFirestoreService {
         if (fs.existsSync(filePath)) {
           const list = JSON.parse(fs.readFileSync(filePath, 'utf8'));
           for (const rec of list) {
+            if ((rec.personalityMode as string) === 'tapori') {
+              rec.personalityMode = 'balanced';
+            }
             item.target.set(rec.id, rec);
           }
         }
@@ -129,6 +132,9 @@ export class FirebaseFirestoreService {
       if (fs.existsSync(msgPath)) {
         const allMsgs: FirestoreMessage[] = JSON.parse(fs.readFileSync(msgPath, 'utf8'));
         for (const msg of allMsgs) {
+          if ((msg.personalityMode as string) === 'tapori') {
+            msg.personalityMode = 'balanced';
+          }
           const list = this.messages.get(msg.conversationId) || [];
           list.push(msg);
           this.messages.set(msg.conversationId, list);
@@ -139,11 +145,24 @@ export class FirebaseFirestoreService {
     }
   }
 
+  private writeCounter = 0;
+
   private writeJsonAtomic(filename: string, payload: unknown) {
     const filePath = path.join(this.storageDir, filename);
-    const tmpPath = `${filePath}.tmp`;
-    fs.writeFileSync(tmpPath, JSON.stringify(payload, null, 2), { encoding: 'utf8', mode: 0o600 });
-    fs.renameSync(tmpPath, filePath);
+    const json = JSON.stringify(payload, null, 2);
+    const tmpPath = `${filePath}.tmp.${process.pid}.${++this.writeCounter}`;
+    fs.writeFileSync(tmpPath, json, { encoding: 'utf8', mode: 0o600 });
+    try {
+      fs.renameSync(tmpPath, filePath);
+    } catch {
+      // Windows fallback if an indexer briefly holds a lock on the target JSON
+      fs.writeFileSync(filePath, json, { encoding: 'utf8', mode: 0o600 });
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {
+        // ignore
+      }
+    }
   }
 
   private persist() {
@@ -365,6 +384,48 @@ export class FirebaseFirestoreService {
       }
     }
     return false;
+  }
+
+  async getMessageFeedbackContext(
+    userId: string,
+    messageId: string
+  ): Promise<{ userQuery: string; assistantResponse: string; personalityMode: FirestoreMessage['personalityMode'] } | null> {
+    for (const [convId, msgList] of this.messages.entries()) {
+      const idx = msgList.findIndex(m => m.id === messageId && m.userId === userId);
+      if (idx !== -1) {
+        const targetMsg = msgList[idx];
+        const prevUser = [...msgList.slice(0, idx)].reverse().find(m => m.role === 'user');
+        const conv = this.conversations.get(convId);
+        if (prevUser && targetMsg.content) {
+          return {
+            userQuery: prevUser.content,
+            assistantResponse: targetMsg.content,
+            personalityMode: targetMsg.personalityMode || conv?.personalityMode || 'balanced'
+          };
+        }
+      }
+    }
+    if (this.isLiveFirestore && this.firestore) {
+      try {
+        const targetSnap = await this.firestore.collection('messages').doc(messageId).get();
+        if (!targetSnap.exists) return null;
+        const target = targetSnap.data() as FirestoreMessage;
+        if (target.userId !== userId) return null;
+        const hist = await this.getMessages(userId, target.conversationId);
+        const idx = hist.findIndex((m: FirestoreMessage) => m.id === messageId);
+        const prevUser = idx > 0 ? [...hist.slice(0, idx)].reverse().find((m: FirestoreMessage) => m.role === 'user') : undefined;
+        if (prevUser) {
+          return {
+            userQuery: prevUser.content,
+            assistantResponse: target.content,
+            personalityMode: target.personalityMode || 'balanced'
+          };
+        }
+      } catch {
+        // ignore live lookup error
+      }
+    }
+    return null;
   }
 
   // --- TASKS ---

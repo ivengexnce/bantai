@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
-import { FirestoreMemory, MemoryCategory } from '@bantai/shared';
+import { FirestoreKnowledgeDoc, FirestoreMemory, MemoryCategory } from '@bantai/shared';
 import {
   Brain,
   Search,
   Trash2,
   Plus,
   Clock,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Upload,
+  CheckCircle2
 } from 'lucide-react';
 
 const CATEGORY_COLORS: Record<MemoryCategory, { bg: string; text: string; border: string }> = {
@@ -28,12 +31,80 @@ export function MemoryView() {
   const [newCategory, setNewCategory] = useState<MemoryCategory>('preference');
   const [isAdding, setIsAdding] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [docs, setDocs] = useState<FirestoreKnowledgeDoc[]>([]);
+  const [docStatus, setDocStatus] = useState<string | null>(null);
+  const [ragQuery, setRagQuery] = useState('');
+  const [ragResults, setRagResults] = useState<Array<{ text: string; score: number; filename: string }>>([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.getMemories()
       .then(setMemories)
       .catch(err => setErrorMsg((err as Error).message || 'Failed to fetch memories.'));
+    api.getKnowledgeDocs()
+      .then(setDocs)
+      .catch(() => {});
   }, []);
+
+  const handleKnowledgeFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErrorMsg(null);
+    setDocStatus(null);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._ -]/g, '_');
+    const isPdf = /\.pdf$/i.test(safeName) || file.type === 'application/pdf';
+
+    if (isPdf && file.size > 1400 * 1024) {
+      setErrorMsg('PDF files are capped at 1.4 MB to keep local indexing fast.');
+      e.target.value = '';
+      return;
+    }
+    if (!isPdf && file.size > 500_000) {
+      setErrorMsg('Text files are capped at 500 KB.');
+      e.target.value = '';
+      return;
+    }
+
+    setUploadingDoc(true);
+    try {
+      let created: FirestoreKnowledgeDoc;
+      if (isPdf) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const str = String(reader.result || '');
+            resolve(str.includes(',') ? str.split(',')[1] : str);
+          };
+          reader.onerror = () => reject(new Error('Failed to read PDF file.'));
+          reader.readAsDataURL(file);
+        });
+        created = await api.uploadKnowledgePdf(safeName, base64);
+      } else {
+        const text = await file.text();
+        created = await api.uploadKnowledgeDoc(safeName, text, 'text/plain');
+      }
+      setDocs(prev => [created, ...prev]);
+      setDocStatus(`Indexed "${created.originalName}" (${created.chunkCount} searchable chunks).`);
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Failed to index document.');
+    } finally {
+      setUploadingDoc(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRagSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ragQuery.trim()) return;
+    setErrorMsg(null);
+    try {
+      const hits = await api.queryKnowledge(ragQuery.trim(), 4);
+      setRagResults(hits);
+    } catch (err) {
+      setErrorMsg((err as Error).message || 'Knowledge search failed.');
+    }
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,9 +248,9 @@ export function MemoryView() {
         {/* Memory Cards Grid */}
         {filtered.length === 0 ? (
           <div className="p-8 rounded-card surface-raised border-dashed border-white/10 text-center space-y-2">
-            <p className="text-sm font-semibold text-white">Koi memory record nahi mila bantai.</p>
+            <p className="text-sm font-semibold text-white">No memory records saved yet.</p>
             <p className="text-xs text-[#64748b]">
-              Upar &quot;Add Memory&quot; button se apna naya fact ya preference store kar sakte ho.
+              Use the &quot;Add Memory&quot; button above to save a personal preference, fact, or instruction.
             </p>
           </div>
         ) : (
@@ -225,6 +296,95 @@ export function MemoryView() {
             })}
           </div>
         )}
+
+        {/* Knowledge Documents & Hybrid Search (TXT / MD / JSON / CSV / PDF) */}
+        <div className="pt-4 border-t border-white/5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <FileText size={16} className="text-[#22d3ee]" />
+                <h3 className="text-sm font-bold text-white">Personal Knowledge Documents ({docs.length})</h3>
+              </div>
+              <p className="text-xs text-[#64748b]">
+                Upload .pdf (up to 1.4 MB), .txt, .md, .csv, or .json notes to ground replies automatically.
+              </p>
+            </div>
+
+            <div>
+              <input
+                ref={docInputRef}
+                type="file"
+                accept=".txt,.md,.markdown,.csv,.json,.log,.pdf"
+                onChange={handleKnowledgeFile}
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={uploadingDoc}
+                onClick={() => docInputRef.current?.click()}
+                className="px-3.5 py-1.5 rounded-button bg-[#22d3ee]/15 hover:bg-[#22d3ee]/25 border border-[#22d3ee]/40 text-[#22d3ee] text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Upload size={13} />
+                <span>{uploadingDoc ? 'Indexing...' : 'Upload Document / PDF'}</span>
+              </button>
+            </div>
+          </div>
+
+          {docStatus && (
+            <div className="p-2.5 rounded-lg bg-[#10b981]/10 border border-[#10b981]/30 text-xs text-[#6ee7b7] flex items-center gap-2">
+              <CheckCircle2 size={14} className="shrink-0" />
+              <span>{docStatus}</span>
+            </div>
+          )}
+
+          {docs.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {docs.map(doc => (
+                <div key={doc.id} className="p-3 rounded-xl surface-raised space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-white truncate">{doc.originalName}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#22d3ee]/10 text-[#22d3ee]">
+                      {doc.chunkCount} chunks
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#94a3b8] line-clamp-2">{doc.summary}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={handleRagSearch} className="flex gap-2">
+            <input
+              type="text"
+              value={ragQuery}
+              onChange={e => setRagQuery(e.target.value)}
+              placeholder="Test hybrid keyword + semantic search over uploaded docs..."
+              aria-label="Search uploaded knowledge documents"
+              className="flex-1 bg-[#0f0f1a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#64748b] focus:outline-none focus:border-[#22d3ee]"
+            />
+            <button
+              type="submit"
+              disabled={!ragQuery.trim()}
+              className="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-white disabled:opacity-40"
+            >
+              Search Docs
+            </button>
+          </form>
+
+          {ragResults.length > 0 && (
+            <div className="space-y-2">
+              {ragResults.map((hit, i) => (
+                <div key={i} className="p-3 rounded-lg bg-[#0f0f1a] border border-[#22d3ee]/20 text-xs space-y-1">
+                  <div className="flex items-center justify-between font-mono text-[10px] text-[#22d3ee]">
+                    <span>{hit.filename}</span>
+                    <span>score: {hit.score}</span>
+                  </div>
+                  <p className="text-[#e2e8f0] leading-relaxed">{hit.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

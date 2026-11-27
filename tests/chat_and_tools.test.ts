@@ -3,12 +3,12 @@ import { inferenceService } from '../backend/src/services/ai/inference.service';
 import { getSystemPromptForMode } from '@bantai/shared';
 
 describe('AI Inference, Personality Modes & Agent Tool Registry', () => {
-  test('Mumbai Tapori personality system prompt is well-formed and contains key anchors', () => {
-    const taporiPrompt = getSystemPromptForMode('tapori');
-    expect(taporiPrompt).toContain('BANTAI');
-    expect(taporiPrompt).toContain('Mumbai Tapori');
-    expect(taporiPrompt).toContain('Intelligent, factual, and accurate FIRST');
-    expect(taporiPrompt).toContain('Apna Model. Apna Dimaag. Apna AI.');
+  test('Balanced and Developer personality system prompts are well-formed and free of street slang', () => {
+    const balancedPrompt = getSystemPromptForMode('balanced');
+    expect(balancedPrompt).toContain('BANTAI');
+    expect(balancedPrompt).toContain('Accuracy First');
+    expect(balancedPrompt).toContain('Apna Model. Apna Dimaag. Apna AI.');
+    expect(balancedPrompt.toLowerCase()).not.toContain('tapori');
 
     const devPrompt = getSystemPromptForMode('developer');
     expect(devPrompt).toContain('Developer Mode');
@@ -65,15 +65,15 @@ describe('AI Inference, Personality Modes & Agent Tool Registry', () => {
     const response = await inferenceService.streamChat(
       {
         conversationId: 'test_conv_stream',
-        personalityMode: 'tapori',
+        personalityMode: 'balanced',
         modelId: 'chhotu',
         messages: [{
           id: 'msg_1',
           conversationId: 'test_conv_stream',
           userId: 'user_test',
           role: 'user',
-          content: 'Apun ko bata QuickSort kya hai?',
-          personalityMode: 'tapori',
+          content: 'Explain QuickSort time complexity cleanly',
+          personalityMode: 'balanced',
           createdAt: new Date().toISOString()
         }]
       },

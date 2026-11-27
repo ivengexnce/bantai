@@ -36,6 +36,7 @@ router.post('/knowledge/upload', (req, res) => assistantController.uploadKnowled
 router.post('/knowledge/query', (req, res) => assistantController.queryKnowledge(req, res));
 
 // Agentic Execution
+router.get('/agent/plans', (req, res) => assistantController.listAgentPlans(req, res));
 router.post('/agent/plan', (req, res) => assistantController.createAgentPlan(req, res));
 router.post('/agent/execute/:planId', (req, res) => assistantController.executeAgentPlan(req, res));
 router.post('/agent/approve-step', (req, res) => assistantController.approveAgentStep(req, res));

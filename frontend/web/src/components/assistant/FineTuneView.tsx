@@ -127,7 +127,7 @@ export function FineTuneView() {
               </h2>
             </div>
             <p className="text-xs text-[#64748b]">
-              Live runtime telemetry, local Qwen weights registry, and strict consent controls for offline LoRA training.
+              Plain overview of your AI engine status, hardware memory needs, and personal data privacy controls.
             </p>
           </div>
 
@@ -332,8 +332,8 @@ export function FineTuneView() {
           </p>
 
           <pre className="p-3 rounded-xl bg-[#07070f] border border-white/5 text-[11px] font-mono text-[#22d3ee] overflow-x-auto">
-{`python training/scripts/train_lora_real.py --model Qwen/Qwen2.5-3B-Instruct --epochs 1
-ollama create bantai-bhai -f training/configs/Modelfile.bantai`}
+{`python training/scripts/train_lora_real.py --base_model Qwen/Qwen2.5-3B-Instruct --dataset_path training/datasets/bantai_dataset.jsonl --epochs 8 --all_linear
+ollama create bantai-bhai -f models/ollama/Modelfile`}
           </pre>
         </div>
       </div>

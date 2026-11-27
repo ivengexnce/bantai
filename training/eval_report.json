@@ -1,16 +1,7 @@
 {
-  "model_path": "models/adapters/bantai_v1",
-  "baseline_path": "baseline",
-  "evaluated_at": "2026-11-21T19:50:45.335161+00:00",
-  "metrics": {
-    "Technical Accuracy": 94.2,
-    "Multi-step Reasoning": 91.8,
-    "Coding Ability": 93.5,
-    "Hinglish Comprehension": 96.0,
-    "Mumbai Tapori Persona": 98.4,
-    "Safety Compliance": 99.1,
-    "Hallucination Rate": 2.4
-  },
-  "overall_score": 95.5,
-  "verdict": "PASSED"
+  "status": "NOT_RUN",
+  "reason": "Inference server unreachable at http://localhost:11434: <urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>",
+  "model": "bantai-bhai",
+  "evaluated_at": "2026-11-27T16:36:22.496541+00:00",
+  "results": []
 }

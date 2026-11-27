@@ -53,10 +53,9 @@ curl http://localhost:11434/api/tags
 
 ---
 
-## 5. Local Vector Embeddings (RAG)
+## 5. Local Hybrid RAG Retrieval
 
 Implemented in `backend/src/services/rag/rag.service.ts`:
-- **Descriptor (`LOCAL_EMBEDDING_MODEL`):** `BAAI/bge-small-en-v1.5` (384 dimensions, 512 max sequence tokens).
-- **Runtime Implementation:** Computes deterministic 384-dimensional L2-normalized vector embeddings locally from character n-gram hashing + trigonometric projection and scores matches via cosine similarity.
-- **Chunking Strategy:** 400 words per chunk with 80-word sliding overlap (`chunkText`).
-- **Persistence:** Stored per `userId` in `./data/vector_chunks_store.json`.
+- **Ranking Architecture:** Hybrid retrieval combining lexical **BM25 (`k1=1.5, b=0.75`)** (`0.55` weight) with **256-dimensional Djb2 word unigram + character 3-gram L2-normalized cosine similarity** (`0.45` weight) — zero third-party embedding API calls.
+- **Chunking Strategy:** 550-character sentence-aware windows with 100-character overlap (`chunkText`).
+- **Persistence:** Stored per `userId` in `./data/rag_vectors.json` with atomic write serialization and GDPR purge support.

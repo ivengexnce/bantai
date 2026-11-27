@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env';
+import { stateStore } from '../services/state/state_store.service';
 
 export interface JwtPayload {
   userId: string;
@@ -13,17 +14,8 @@ export interface JwtPayload {
   exp?: number;
 }
 
-const revokedJtis = new Map<string, number>();
-const revokedUsersBefore = new Map<string, number>();
-
-function pruneExpiredRevocations() {
-  const nowSec = Math.floor(Date.now() / 1000);
-  for (const [jti, exp] of revokedJtis.entries()) {
-    if (exp > 0 && exp < nowSec) {
-      revokedJtis.delete(jti);
-    }
-  }
-}
+const REVOKED_JTI_PREFIX = 'revoked_jti:';
+const REVOKED_USER_BEFORE_PREFIX = 'revoked_user_before:';
 
 export function signToken(payload: JwtPayload): string {
   const jti = payload.jti || crypto.randomUUID();
@@ -82,8 +74,8 @@ export function verifyToken(token: string, expectedPurpose: 'session' | 'mfa_cha
     throw new Error('Token has been revoked');
   }
 
-  const revokedBefore = revokedUsersBefore.get(decoded.userId);
-  if (revokedBefore !== undefined && (decoded.iat ?? 0) <= revokedBefore) {
+  const revokedBefore = stateStore.getSync<number>(`${REVOKED_USER_BEFORE_PREFIX}${decoded.userId}`);
+  if (typeof revokedBefore === 'number' && (decoded.iat ?? 0) <= revokedBefore) {
     throw new Error('Session invalidated');
   }
 
@@ -92,16 +84,19 @@ export function verifyToken(token: string, expectedPurpose: 'session' | 'mfa_cha
 
 export function revokeToken(jti?: string, exp?: number): void {
   if (!jti) return;
-  pruneExpiredRevocations();
-  revokedJtis.set(jti, exp || Math.floor(Date.now() / 1000) + 7 * 24 * 3600);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const expSec = exp && exp > nowSec ? exp : nowSec + 7 * 24 * 3600;
+  const ttlMs = Math.max(60_000, (expSec - nowSec) * 1000);
+  stateStore.setSync(`${REVOKED_JTI_PREFIX}${jti}`, expSec, ttlMs);
 }
 
 export function isTokenRevoked(jti: string): boolean {
-  pruneExpiredRevocations();
-  return revokedJtis.has(jti);
+  const storedExp = stateStore.getSync<number>(`${REVOKED_JTI_PREFIX}${jti}`);
+  if (typeof storedExp !== 'number') return false;
+  return storedExp <= 0 || storedExp >= Math.floor(Date.now() / 1000);
 }
 
 export function revokeUserTokensBefore(userId: string, beforeEpochSeconds?: number): void {
   const cutoff = beforeEpochSeconds ?? Math.floor(Date.now() / 1000);
-  revokedUsersBefore.set(userId, cutoff);
+  stateStore.setSync(`${REVOKED_USER_BEFORE_PREFIX}${userId}`, cutoff, 30 * 24 * 3600 * 1000);
 }

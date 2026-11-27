@@ -7,7 +7,7 @@ The BANTAI mobile client (`frontend/mobile`, package `ai.bantai.app`) is built w
 
 ## 2. Current Mobile Client Screens (`frontend/mobile/App.tsx`)
 - **Authentication Screen:** Sign In & Create Account forms wired to `/api/auth/login` and `/api/auth/signup`, persisting JWT in `AsyncStorage` (`bantai_token`).
-- **Top Header Bar:** Displays `BANTAI` wordmark and tap-to-cycle model selector (`⚡ Chhotu` / `🤝 Bhai`) alongside the active personality indicator (`tapori`).
+- **Top Header Bar:** Displays `BANTAI` wordmark and active local model selector alongside the user's mode preference (`balanced`).
 - **Bottom Navigation Bar (`CHAT`, `TASKS`, `SETTINGS`):**
   - `CHAT`: Scrollable user/assistant bubbles with composer bar.
   - `TASKS`: Personal Assistant Tasks list and task creator input.

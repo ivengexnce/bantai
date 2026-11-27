@@ -37,6 +37,9 @@ Creates user record in `MongoUserService` (`mongo_users_store.json`). Strictly u
 ### `POST /api/auth/logout`
 Returns `{ "success": true, "message": "Successfully logged out" }`.
 
+### `POST /api/auth/workstation-session` *(Loopback Opt-In Only)*
+Requires `BANTAI_LOCAL_WORKSTATION=true` and a direct loopback socket with zero proxy forwarding headers; otherwise returns `403`. Issues a workstation HttpOnly session cookie + CSRF token.
+
 ### `GET /api/auth/me` *(Auth required)*
 Returns `SafeUserProfile` (password hash omitted).
 
@@ -51,7 +54,7 @@ Updates `personalMemoryEnabled`, `crossUserTrainingOptIn`, and `allowAnalytics` 
 ## 2. Chat & Conversational AI Endpoints (`/api/chat`, *Auth required*)
 
 ### `POST /api/chat/conversations`
-- **Body (`CreateConversationSchema`):** `{ "title"?: "string", "personalityMode"?: "tapori|balanced|professional|developer|academic", "modelId"?: "bhai|chhotu" }`
+- **Body (`CreateConversationSchema`):** `{ "title"?: "string", "personalityMode"?: "balanced|professional|developer|academic", "modelId"?: "bhai|chhotu" }`
 
 ### `GET /api/chat/conversations`
 Lists non-archived conversations sorted by `lastMessageAt` descending for the authenticated user.
@@ -98,13 +101,14 @@ Server-Sent Events (`text/event-stream`) endpoint. Saves user message, runs back
 
 ### Knowledge Base & RAG
 - `GET /api/assistant/knowledge/docs`
-- `POST /api/assistant/knowledge/upload` — `{ "filename": "string", "rawText": "string", "mimeType"?: "string" }`
-- `POST /api/assistant/knowledge/query` — `{ "query": "string", "topK"?: 3 }`
+- `POST /api/assistant/knowledge/upload` — `{ "filename": "string", "rawText"?: "string", "rawPdfBase64"?: "string", "mimeType"?: "text/plain|text/markdown|text/csv|application/json|application/pdf" }` (max `500KB` text or `1.4MB` PDF)
+- `POST /api/assistant/knowledge/query` — `{ "query": "string", "topK"?: 3 }` (Hybrid BM25 + dense cosine ranking)
 
 ### Agentic Execution
+- `GET /api/assistant/agent/plans` — Lists durable execution plans surviving restarts
 - `POST /api/assistant/agent/plan` — `{ "goal": "string", "conversationId"?: "string" }`
 - `POST /api/assistant/agent/execute/:planId`
-- `POST /api/assistant/agent/approve-step` — `{ "planId": "string", "stepIndex": 0, "approved": true }`
+- `POST /api/assistant/agent/approve-step` — `{ "planId": "string", "stepIndex": 0, "approved": true }` (calendar returns `.ics`; email returns `.eml` + real SMTP/outbox dispatch)
 
 ---
 

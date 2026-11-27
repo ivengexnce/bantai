@@ -1,7 +1,7 @@
 # Major UI Elements to Design for BANTAI
 
 **Product Overview:**  
-**BANTAI** (*Apna Model. Apna Dimaag. Apna AI.*) is a local-first, self-hosted agentic AI assistant with an authentic Mumbai Tapori personality. All visual direction—colors, typography, themes, layout geometry, spacing, icons, and styling—is completely open for the designer to craft from scratch. Below is the complete list of pages and UI elements required across the platform.
+**BANTAI** (*Apna Model. Apna Dimaag. Apna AI.*) is a local-first, self-hosted agentic AI workbench for coding, planning, and bilingual productivity. All visual direction—colors, typography, themes, layout geometry, spacing, icons, and styling—is completely open for the designer to craft from scratch. Below is the complete list of pages and UI elements required across the platform.
 
 ---
 
@@ -43,7 +43,7 @@
 * **Model Selector**
   * Active Local Models: **Chhotu (3B)**, **Bhai (7B — Default)** *(plus room to scale if future models are added)*
 * **Personality Selector**
-  * **Tapori**, **Balanced**, **Professional**, **Developer**, **Academic**
+  * **Balanced**, **Professional**, **Developer**, **Academic**
 * **Voice Input / Output**
   * Active Listening Indicator & Live Speech-to-Text Preview
   * Audio Playback Indicator for AI Voice Responses

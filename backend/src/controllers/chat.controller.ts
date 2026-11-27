@@ -7,6 +7,7 @@ import { inferenceService } from '../services/ai/inference.service';
 import { personalMemoryService } from '../services/memory/memory.service';
 import { ragService } from '../services/rag/rag.service';
 import { sanitizeForLog, sendInternalError, sendResourceError } from '../utils/security';
+import { learningService } from '../services/learning/learning.service';
 import {
   CreateConversationSchema,
   SendMessageRequestSchema,
@@ -99,6 +100,19 @@ export class ChatController {
       if (!ok) {
         return res.status(404).json({ success: false, error: 'Message not found' });
       }
+
+      // Connect explicit opt-in feedback into PII-scrubbed LoRA training buffer
+      const fbCtx = await firebaseFirestoreService.getMessageFeedbackContext(req.user!.userId, messageId);
+      if (fbCtx) {
+        await learningService.recordTrainingExample(
+          req.user!.userId,
+          fbCtx.userQuery,
+          fbCtx.assistantResponse,
+          rating,
+          correctionText,
+          fbCtx.personalityMode
+        );
+      }
       return res.json({ success: true });
     } catch (err) {
       return sendInternalError(res, 'ChatController.recordFeedback', err);
@@ -124,7 +138,8 @@ export class ChatController {
         return res.status(404).json({ success: false, error: 'Conversation not found' });
       }
 
-      const activeMode = personalityMode || conv.personalityMode || 'tapori';
+      const rawMode = personalityMode || conv.personalityMode || 'balanced';
+      const activeMode = (rawMode as string) === 'tapori' ? 'balanced' : rawMode;
       const activeModel = modelId || conv.modelId || 'qwen2.5:7b';
       const now = new Date().toISOString();
 
@@ -147,7 +162,7 @@ export class ChatController {
 
       // 2. Retrieve user identity, contextual memory and RAG additions (omit email/PII from system prompt)
       const userProfile = await mongoUserService.findById(userId);
-      const userName = userProfile?.name || 'Bantai';
+      const userName = userProfile?.name || 'User';
       const userContext = `USER DISPLAY NAME: ${userName}`;
 
       const memoryContext = await personalMemoryService.getFormattedMemoryContext(userId);

@@ -31,7 +31,7 @@ describe('Strict Database Architecture & Data Separation', () => {
       preferences: {
         theme: 'dark',
         language: 'hinglish',
-        defaultPersonalityMode: 'tapori',
+        defaultPersonalityMode: 'balanced',
         voiceSpeed: 1.0,
         voiceGender: 'male',
         soundEffectsEnabled: true,
@@ -64,7 +64,7 @@ describe('Strict Database Architecture & Data Separation', () => {
       email: 'leak@bantai.ai',
       name: 'Leak Test',
       username: 'leaktest',
-      messages: ['Hey bantai', 'Bol bhidu'] // FORBIDDEN IN MONGO
+      messages: ['Hey BANTAI', 'Summarize my sprint tasks'] // FORBIDDEN IN MONGO
     };
 
     await expect(mongoService.createUser(invalidData as unknown as MongoUser)).rejects.toThrow(
@@ -77,7 +77,7 @@ describe('Strict Database Architecture & Data Separation', () => {
       id: 'conv_1',
       userId: 'user_sep_1',
       title: 'First Chat',
-      personalityMode: 'tapori',
+      personalityMode: 'balanced',
       modelId: 'qwen2.5:7b',
       messageCount: 0,
       isArchived: false,

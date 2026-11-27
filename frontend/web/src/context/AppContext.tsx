@@ -10,6 +10,7 @@ interface AppContextType {
   user: SafeUserProfile | null;
   setUser: (u: SafeUserProfile | null) => void;
   isLoadingUser: boolean;
+  localWorkstationAvailable: boolean;
   activeView: AppView;
   setActiveView: (view: AppView) => void;
   conversations: FirestoreConversation[];
@@ -30,10 +31,11 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SafeUserProfile | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [localWorkstationAvailable, setLocalWorkstationAvailable] = useState(false);
   const [activeView, setActiveView] = useState<AppView>('chat');
   const [conversations, setConversations] = useState<FirestoreConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [personalityMode, setPersonalityMode] = useState<PersonalityMode>('tapori');
+  const [personalityMode, setPersonalityMode] = useState<PersonalityMode>('balanced');
   const [selectedModel, setSelectedModel] = useState<string>('bhai');
 
   const refreshConversations = useCallback(async () => {
@@ -57,10 +59,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setIsLoadingUser(true);
       try {
         const session = await api.getSession();
+        setLocalWorkstationAvailable(Boolean(session.localWorkstationAvailable));
         if (session.authenticated && session.user) {
           setUser(session.user);
           if (session.user.preferences?.defaultPersonalityMode) {
-            setPersonalityMode(session.user.preferences.defaultPersonalityMode);
+            const prefMode = session.user.preferences.defaultPersonalityMode as string;
+            setPersonalityMode(prefMode === 'tapori' ? 'balanced' : (prefMode as PersonalityMode));
           }
         } else {
           setUser(null);
@@ -110,6 +114,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         user,
         setUser,
         isLoadingUser,
+        localWorkstationAvailable,
         activeView,
         setActiveView,
         conversations,

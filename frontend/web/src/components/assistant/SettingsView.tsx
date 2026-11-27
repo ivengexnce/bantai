@@ -19,7 +19,7 @@ import {
   Loader2
 } from 'lucide-react';
 
-const PERSONALITIES: PersonalityMode[] = ['tapori', 'balanced', 'professional', 'developer', 'academic'];
+const PERSONALITIES: PersonalityMode[] = ['balanced', 'professional', 'developer', 'academic'];
 const LANGUAGES: Array<'hinglish' | 'hindi' | 'english'> = ['hinglish', 'hindi', 'english'];
 
 export function SettingsView() {

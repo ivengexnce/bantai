@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const PersonalityModeEnum = z.enum(['tapori', 'balanced', 'professional', 'developer', 'academic']);
+export const PersonalityModeEnum = z.enum(['balanced', 'professional', 'developer', 'academic']);
 export const TaskPriorityEnum = z.enum(['low', 'medium', 'high', 'urgent']);
 export const TaskStatusEnum = z.enum(['pending', 'in_progress', 'completed', 'cancelled']);
 
@@ -70,7 +70,7 @@ export const UpdateConsentSchema = z.object({
 // Chat Schemas
 export const CreateConversationSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
-  personalityMode: PersonalityModeEnum.default('tapori'),
+  personalityMode: PersonalityModeEnum.default('balanced'),
   modelId: z.string().trim().min(1).max(64).default('bhai')
 });
 
@@ -154,23 +154,29 @@ export const UpdateMemorySchema = z.object({
 });
 
 // Knowledge Base Schemas
-export const UploadKnowledgeDocSchema = z.object({
-  filename: z
-    .string()
-    .trim()
-    .min(1, 'Filename required')
-    .max(120, 'Filename too long')
-    .regex(/^[a-zA-Z0-9._ -]+$/, 'Filename contains unsupported characters')
-    .refine(val => !val.includes('..'), 'Invalid path sequence in filename')
-    .refine(
-      val => /\.(txt|md|markdown|csv|json|log)$/i.test(val),
-      'Only .txt, .md, .csv, .json, and .log files are permitted'
-    ),
-  rawText: z.string().min(1, 'Document text required').max(500_000, 'Document exceeds 500KB limit'),
-  mimeType: z
-    .enum(['text/plain', 'text/markdown', 'text/csv', 'application/json'])
-    .default('text/plain')
-});
+export const UploadKnowledgeDocSchema = z
+  .object({
+    filename: z
+      .string()
+      .trim()
+      .min(1, 'Filename required')
+      .max(120, 'Filename too long')
+      .regex(/^[a-zA-Z0-9._ -]+$/, 'Filename contains unsupported characters')
+      .refine(val => !val.includes('..'), 'Invalid path sequence in filename')
+      .refine(
+        val => /\.(txt|md|markdown|csv|json|log|pdf)$/i.test(val),
+        'Only .txt, .md, .csv, .json, .log, and .pdf files are permitted'
+      ),
+    rawText: z.string().max(500_000, 'Document exceeds 500KB text limit').optional(),
+    rawPdfBase64: z.string().max(1_950_000, 'PDF payload exceeds 1.4MB encoded limit').optional(),
+    mimeType: z
+      .enum(['text/plain', 'text/markdown', 'text/csv', 'application/json', 'application/pdf'])
+      .default('text/plain')
+  })
+  .refine(
+    data => Boolean((data.rawText && data.rawText.trim().length > 0) || (data.rawPdfBase64 && data.rawPdfBase64.trim().length > 0)),
+    { message: 'Either document text (rawText) or PDF base64 payload (rawPdfBase64) is required.' }
+  );
 
 export const QueryKnowledgeSchema = z.object({
   query: z.string().trim().min(1, 'Search query required').max(1000),
